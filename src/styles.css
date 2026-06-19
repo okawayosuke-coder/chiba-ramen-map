@@ -24,13 +24,13 @@ body,
   margin: 0;
   padding: 0;
   height: 100%;
+  overflow: hidden; /* iOS: ページ全体のラバーバンドを防ぎ、内側だけスクロールさせる */
   color: var(--text);
 }
 
 .app {
   display: flex;
-  height: 100vh;
-  height: 100dvh;
+  height: 100%; /* vh ではなく html/body(100%) を継承（iOS standaloneのvhズレ回避） */
   overflow: hidden;
 }
 
@@ -43,6 +43,7 @@ body,
   display: flex;
   flex-direction: column;
   min-height: 0; /* iOS/iPad: flex子のスクロールを有効化 */
+  overflow: hidden; /* スクロールは内側の .list だけに限定 */
   z-index: 1000;
 }
 
@@ -130,10 +131,12 @@ body,
 
 /* ===== リスト ===== */
 .list {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0; /* iOS/iPad: これが無いと内容ぶん伸びてスクロール不可になる */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .shop {
