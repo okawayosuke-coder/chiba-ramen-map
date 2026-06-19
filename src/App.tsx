@@ -158,46 +158,39 @@ export default function App() {
           aria-label="一覧を開閉"
         />
         <div className="sidebar__header">
-          <div className="sidebar__titlebar">
-            <h1>🍜 千葉ラーメンMAP</h1>
-            <div className="toolbar">
-              <button
-                className="icon-btn"
-                title="現在地から近い順"
-                onClick={requestNear}
-              >
-                📍
-              </button>
-              <button
-                className={`icon-btn${driving ? " on" : ""}`}
-                title="運転モード（特大表示）"
-                onClick={() => setDriving((d) => !d)}
-              >
-                🚗
-              </button>
-              <button
-                className="icon-btn"
-                title="テーマ"
-                onClick={() =>
-                  theme.setPref(theme.resolved === "dark" ? "light" : "dark")
-                }
-              >
-                {theme.resolved === "dark" ? "☀️" : "🌙"}
-              </button>
-              <button
-                className="icon-btn"
-                title="設定"
-                onClick={() => setSettingsOpen(true)}
-              >
-                ⚙
-              </button>
-            </div>
-          </div>
+          <h1>🍜 千葉ラーメンMAP</h1>
           <p>千葉県＋江東区・江戸川区／カーナビ起動対応</p>
           <p className="safety-line">
             ⚠️ 運転中の操作・注視は道交法違反。停車中・同乗者操作でご利用ください。
           </p>
         </div>
+
+        <nav className="toolbar">
+          <button className="tool-btn" onClick={requestNear}>
+            <span className="ic">📍</span>
+            <span>現在地</span>
+          </button>
+          <button
+            className={`tool-btn${driving ? " on" : ""}`}
+            onClick={() => setDriving((d) => !d)}
+          >
+            <span className="ic">🚗</span>
+            <span>運転モード</span>
+          </button>
+          <button
+            className="tool-btn"
+            onClick={() =>
+              theme.setPref(theme.resolved === "dark" ? "light" : "dark")
+            }
+          >
+            <span className="ic">{theme.resolved === "dark" ? "☀️" : "🌙"}</span>
+            <span>{theme.resolved === "dark" ? "ライトに" : "夜間モード"}</span>
+          </button>
+          <button className="tool-btn" onClick={() => setSettingsOpen(true)}>
+            <span className="ic">⚙</span>
+            <span>設定</span>
+          </button>
+        </nav>
 
         <div className="filters">
           <div className="field">
