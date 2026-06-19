@@ -1,0 +1,20 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#c92a2a"/>
+  
+  <g>
+    <!-- 湯気 -->
+    <path d="M196 168 q-22 -28 0 -56 q22 -28 0 -56" stroke="#ffd7d7" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.9"/>
+    <path d="M256 158 q-22 -28 0 -56 q22 -28 0 -56" stroke="#fff" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.95"/>
+    <path d="M316 168 q-22 -28 0 -56 q22 -28 0 -56" stroke="#ffd7d7" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.9"/>
+    <!-- 箸 -->
+    <g transform="rotate(20 360 240)">
+      <rect x="352" y="120" width="13" height="190" rx="6" fill="#ffe8cc"/>
+      <rect x="376" y="120" width="13" height="190" rx="6" fill="#ffe8cc"/>
+    </g>
+    <!-- 丼 -->
+    <rect x="92" y="262" width="328" height="26" rx="13" fill="#fff"/>
+    <path d="M118 290 a138 130 0 0 0 276 0 Z" fill="#fff"/>
+    <path d="M150 300 a106 96 0 0 0 212 0 Z" fill="#ffe3e3"/>
+  </g>
+</svg>
