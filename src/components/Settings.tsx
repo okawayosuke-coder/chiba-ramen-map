@@ -1,6 +1,7 @@
 import { useRef } from "react";
-import { NAV_APPS, navAppsForPlatform, type NavApp } from "../nav";
+import { NAV_APP_META, navAppsForPlatform, type NavApp } from "../nav";
 import { exportFavorites, type ThemePref } from "../storage";
+import { useEscape } from "../hooks";
 
 interface Props {
   navApp: NavApp | null;
@@ -25,6 +26,7 @@ export default function Settings({
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const apps = navAppsForPlatform();
+  useEscape(onClose);
 
   const onImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -45,8 +47,14 @@ export default function Settings({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal--settings" onClick={(e) => e.stopPropagation()}>
-        <h2>⚙ 設定</h2>
+      <div
+        className="modal modal--settings"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="settings-title">⚙ 設定</h2>
 
         <section className="set-sec">
           <h3>既定のナビアプリ</h3>
@@ -57,7 +65,7 @@ export default function Settings({
                 className={`chip${navApp === key ? " chip--on" : ""}`}
                 onClick={() => setNavApp(key)}
               >
-                {NAV_APPS.find((a) => a.key === key)!.label}
+                {NAV_APP_META[key].label}
               </button>
             ))}
           </div>

@@ -1,5 +1,16 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { isFarFromArea, type Pt } from "./nav";
+
+/** Escキーで閉じる（モーダル用） */
+export function useEscape(onClose: () => void) {
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [onClose]);
+}
 
 export type GeoStatus =
   | "idle"
@@ -34,10 +45,5 @@ export function useGeolocation() {
     );
   }, []);
 
-  const clear = useCallback(() => {
-    setPos(null);
-    setStatus("idle");
-  }, []);
-
-  return { pos, status, request, clear };
+  return { pos, status, request };
 }

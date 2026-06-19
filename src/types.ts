@@ -12,6 +12,10 @@ export interface Shop {
   region: string;
 }
 
+/** 抽出条件のしきい値（データ収集 scripts/refine.py・scrape.mjs と一致させること） */
+export const MIN_RATING = 3.9;
+export const MIN_REVIEWS = 50;
+
 export type SortKey = "rating" | "reviews" | "name" | "near";
 
 export interface Filters {
@@ -33,17 +37,3 @@ export const REGIONS: { key: string; label: string }[] = [
   { key: "tosou", label: "東総・山武（銚子・旭・東金・茂原）" },
   { key: "boso", label: "南房総（木更津・君津・館山・南部）" },
 ];
-
-/** 緯度経度からおおよそのエリアキーを返す（厳密な行政界ではなく近似） */
-export function regionOf(lat: number, lng: number): string {
-  // 江東区・江戸川区（江戸川より西＝東京側）。市川・浦安より優先
-  if (lng < 139.895 && lat >= 35.62 && lat <= 35.76) return "tokyo";
-  if (lat <= 35.45) return "boso";
-  if (lng >= 140.3) return "tosou";
-  if (lat >= 35.72) {
-    return lng >= 140.1 ? "inba" : "toukatsu";
-  }
-  if (lat >= 35.6 && lng < 140.08) return "keiyo";
-  if (lat >= 35.68 && lng >= 140.1) return "inba";
-  return "chiba";
-}

@@ -91,7 +91,11 @@ def main():
             and s.get("r") is not None and s.get("c") is not None
             and s["r"] >= 3.9 and s["c"] >= 50 and is_ramen(s)]
 
+    import re
+    POSTCODE = re.compile(r"^〒?\s*\d{3}-\d{4}")
+
     kept, dropped = [], 0
+    malformed = []
     for s in base:
         lat, lng = s["lat"], s["lng"]
         if in_named(lat, lng, "江東区") or in_named(lat, lng, "江戸川区"):
@@ -101,10 +105,15 @@ def main():
         else:
             dropped += 1
             continue
+        name = (s.get("n") or "").strip()
+        # スクレイプ崩れ対策: 店名先頭に郵便番号(＋住所)が混入した行を検出・フラグ
+        if POSTCODE.match(name):
+            malformed.append(name)
+            name = POSTCODE.sub("", name).strip()  # 最低限、郵便番号は除去して表示
         pid = s.get("pid")
         url = (f'https://www.google.com/maps?ftid={pid}&hl=ja' if pid
                else f'https://www.google.com/maps/search/?api=1&query={lat},{lng}')
-        kept.append({"name": s["n"], "rating": s["r"], "reviews": s["c"],
+        kept.append({"name": name, "rating": s["r"], "reviews": s["c"],
                      "lat": lat, "lng": lng, "genre": s.get("g") or "ラーメン",
                      "address": s.get("a") or "", "placeId": pid,
                      "mapsUrl": url, "region": region})
@@ -116,6 +125,10 @@ def main():
     rc = Counter(s["region"] for s in kept)
     print(f"ラーメン数値条件 {len(base)} → 行政界フィルタで残り {len(kept)} 件 / 区界外で除外 {dropped} 件")
     print("region分布:", dict(rc))
+    if malformed:
+        print(f"\n⚠ 店名に郵便番号/住所が混入した疑い {len(malformed)} 件（要手動確認・郵便番号は自動除去済み）:")
+        for m in malformed:
+            print("  -", m)
 
 
 if __name__ == "__main__":

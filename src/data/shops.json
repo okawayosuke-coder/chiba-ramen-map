@@ -2064,13 +2064,13 @@
   "region": "chiba"
  },
  {
-  "name": "〒266-0004 千葉県千葉市緑区平川町ラーメンサンキュー",
+  "name": "ラーメンサンキュー",
   "rating": 4.2,
   "reviews": 242,
   "lat": 35.541839,
   "lng": 140.2342822,
   "genre": "ラーメン",
-  "address": "山田７５６−１−４",
+  "address": "千葉県千葉市緑区平川町",
   "placeId": "0x602296f823822897:0xac6e7bedb1cd3c6b",
   "mapsUrl": "https://www.google.com/maps?ftid=0x602296f823822897:0xac6e7bedb1cd3c6b&hl=ja",
   "region": "chiba"
@@ -2244,25 +2244,25 @@
   "region": "keiyo"
  },
  {
-  "name": "〒266-0026 千葉県千葉市緑区古市場町らーめん旭郎山",
+  "name": "らーめん旭郎山",
   "rating": 4.2,
   "reviews": 173,
   "lat": 35.5460741,
   "lng": 140.1475165,
   "genre": "弁当製造業者",
-  "address": "南国分寺台５丁目2−５",
+  "address": "千葉県千葉市緑区古市場町",
   "placeId": "0x60229a296345393b:0x8fdd926501e626f2",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60229a296345393b:0x8fdd926501e626f2&hl=ja",
   "region": "chiba"
  },
  {
-  "name": "〒266-0033 千葉県千葉市緑区おゆみ野南６丁目１５−９ らーめん流神",
+  "name": "らーめん流神",
   "rating": 4.2,
   "reviews": 173,
   "lat": 35.5420885,
   "lng": 140.1854177,
   "genre": "弁当製造業者",
-  "address": "南国分寺台５丁目2−５",
+  "address": "千葉県千葉市緑区おゆみ野南６丁目１５−９",
   "placeId": "0x6022975f06dd9ba3:0x60c584e2f673f2f1",
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022975f06dd9ba3:0x60c584e2f673f2f1&hl=ja",
   "region": "chiba"
@@ -5364,13 +5364,13 @@
   "region": "boso"
  },
  {
-  "name": "〒270-1416 千葉県白井市神々廻１８６５ 手打ラーメン岩間",
+  "name": "手打ラーメン岩間",
   "rating": 4,
   "reviews": 296,
   "lat": 35.8080754,
   "lng": 140.0865298,
   "genre": "中華料理",
-  "address": "布佐１１０１−４",
+  "address": "千葉県白井市神々廻１８６５",
   "placeId": "0x60227eb140b3462b:0x965097c2d9f5db97",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60227eb140b3462b:0x965097c2d9f5db97&hl=ja",
   "region": "toukatsu"

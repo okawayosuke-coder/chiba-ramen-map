@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -64,7 +64,7 @@ interface Props {
   distanceTo: (s: Shop) => number | null;
 }
 
-export default function RamenMap({
+function RamenMap({
   shops,
   focus,
   theme,
@@ -135,6 +135,8 @@ export default function RamenMap({
                     <button
                       className={`act act--fav${isFav(s) ? " on" : ""}`}
                       onClick={() => onToggleFav(s)}
+                      aria-pressed={isFav(s)}
+                      aria-label={isFav(s) ? "お気に入りから削除" : "お気に入りに追加"}
                     >
                       {isFav(s) ? "★" : "☆"}
                     </button>
@@ -156,6 +158,8 @@ export default function RamenMap({
     </MapContainer>
   );
 }
+
+export default memo(RamenMap);
 
 function Legend() {
   const map = useMap();

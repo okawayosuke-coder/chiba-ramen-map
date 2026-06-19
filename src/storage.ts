@@ -7,6 +7,7 @@ const K = {
   navApp: "crm_navapp",
   safety: "crm_safety_ack",
   theme: "crm_theme", // "light" | "dark" | "auto"
+  driving: "crm_driving",
 };
 
 /** 並び順が変わっても壊れない安定キー（placeId優先、無ければ座標丸め） */
@@ -50,11 +51,26 @@ export function useFavorites() {
 
   const isFav = useCallback((s: Shop) => favs.has(shopKey(s)), [favs]);
 
-  const importKeys = useCallback((keys: string[]) => {
-    setFavs((prev) => new Set([...prev, ...keys]));
+  const importKeys = useCallback((keys: unknown[]) => {
+    const valid = (Array.isArray(keys) ? keys : [])
+      .filter((k): k is string => typeof k === "string" && k.length > 0)
+      .slice(0, 5000);
+    setFavs((prev) => new Set([...prev, ...valid]));
   }, []);
 
   return { favs, toggle, isFav, importKeys };
+}
+
+/** 運転モードの永続化（PWA再起動でも維持） */
+export function useDriving(): [boolean, (v: boolean) => void] {
+  const [driving, setDrivingState] = useState<boolean>(() =>
+    read<boolean>(K.driving, false)
+  );
+  const set = useCallback((v: boolean) => {
+    setDrivingState(v);
+    write(K.driving, v);
+  }, []);
+  return [driving, set];
 }
 
 export function useNavApp(): [NavApp | null, (a: NavApp) => void] {

@@ -6,11 +6,16 @@ export interface Pt {
   lng: number;
 }
 
-export const NAV_APPS: { key: NavApp; label: string; note: string }[] = [
-  { key: "google", label: "Google マップ", note: "全機種で確実。徒歩・車対応" },
-  { key: "apple", label: "Apple マップ", note: "iPhone標準" },
-  { key: "yahoo", label: "Yahoo!カーナビ", note: "要アプリ（未インストール時は反応しません）" },
-];
+export const NAV_APP_META: Record<NavApp, { label: string; note: string }> = {
+  google: { label: "Google マップ", note: "全機種で確実。徒歩・車対応" },
+  apple: { label: "Apple マップ", note: "iPhone/iPad標準" },
+  yahoo: { label: "Yahoo!カーナビ", note: "要アプリ（未インストール時は反応しません）" },
+};
+
+/** スキーム起動（インストール必須・起動可否を検知できない）か */
+export function isSchemeApp(app: NavApp): boolean {
+  return app === "yahoo";
+}
 
 export type Platform = "ios" | "android" | "pc";
 
@@ -78,17 +83,22 @@ export function launchNav(app: NavApp, dest: Pt, name: string): void {
   else window.location.href = url; // カスタムスキーム
 }
 
-/** 共有（Web Share 優先、無ければクリップボード） */
-export async function shareNav(dest: Pt, name: string): Promise<"shared" | "copied" | "failed"> {
+/** 共有（Web Share 優先、無ければクリップボード）。ユーザーが共有シートを閉じた場合は cancelled */
+export async function shareNav(
+  dest: Pt,
+  name: string
+): Promise<"shared" | "copied" | "cancelled" | "failed"> {
   const url = navUrl("google", dest, name);
   const text = `${name} へのカーナビ（千葉ラーメンMAP）`;
-  try {
-    if (navigator.share) {
+  if (navigator.share) {
+    try {
       await navigator.share({ title: name, text, url });
       return "shared";
+    } catch (e) {
+      // ユーザーがキャンセルした場合はクリップボードへ進めず終了
+      if (e instanceof Error && e.name === "AbortError") return "cancelled";
+      // それ以外（共有非対応・失敗）はクリップボードにフォールバック
     }
-  } catch {
-    /* キャンセル等 */
   }
   try {
     await navigator.clipboard.writeText(url);

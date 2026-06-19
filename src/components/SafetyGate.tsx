@@ -1,3 +1,5 @@
+import { useEscape } from "../hooks";
+
 interface Props {
   shopName: string;
   onAccept: () => void;
@@ -6,10 +8,17 @@ interface Props {
 
 /** 初回ナビ起動時の安全ゲート（道交法配慮・停車中前提のセルフ確認） */
 export default function SafetyGate({ shopName, onAccept, onCancel }: Props) {
+  useEscape(onCancel);
   return (
     <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>🚗 ナビを起動する前に</h2>
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="safety-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="safety-title">🚗 ナビを起動する前に</h2>
         <p className="modal__lead">
           <b>運転中のスマートフォンの操作・注視は道路交通法違反</b>です（ながら運転）。
         </p>

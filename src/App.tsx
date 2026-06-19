@@ -1,15 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import RamenMap from "./components/RamenMap";
 import SafetyGate from "./components/SafetyGate";
 import NavPicker from "./components/NavPicker";
 import Settings from "./components/Settings";
-import { REGIONS, type Filters, type Shop } from "./types";
+import {
+  MIN_RATING,
+  MIN_REVIEWS,
+  REGIONS,
+  type Filters,
+  type Shop,
+} from "./types";
 import {
   fmtDistance,
   haversineKm,
+  isSchemeApp,
   launchNav,
   multiStopUrl,
-  NAV_APPS,
+  NAV_APP_META,
   navAppsForPlatform,
   roughMinutes,
   shareNav,
@@ -17,6 +24,7 @@ import {
 } from "./nav";
 import {
   shopKey,
+  useDriving,
   useFavorites,
   useNavApp,
   useSafetyAck,
@@ -27,10 +35,16 @@ import shopsData from "./data/shops.json";
 
 const ALL_SHOPS = shopsData as Shop[];
 
+// スキーム起動(Yahoo等)は起動可否を検知できないため文言を中立に
+const navToast = (app: NavApp, name: string) =>
+  isSchemeApp(app)
+    ? `${NAV_APP_META[app].label}を開きます（未インストールなら反応しません）`
+    : `「${name}」を${NAV_APP_META[app].label}で起動しました`;
+
 const DEFAULTS: Filters = {
   query: "",
-  minRating: 3.9,
-  minReviews: 50,
+  minRating: MIN_RATING,
+  minReviews: MIN_REVIEWS,
   region: "all",
   sort: "rating",
 };
@@ -41,7 +55,7 @@ export default function App() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [driving, setDriving] = useState(false);
+  const [driving, setDriving] = useDriving();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Shop | null>(null);
   const [pickerFor, setPickerFor] = useState<Shop | null>(null);
@@ -85,36 +99,47 @@ export default function App() {
 
   const shops = useMemo(() => view.map((v) => v.s), [view]);
 
-  const select = (s: Shop) => {
+  const select = useCallback((s: Shop) => {
     setFocus(s);
     setSheetOpen(false);
-  };
+  }, []);
 
   // ===== ナビ起動フロー（安全ゲート → アプリ選択 → 起動） =====
-  const navLabel = (a: NavApp) => NAV_APPS.find((x) => x.key === a)!.label;
+  const proceedNav = useCallback(
+    (shop: Shop) => {
+      if (!navApp) {
+        setPickerFor(shop);
+        return;
+      }
+      launchNav(navApp, shop, shop.name);
+      setToast(navToast(navApp, shop.name));
+    },
+    [navApp]
+  );
 
-  const proceedNav = (shop: Shop) => {
-    if (!navApp) {
-      setPickerFor(shop);
-      return;
-    }
-    launchNav(navApp, shop, shop.name);
-    setToast(`「${shop.name}」を${navLabel(navApp)}で起動しました`);
-  };
+  const startNav = useCallback(
+    (shop: Shop) => {
+      // 未同意、または運転モード中（＝車内）は毎回「停車中ですか」を再確認
+      if (!safetyAck || driving) {
+        setPendingNav(shop);
+        return;
+      }
+      proceedNav(shop);
+    },
+    [safetyAck, driving, proceedNav]
+  );
 
-  const startNav = (shop: Shop) => {
-    if (!safetyAck) {
-      setPendingNav(shop);
-      return;
-    }
-    proceedNav(shop);
-  };
-
-  const doShare = async (shop: Shop) => {
+  const doShare = useCallback(async (shop: Shop) => {
     const r = await shareNav(shop, shop.name);
     if (r === "copied") setToast("ナビリンクをコピーしました");
     else if (r === "failed") setToast("共有できませんでした");
-  };
+    // "shared" / "cancelled" は通知不要
+  }, []);
+
+  const distanceTo = useCallback(
+    (s: Shop) => (geo.pos ? haversineKm(geo.pos, s) : null),
+    [geo.pos]
+  );
 
   const requestNear = () => {
     geo.request();
@@ -123,20 +148,27 @@ export default function App() {
 
   const hashigo = () => {
     if (shops.length < 2) return;
-    const { url, used, capped } = multiStopUrl(shops);
+    // 現在地があれば近い順に並べてからルート化（評価順のジグザグを回避）
+    const ordered = geo.pos
+      ? [...shops].sort(
+          (a, b) => haversineKm(geo.pos!, a) - haversineKm(geo.pos!, b)
+        )
+      : shops;
+    const { url, used, capped } = multiStopUrl(ordered);
+    const dest = ordered[Math.min(used, ordered.length) - 1];
     window.open(url, "_blank", "noopener");
     setToast(
       capped
-        ? `先頭${used}件でルート作成（経由地の上限）`
-        : `${used}件のはしごルートを作成`
+        ? `近い順に${used}件でルート作成（経由地上限／最終目的地: ${dest.name}）`
+        : `${used}件のはしごルート（最終目的地: ${dest.name}）`
     );
   };
 
   const filtersChanged =
     filters.query ||
     filters.region !== "all" ||
-    filters.minRating !== 3.9 ||
-    filters.minReviews !== 50 ||
+    filters.minRating !== MIN_RATING ||
+    filters.minReviews !== MIN_REVIEWS ||
     favOnly;
 
   const geoNotice =
@@ -168,28 +200,42 @@ export default function App() {
         </div>
 
         <nav className="toolbar">
-          <button className="tool-btn" onClick={requestNear}>
-            <span className="ic">📍</span>
-            <span>現在地</span>
+          <button
+            className="tool-btn"
+            onClick={requestNear}
+            disabled={geo.status === "loading"}
+          >
+            <span className="ic" aria-hidden="true">
+              📍
+            </span>
+            <span>{geo.status === "loading" ? "取得中…" : "現在地"}</span>
           </button>
           <button
             className={`tool-btn${driving ? " on" : ""}`}
-            onClick={() => setDriving((d) => !d)}
+            aria-pressed={driving}
+            onClick={() => setDriving(!driving)}
           >
-            <span className="ic">🚗</span>
+            <span className="ic" aria-hidden="true">
+              🚗
+            </span>
             <span>運転モード</span>
           </button>
           <button
             className="tool-btn"
+            aria-pressed={theme.resolved === "dark"}
             onClick={() =>
               theme.setPref(theme.resolved === "dark" ? "light" : "dark")
             }
           >
-            <span className="ic">{theme.resolved === "dark" ? "☀️" : "🌙"}</span>
+            <span className="ic" aria-hidden="true">
+              {theme.resolved === "dark" ? "☀️" : "🌙"}
+            </span>
             <span>{theme.resolved === "dark" ? "ライトに" : "夜間モード"}</span>
           </button>
           <button className="tool-btn" onClick={() => setSettingsOpen(true)}>
-            <span className="ic">⚙</span>
+            <span className="ic" aria-hidden="true">
+              ⚙
+            </span>
             <span>設定</span>
           </button>
         </nav>
@@ -247,7 +293,7 @@ export default function App() {
                   </label>
                   <input
                     type="range"
-                    min={3.9}
+                    min={MIN_RATING}
                     max={4.7}
                     step={0.1}
                     value={filters.minRating}
@@ -261,7 +307,7 @@ export default function App() {
                   </label>
                   <input
                     type="range"
-                    min={50}
+                    min={MIN_REVIEWS}
                     max={1000}
                     step={50}
                     value={filters.minReviews}
@@ -286,10 +332,14 @@ export default function App() {
           )}
         </div>
 
-        {geoNotice && <div className="notice">{geoNotice}</div>}
+        {geoNotice && (
+          <div className="notice" role="status" aria-live="polite">
+            {geoNotice}
+          </div>
+        )}
 
         <div className="stats">
-          <span>
+          <span aria-live="polite">
             該当 <b>{shops.length}</b> 店 / 全{ALL_SHOPS.length}店
           </span>
           {filtersChanged && (
@@ -319,7 +369,16 @@ export default function App() {
             <div
               key={shopKey(s)}
               className={`shop${focus === s ? " active" : ""}`}
+              role="button"
+              tabIndex={0}
+              aria-label={`${s.name} 評価${s.rating.toFixed(1)} 口コミ${s.reviews.toLocaleString()}件。地図で表示`}
               onClick={() => select(s)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  select(s);
+                }
+              }}
             >
               <div className="shop__top">
                 <span className="shop__name">{s.name}</span>
@@ -344,7 +403,8 @@ export default function App() {
                 <button
                   className={`act act--fav${isFav(s) ? " on" : ""}`}
                   onClick={() => toggle(s)}
-                  title="お気に入り"
+                  aria-pressed={isFav(s)}
+                  aria-label={isFav(s) ? "お気に入りから削除" : "お気に入りに追加"}
                 >
                   {isFav(s) ? "★" : "☆"}
                 </button>
@@ -381,7 +441,7 @@ export default function App() {
           onToggleFav={toggle}
           onNav={startNav}
           onShare={doShare}
-          distanceTo={(s) => (geo.pos ? haversineKm(geo.pos, s) : null)}
+          distanceTo={distanceTo}
         />
       </div>
 
@@ -407,7 +467,7 @@ export default function App() {
             const s = pickerFor;
             setPickerFor(null);
             launchNav(app, s, s.name);
-            setToast(`「${s.name}」を${navLabel(app)}で起動しました`);
+            setToast(navToast(app, s.name));
           }}
           onCancel={() => setPickerFor(null)}
         />
@@ -430,7 +490,11 @@ export default function App() {
         />
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
