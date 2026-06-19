@@ -1,6 +1,19 @@
 # 千葉ラーメンMAP 🍜
 
+**公開URL: https://okawayosuke-coder.github.io/chiba-ramen-map/**
+
 **千葉県＋江東区・江戸川区** の **高評価ラーメン店（Google評価3.9以上・口コミ50件以上）** を地図で探せる個人用Webアプリ。
+
+## iPad / スマホで使う（ホーム画面に追加）
+
+1. Safari で上記URLを開く
+2. 共有ボタン → 「ホーム画面に追加」→ 全画面アプリとして起動（PWA）
+3. 初回に位置情報を「許可」すると「現在地から近い順」が使える
+4. 車載は固定ホルダー＋音声、操作は停車中のみ（道交法）
+
+## デプロイ
+
+`main` にpushすると GitHub Actions（`.github/workflows/deploy.yml`）が `npm run build` → GitHub Pages へ自動デプロイ。GitHub Pagesはサブパス配信のため `vite.config.ts` の `base` を `/chiba-ramen-map/` にしている（dev は `/`）。
 
 2026/5/16にCoworkで作成した静的マップ（Leaflet + KML）をベースに、検索・絞り込み・並べ替えに対応したReact製アプリとして作り直したもの。
 
