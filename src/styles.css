@@ -737,3 +737,18 @@ body {
 .modal-overlay {
   overscroll-behavior: contain;
 }
+
+/* ===== ピンのホバーツールチップ（店舗名） ===== */
+.pin-tip.leaflet-tooltip {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 4px 9px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+}
+.pin-tip.leaflet-tooltip-top::before {
+  border-top-color: var(--panel);
+}

@@ -1,5 +1,12 @@
 import { memo, useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Tooltip,
+  useMap,
+} from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Shop } from "../types";
@@ -30,6 +37,7 @@ function pinIcon(rating: number): L.DivIcon {
     iconSize: [w, h],
     iconAnchor: [w / 2, h],
     popupAnchor: [0, -h + 6],
+    tooltipAnchor: [0, -h + 6], // ピン頭上にツールチップ
   });
 }
 
@@ -115,6 +123,9 @@ function RamenMap({
               icon={icons(s.rating)}
               eventHandlers={{ click: () => onSelect(s) }}
             >
+              <Tooltip direction="top" offset={[0, -2]} className="pin-tip">
+                {s.name}（★{s.rating.toFixed(1)}）
+              </Tooltip>
               <Popup>
                 <div className="popup">
                   <div className="name">{s.name}</div>
