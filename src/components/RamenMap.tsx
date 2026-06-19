@@ -144,8 +144,12 @@ function RamenMap({
                       共有
                     </button>
                   </div>
-                  <a href={s.mapsUrl} target="_blank" rel="noreferrer">
-                    Googleマップで口コミを見る →
+                  <a
+                    href={s.reviewsUrl ?? s.mapsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    💬 口コミを見る →
                   </a>
                 </div>
               </Popup>

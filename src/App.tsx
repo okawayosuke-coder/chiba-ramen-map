@@ -412,12 +412,14 @@ export default function App() {
                   共有
                 </button>
                 <a
-                  className="act act--link"
-                  href={s.mapsUrl}
+                  className="act act--link act--icon"
+                  href={s.reviewsUrl ?? s.mapsUrl}
                   target="_blank"
                   rel="noreferrer"
+                  aria-label="Googleマップで口コミを見る"
+                  title="口コミを見る"
                 >
-                  口コミ
+                  💬
                 </a>
               </div>
             </div>

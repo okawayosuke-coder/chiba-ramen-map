@@ -8,6 +8,8 @@ export interface Shop {
   address: string;
   placeId: string | null;
   mapsUrl: string;
+  /** 口コミタブ直開きURL（scripts/resolve_reviews.mjs が付与。無ければ mapsUrl にフォールバック） */
+  reviewsUrl?: string;
   /** エリアキー（refine.py が行政界判定で付与）: tokyo / toukatsu / keiyo / chiba / inba / tosou / boso */
   region: string;
 }

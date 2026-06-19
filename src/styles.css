@@ -506,6 +506,10 @@ body {
 .act--link {
   color: #1c7ed6;
 }
+.act--icon {
+  font-size: 18px;
+  line-height: 1;
+}
 .empty {
   padding: 24px;
   color: var(--muted);

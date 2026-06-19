@@ -9,3 +9,4 @@ scratchpad/
 __pycache__/
 *.pyc
 scripts/scrape.log
+scripts/resolve*.log
