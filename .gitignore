@@ -6,3 +6,6 @@ dist
 
 .claude/
 scratchpad/
+__pycache__/
+*.pyc
+scripts/scrape.log
