@@ -157,6 +157,7 @@ export default function App() {
           onClick={() => setSheetOpen((o) => !o)}
           aria-label="一覧を開閉"
         />
+        <div className="sidebar__controls">
         <div className="sidebar__header">
           <h1>🍜 千葉ラーメンMAP</h1>
           <p>千葉県＋江東区・江戸川区／カーナビ起動対応</p>
@@ -299,6 +300,7 @@ export default function App() {
             🍜🚗 お気に入り{shops.length}件で「はしご」ルートを作成（Googleマップ）
           </button>
         )}
+        </div>
 
         <div className="list">
           {view.map(({ s, km }) => (

@@ -40,11 +40,19 @@ body,
   flex: 0 0 var(--sidebar-w);
   background: var(--panel);
   border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  min-height: 0; /* iOS/iPad: flex子のスクロールを有効化 */
-  overflow: hidden; /* スクロールは内側の .list だけに限定 */
+  height: 100%;
+  /* ペイン全体をスクロール領域に（iOSで最も確実）。操作部は sticky で上部固定 */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   z-index: 1000;
+}
+
+.sidebar__controls {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--panel);
 }
 
 .sidebar__header {
@@ -131,12 +139,8 @@ body,
 
 /* ===== リスト ===== */
 .list {
-  flex: 1 1 0;
-  min-height: 0; /* iOS/iPad: これが無いと内容ぶん伸びてスクロール不可になる */
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
+  /* スクロールは親(.sidebar)が担当。ここは通常のブロック */
+  padding-bottom: 8px;
 }
 
 .shop {
