@@ -42,6 +42,7 @@ body,
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  min-height: 0; /* iOS/iPad: flex子のスクロールを有効化 */
   z-index: 1000;
 }
 
@@ -130,6 +131,7 @@ body,
 /* ===== リスト ===== */
 .list {
   flex: 1;
+  min-height: 0; /* iOS/iPad: これが無いと内容ぶん伸びてスクロール不可になる */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
