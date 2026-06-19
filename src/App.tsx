@@ -40,6 +40,7 @@ export default function App() {
   const [focus, setFocus] = useState<Shop | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [driving, setDriving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Shop | null>(null);
@@ -204,74 +205,85 @@ export default function App() {
             />
           </div>
 
-          <div className="field">
-            <label>エリア</label>
-            <select
-              value={filters.region}
-              onChange={(e) => set("region", e.target.value)}
-            >
-              {REGIONS.map((r) => (
-                <option key={r.key} value={r.key}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="chips-row">
             <button
               className={`chip${favOnly ? " chip--on" : ""}`}
               onClick={() => setFavOnly((v) => !v)}
             >
-              ★ お気に入りのみ{favs.size > 0 ? `（${favs.size}）` : ""}
+              ★ お気に入り{favs.size > 0 ? `（${favs.size}）` : ""}
             </button>
             <button className="chip" onClick={requestNear}>
-              📍 現在地から近い順
+              📍 近い順
+            </button>
+            <button
+              className={`chip${filtersOpen ? " chip--on" : ""}`}
+              onClick={() => setFiltersOpen((o) => !o)}
+            >
+              絞り込み {filtersOpen ? "▲" : "▼"}
             </button>
           </div>
 
-          <div className="filters__row">
-            <div className="field">
-              <label>
-                最低評価 <span className="range-val">★{filters.minRating.toFixed(1)}</span>
-              </label>
-              <input
-                type="range"
-                min={3.9}
-                max={4.7}
-                step={0.1}
-                value={filters.minRating}
-                onChange={(e) => set("minRating", Number(e.target.value))}
-              />
-            </div>
-            <div className="field">
-              <label>
-                最低口コミ数{" "}
-                <span className="range-val">{filters.minReviews}件</span>
-              </label>
-              <input
-                type="range"
-                min={50}
-                max={1000}
-                step={50}
-                value={filters.minReviews}
-                onChange={(e) => set("minReviews", Number(e.target.value))}
-              />
-            </div>
-          </div>
+          {filtersOpen && (
+            <>
+              <div className="field">
+                <label>エリア</label>
+                <select
+                  value={filters.region}
+                  onChange={(e) => set("region", e.target.value)}
+                >
+                  {REGIONS.map((r) => (
+                    <option key={r.key} value={r.key}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="field">
-            <label>並べ替え</label>
-            <select
-              value={filters.sort}
-              onChange={(e) => set("sort", e.target.value as Filters["sort"])}
-            >
-              <option value="rating">評価が高い順</option>
-              <option value="reviews">口コミ件数が多い順</option>
-              <option value="near">現在地から近い順</option>
-              <option value="name">店名順</option>
-            </select>
-          </div>
+              <div className="filters__row">
+                <div className="field">
+                  <label>
+                    最低評価{" "}
+                    <span className="range-val">★{filters.minRating.toFixed(1)}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={3.9}
+                    max={4.7}
+                    step={0.1}
+                    value={filters.minRating}
+                    onChange={(e) => set("minRating", Number(e.target.value))}
+                  />
+                </div>
+                <div className="field">
+                  <label>
+                    最低口コミ数{" "}
+                    <span className="range-val">{filters.minReviews}件</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={50}
+                    max={1000}
+                    step={50}
+                    value={filters.minReviews}
+                    onChange={(e) => set("minReviews", Number(e.target.value))}
+                  />
+                </div>
+              </div>
+
+              <div className="field">
+                <label>並べ替え</label>
+                <select
+                  value={filters.sort}
+                  onChange={(e) => set("sort", e.target.value as Filters["sort"])}
+                >
+                  <option value="rating">評価が高い順</option>
+                  <option value="reviews">口コミ件数が多い順</option>
+                  <option value="near">現在地から近い順</option>
+                  <option value="name">店名順</option>
+                </select>
+              </div>
+            </>
+          )}
         </div>
 
         {geoNotice && <div className="notice">{geoNotice}</div>}

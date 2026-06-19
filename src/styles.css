@@ -58,7 +58,7 @@ body,
 .sidebar__header {
   background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
-  padding: 14px 18px;
+  padding: 9px 16px;
 }
 
 .sidebar__header h1 {
@@ -77,11 +77,11 @@ body,
 }
 
 .filters {
-  padding: 14px 18px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .field label {
@@ -140,7 +140,7 @@ body,
 /* ===== リスト ===== */
 .list {
   /* スクロールは親(.sidebar)が担当。ここは通常のブロック */
-  padding-bottom: 8px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 .shop {
