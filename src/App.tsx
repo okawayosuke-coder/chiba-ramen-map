@@ -437,7 +437,6 @@ export default function App() {
         <RamenMap
           shops={shops}
           focus={focus}
-          onSelect={select}
           theme={theme.resolved}
           userPos={geo.pos}
           isFav={isFav}

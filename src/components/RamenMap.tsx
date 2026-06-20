@@ -64,7 +64,6 @@ interface Props {
   focus: Shop | null;
   theme: "light" | "dark";
   userPos: Pt | null;
-  onSelect: (s: Shop) => void;
   isFav: (s: Shop) => boolean;
   onToggleFav: (s: Shop) => void;
   onNav: (s: Shop) => void;
@@ -77,7 +76,6 @@ function RamenMap({
   focus,
   theme,
   userPos,
-  onSelect,
   isFav,
   onToggleFav,
   onNav,
@@ -121,7 +119,6 @@ function RamenMap({
               key={s.placeId ?? `${s.lat},${s.lng},${i}`}
               position={[s.lat, s.lng]}
               icon={icons(s.rating)}
-              eventHandlers={{ click: () => onSelect(s) }}
             >
               <Tooltip direction="top" offset={[0, -2]} className="pin-tip">
                 {s.name}（★{s.rating.toFixed(1)}）
