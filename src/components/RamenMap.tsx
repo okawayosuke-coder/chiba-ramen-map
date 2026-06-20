@@ -59,6 +59,18 @@ function FocusController({ focus }: { focus: Shop | null }) {
   return null;
 }
 
+/** 現在地が取得/更新されたら地図をそこへ移動 */
+function UserFocus({ pos }: { pos: Pt | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (pos)
+      map.flyTo([pos.lat, pos.lng], Math.max(map.getZoom(), 13), {
+        duration: 0.6,
+      });
+  }, [pos, map]);
+  return null;
+}
+
 interface Props {
   shops: Shop[];
   focus: Shop | null;
@@ -108,6 +120,7 @@ function RamenMap({
     <MapContainer className="map" center={[35.55, 140.18]} zoom={10} scrollWheelZoom>
       <TileLayer key={theme} attribution={tile.attribution} url={tile.url} maxZoom={19} />
       <FocusController focus={focus} />
+      <UserFocus pos={userPos} />
 
       {userPos && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />}
 
