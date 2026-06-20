@@ -26,7 +26,6 @@ import {
 } from "./nav";
 import {
   shopKey,
-  useAutoDrive,
   useDriving,
   useFavorites,
   useNavApp,
@@ -68,18 +67,27 @@ export default function App() {
   const { favs, toggle, isFav, importKeys } = useFavorites();
   const [navApp, setNavApp] = useNavApp();
   const [safetyAck, setSafetyAck] = useSafetyAck();
-  const [autoDrive, setAutoDrive] = useAutoDrive();
   const theme = useTheme();
   const geo = useGeolocation();
 
-  // 自動走行: 設定ON かつ 走行モードOFF の時だけ移動を監視し、走り出しで自動ON
+  // 自動走行（常時オン）: 走行モードOFFの間は移動を監視し、走り出しで自動ON
   useMovementDetector(
-    autoDrive && !follow,
+    !follow,
     useCallback(() => {
       setFollow(true);
       setToast("移動を検知 → 走行モードに切替");
     }, [])
   );
+
+  // 初回タップ時に方位センサー許可を取得（iOSはジェスチャ必須。自動走行でもコンパスを使えるように）
+  useEffect(() => {
+    const once = () => {
+      requestOrientationPermission();
+      window.removeEventListener("pointerdown", once);
+    };
+    window.addEventListener("pointerdown", once, { once: true });
+    return () => window.removeEventListener("pointerdown", once);
+  }, []);
 
   const set = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
@@ -514,8 +522,6 @@ export default function App() {
           setNavApp={setNavApp}
           themePref={theme.pref}
           setThemePref={theme.setPref}
-          autoDrive={autoDrive}
-          setAutoDrive={setAutoDrive}
           favs={favs}
           importKeys={importKeys}
           onResetSafety={() => {

@@ -8,7 +8,6 @@ const K = {
   safety: "crm_safety_ack",
   theme: "crm_theme", // "light" | "dark" | "auto"
   driving: "crm_driving",
-  autoDrive: "crm_autodrive",
 };
 
 /** 並び順が変わっても壊れない安定キー（placeId優先、無ければ座標丸め） */
@@ -72,18 +71,6 @@ export function useDriving(): [boolean, (v: boolean) => void] {
     write(K.driving, v);
   }, []);
   return [driving, set];
-}
-
-/** 「移動検知で自動走行モード」設定の永続化 */
-export function useAutoDrive(): [boolean, (v: boolean) => void] {
-  const [auto, setAuto] = useState<boolean>(() =>
-    read<boolean>(K.autoDrive, false)
-  );
-  const set = useCallback((v: boolean) => {
-    setAuto(v);
-    write(K.autoDrive, v);
-  }, []);
-  return [auto, set];
 }
 
 export function useNavApp(): [NavApp | null, (a: NavApp) => void] {

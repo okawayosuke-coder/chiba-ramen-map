@@ -1,10 +1,5 @@
 import { useRef } from "react";
-import {
-  NAV_APP_META,
-  navAppsForPlatform,
-  requestOrientationPermission,
-  type NavApp,
-} from "../nav";
+import { NAV_APP_META, navAppsForPlatform, type NavApp } from "../nav";
 import { exportFavorites, type ThemePref } from "../storage";
 import { useEscape } from "../hooks";
 
@@ -13,8 +8,6 @@ interface Props {
   setNavApp: (a: NavApp) => void;
   themePref: ThemePref;
   setThemePref: (p: ThemePref) => void;
-  autoDrive: boolean;
-  setAutoDrive: (v: boolean) => void;
   favs: Set<string>;
   importKeys: (keys: string[]) => void;
   onResetSafety: () => void;
@@ -26,8 +19,6 @@ export default function Settings({
   setNavApp,
   themePref,
   setThemePref,
-  autoDrive,
-  setAutoDrive,
   favs,
   importKeys,
   onResetSafety,
@@ -94,27 +85,6 @@ export default function Settings({
               </button>
             ))}
           </div>
-        </section>
-
-        <section className="set-sec">
-          <h3>自動走行</h3>
-          <div className="set-row">
-            <button
-              className={`chip${autoDrive ? " chip--on" : ""}`}
-              onClick={() => {
-                const n = !autoDrive;
-                if (n) requestOrientationPermission(); // タップ内で方位許可
-                setAutoDrive(n);
-              }}
-            >
-              移動を検知して自動で走行モード {autoDrive ? "ON" : "OFF"}
-            </button>
-          </div>
-          <p className="modal__small">
-            走り出し（約12km/h超）を検知すると自動で走行モードに入ります。
-            アプリを開いて画面が点いている間のみ動作（閉じている時は不可）。
-            常時GPSを使うためバッテリーを消費します。
-          </p>
         </section>
 
         <section className="set-sec">
