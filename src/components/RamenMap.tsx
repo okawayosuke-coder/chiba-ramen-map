@@ -181,17 +181,35 @@ function FollowController({ active }: { active: boolean }) {
     map.getContainer().appendChild(box);
 
     let first = true;
-    let lastHeading = 0;
-    const onFix = (p: GeolocationPosition) => {
-      const { latitude, longitude, heading, speed, accuracy } = p.coords;
-      marker.setLatLng([latitude, longitude]);
+    // 自車の向き: 移動中はGPS進行方向、停車/低速時はコンパス(ジャイロ)
+    let gpsHeading: number | null = null;
+    let gpsMoving = false;
+    let compassHeading: number | null = null;
+    let currentRot = 0;
+
+    const applyRotation = () => {
+      const target =
+        gpsMoving && gpsHeading != null
+          ? gpsHeading
+          : compassHeading ?? gpsHeading;
+      if (target == null) return;
       const el = marker
         .getElement()
         ?.querySelector(".car-arrow") as HTMLElement | null;
-      if (el) {
-        if (heading != null && !Number.isNaN(heading)) lastHeading = heading;
-        el.style.transform = `rotate(${lastHeading}deg)`;
-      }
+      if (!el) return;
+      // 最短回転（0/360跨ぎの逆回転を防ぐため連続角を保持）
+      const delta = ((((target - currentRot) % 360) + 540) % 360) - 180;
+      currentRot += delta;
+      el.style.transform = `rotate(${currentRot}deg)`;
+    };
+
+    const onFix = (p: GeolocationPosition) => {
+      const { latitude, longitude, heading, speed, accuracy } = p.coords;
+      marker.setLatLng([latitude, longitude]);
+      gpsMoving = speed != null && !Number.isNaN(speed) && speed > 1.5;
+      if (gpsMoving && heading != null && !Number.isNaN(heading))
+        gpsHeading = heading;
+      applyRotation();
       if (first) {
         map.setView([latitude, longitude], 16, { animate: true });
         first = false;
@@ -213,6 +231,27 @@ function FollowController({ active }: { active: boolean }) {
       maximumAge: 1000,
       timeout: 20000,
     });
+
+    // 端末のコンパス（ジャイロ/方位センサー）で向きを補正（許可は走行ボタンで取得済み）
+    const onOrient = (e: DeviceOrientationEvent) => {
+      const ev = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
+      let h: number | null = null;
+      if (
+        ev.webkitCompassHeading != null &&
+        !Number.isNaN(ev.webkitCompassHeading)
+      )
+        h = ev.webkitCompassHeading; // iOS: 真北基準の方位
+      else if (e.absolute && e.alpha != null) h = (360 - e.alpha) % 360;
+      if (h == null || Number.isNaN(h)) return;
+      compassHeading = h;
+      applyRotation();
+    };
+    window.addEventListener(
+      "deviceorientationabsolute",
+      onOrient as EventListener,
+      true
+    );
+    window.addEventListener("deviceorientation", onOrient, true);
 
     // 画面常時点灯（iOS16.4+/Android対応。タブ復帰時に再取得）
     const nav = navigator as unknown as {
@@ -238,6 +277,12 @@ function FollowController({ active }: { active: boolean }) {
       marker.remove();
       box.remove();
       document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener(
+        "deviceorientationabsolute",
+        onOrient as EventListener,
+        true
+      );
+      window.removeEventListener("deviceorientation", onOrient, true);
       try {
         wl?.release();
       } catch {

@@ -36,6 +36,16 @@ import shopsData from "./data/shops.json";
 
 const ALL_SHOPS = shopsData as Shop[];
 
+// iOSは方位センサー利用に許可が必要。必ずユーザー操作(タップ)内で呼ぶこと
+function requestOrientationPermission() {
+  const DOE = window.DeviceOrientationEvent as unknown as {
+    requestPermission?: () => Promise<string>;
+  };
+  if (DOE && typeof DOE.requestPermission === "function") {
+    DOE.requestPermission().catch(() => {});
+  }
+}
+
 // スキーム起動(Yahoo等)は起動可否を検知できないため文言を中立に
 const navToast = (app: NavApp, name: string) =>
   isSchemeApp(app)
@@ -215,17 +225,16 @@ export default function App() {
           <button
             className={`tool-btn${follow ? " on" : ""}`}
             aria-pressed={follow}
-            onClick={() =>
-              setFollow((f) => {
-                const n = !f;
-                setToast(
-                  n
-                    ? "走行モード: 自車を追従します（操作は停車中に）"
-                    : "走行モードを終了しました"
-                );
-                return n;
-              })
-            }
+            onClick={() => {
+              const n = !follow;
+              if (n) requestOrientationPermission(); // iOS: タップ内で方位許可
+              setFollow(n);
+              setToast(
+                n
+                  ? "走行モード: 自車を追従します（操作は停車中に）"
+                  : "走行モードを終了しました"
+              );
+            }}
           >
             <span className="ic" aria-hidden="true">
               🧭
