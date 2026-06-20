@@ -48,6 +48,39 @@ body,
   z-index: 1000;
 }
 
+/* 走行モード時は左ペインを左へスライドして収納→地図を最大化（PC/iPad横並びレイアウト）。
+   負マージンでflex主軸の占有幅が0になり、地図(flex:1)が広がる。はみ出しは .app の overflow:hidden が切る */
+.app.pane-hidden .sidebar {
+  margin-left: calc(-1 * var(--sidebar-w));
+}
+
+/* 左端ハンドル（左ペインの開閉トグル）。走行中も地図上から一覧を呼び戻せる */
+.pane-handle {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1100;
+  width: 26px;
+  height: 56px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.18);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pane-handle:hover {
+  background: var(--bg);
+}
+
 .sidebar__controls {
   position: sticky;
   top: 0;
@@ -299,6 +332,12 @@ body,
   }
   .sidebar.open {
     transform: translateY(0);
+  }
+  /* モバイルは下シート。収納時は下へ退避（PC用の負マージンは打ち消す） */
+  .app.pane-hidden .sidebar {
+    width: 100%;
+    margin-left: 0;
+    transform: translateY(100%);
   }
   .map-wrap {
     height: 100%;

@@ -58,6 +58,7 @@ export default function App() {
   const [favOnly, setFavOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [follow, setFollow] = useState(false);
+  const [paneHidden, setPaneHidden] = useState(false);
   const [driving, setDriving] = useDriving();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Shop | null>(null);
@@ -78,6 +79,13 @@ export default function App() {
       setToast("移動を検知 → 走行モードに切替");
     }, [])
   );
+
+  // 走行モードに入ったら左ペインを自動でしまう（地図を最大化）。終了したら元に戻す。
+  // 走行中でも左端ハンドルから手動で開閉でき、その操作はこの効果では上書きしない（follow変化時のみ同期）
+  useEffect(() => {
+    setPaneHidden(follow);
+    if (follow) setSheetOpen(false);
+  }, [follow]);
 
   // 初回タップ時に方位センサー許可を取得（iOSはジェスチャ必須。自動走行でもコンパスを使えるように）
   useEffect(() => {
@@ -205,7 +213,11 @@ export default function App() {
       : null;
 
   return (
-    <div className={`app${driving ? " driving" : ""}`}>
+    <div
+      className={`app${driving ? " driving" : ""}${
+        paneHidden ? " pane-hidden" : ""
+      }`}
+    >
       <aside className={`sidebar${sheetOpen ? " open" : ""}`}>
         <button
           className="sheet-toggle"
@@ -474,10 +486,20 @@ export default function App() {
       </aside>
 
       <div className="map-wrap">
+        <button
+          className="pane-handle"
+          onClick={() => setPaneHidden((v) => !v)}
+          aria-label={paneHidden ? "店舗一覧を表示" : "店舗一覧を隠す"}
+          aria-expanded={!paneHidden}
+          title={paneHidden ? "店舗一覧を表示" : "店舗一覧を隠す"}
+        >
+          {paneHidden ? "☰" : "‹"}
+        </button>
         <RamenMap
           shops={shops}
           focus={focus}
           follow={follow}
+          paneHidden={paneHidden}
           theme={theme.resolved}
           userPos={geo.pos}
           isFav={isFav}

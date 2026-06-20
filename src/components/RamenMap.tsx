@@ -341,11 +341,25 @@ function FollowController({ active }: { active: boolean }) {
   return null;
 }
 
+/** 左ペイン開閉などでコンテナ幅が変わった後にタイル欠けを防ぐ（アニメ後にinvalidate） */
+function ResizeOnChange({ dep }: { dep: unknown }) {
+  const map = useMap();
+  useEffect(() => {
+    // CSSトランジション(0.28s)中も数回叩いて滑らかに追従させる
+    const ids = [120, 220, 320].map((ms) =>
+      window.setTimeout(() => map.invalidateSize({ animate: false }), ms)
+    );
+    return () => ids.forEach((id) => window.clearTimeout(id));
+  }, [dep, map]);
+  return null;
+}
+
 interface Props {
   shops: Shop[];
   focus: Shop | null;
   theme: "light" | "dark";
   follow: boolean;
+  paneHidden: boolean;
   userPos: Pt | null;
   isFav: (s: Shop) => boolean;
   onToggleFav: (s: Shop) => void;
@@ -359,6 +373,7 @@ function RamenMap({
   focus,
   theme,
   follow,
+  paneHidden,
   userPos,
   isFav,
   onToggleFav,
@@ -395,6 +410,7 @@ function RamenMap({
       <UserFocus pos={userPos} />
       <ElevationProbe />
       <FollowController active={follow} />
+      <ResizeOnChange dep={paneHidden} />
 
       {userPos && !follow && (
         <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />
