@@ -86,10 +86,21 @@ def main():
             return False
         return point_in_geom(lng, lat, g)
 
+    # 既存 shops.json の reviewsUrl を placeId で引き継ぐ（再生成で消さない）
+    prev_reviews = {}
+    if os.path.exists(OUT):
+        try:
+            for x in json.load(open(OUT)):
+                if x.get("placeId") and x.get("reviewsUrl"):
+                    prev_reviews[x["placeId"]] = x["reviewsUrl"]
+        except Exception:
+            pass
+
+    # しきい値: 評価3.5以上・口コミ50以上（フロントの RATING_FLOOR/MIN_REVIEWS と一致）
     base = [s for s in raw
             if s.get("lat") and s.get("lng")
             and s.get("r") is not None and s.get("c") is not None
-            and s["r"] >= 3.9 and s["c"] >= 50 and is_ramen(s)]
+            and s["r"] >= 3.5 and s["c"] >= 50 and is_ramen(s)]
 
     import re
     POSTCODE = re.compile(r"^〒?\s*\d{3}-\d{4}")
@@ -113,10 +124,13 @@ def main():
         pid = s.get("pid")
         url = (f'https://www.google.com/maps?ftid={pid}&hl=ja' if pid
                else f'https://www.google.com/maps/search/?api=1&query={lat},{lng}')
-        kept.append({"name": name, "rating": s["r"], "reviews": s["c"],
-                     "lat": lat, "lng": lng, "genre": s.get("g") or "ラーメン",
-                     "address": s.get("a") or "", "placeId": pid,
-                     "mapsUrl": url, "region": region})
+        rec = {"name": name, "rating": s["r"], "reviews": s["c"],
+               "lat": lat, "lng": lng, "genre": s.get("g") or "ラーメン",
+               "address": s.get("a") or "", "placeId": pid,
+               "mapsUrl": url, "region": region}
+        if pid and pid in prev_reviews:
+            rec["reviewsUrl"] = prev_reviews[pid]
+        kept.append(rec)
 
     kept.sort(key=lambda x: (-x["rating"], -x["reviews"]))
     json.dump(kept, open(OUT, "w"), ensure_ascii=False, indent=1)

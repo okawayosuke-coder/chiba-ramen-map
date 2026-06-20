@@ -4,8 +4,9 @@ import SafetyGate from "./components/SafetyGate";
 import NavPicker from "./components/NavPicker";
 import Settings from "./components/Settings";
 import {
-  MIN_RATING,
+  DEFAULT_RATING,
   MIN_REVIEWS,
+  RATING_FLOOR,
   REGIONS,
   type Filters,
   type Shop,
@@ -43,7 +44,7 @@ const navToast = (app: NavApp, name: string) =>
 
 const DEFAULTS: Filters = {
   query: "",
-  minRating: MIN_RATING,
+  minRating: DEFAULT_RATING,
   minReviews: MIN_REVIEWS,
   region: "all",
   sort: "rating",
@@ -167,7 +168,7 @@ export default function App() {
   const filtersChanged =
     filters.query ||
     filters.region !== "all" ||
-    filters.minRating !== MIN_RATING ||
+    filters.minRating !== DEFAULT_RATING ||
     filters.minReviews !== MIN_REVIEWS ||
     favOnly;
 
@@ -293,7 +294,7 @@ export default function App() {
                   </label>
                   <input
                     type="range"
-                    min={MIN_RATING}
+                    min={RATING_FLOOR}
                     max={4.7}
                     step={0.1}
                     value={filters.minRating}
