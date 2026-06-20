@@ -232,6 +232,13 @@ function FollowController({ active }: { active: boolean }) {
       timeout: 20000,
     });
 
+    // 画面の向き(縦/横)を取得。webkitCompassHeadingは端末の縦基準なので、画面回転分を補正する
+    const screenAngle = () => {
+      const so = window.screen && window.screen.orientation;
+      if (so && typeof so.angle === "number") return so.angle;
+      const wo = (window as unknown as { orientation?: number }).orientation;
+      return typeof wo === "number" ? ((wo % 360) + 360) % 360 : 0;
+    };
     // 端末のコンパス（ジャイロ/方位センサー）で向きを補正（許可は走行ボタンで取得済み）
     const onOrient = (e: DeviceOrientationEvent) => {
       const ev = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
@@ -240,9 +247,10 @@ function FollowController({ active }: { active: boolean }) {
         ev.webkitCompassHeading != null &&
         !Number.isNaN(ev.webkitCompassHeading)
       )
-        h = ev.webkitCompassHeading; // iOS: 真北基準の方位
+        h = ev.webkitCompassHeading; // iOS: 真北基準の方位（端末の縦基準）
       else if (e.absolute && e.alpha != null) h = (360 - e.alpha) % 360;
       if (h == null || Number.isNaN(h)) return;
+      h = (((h + screenAngle()) % 360) + 360) % 360; // 縦/横の画面回転を補正
       compassHeading = h;
       applyRotation();
     };
