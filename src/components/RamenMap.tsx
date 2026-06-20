@@ -127,14 +127,14 @@ function ElevationProbe() {
     const onMove = (e: L.LeafletMouseEvent) => {
       place(e.containerPoint.x, e.containerPoint.y);
       box.style.display = "";
-      if (!box.textContent) box.textContent = "⛰ 標高 計測中…";
+      if (!box.textContent) box.textContent = "標高 計測中…";
       const { lat, lng } = e.latlng;
       window.clearTimeout(timer);
       timer = window.setTimeout(async () => {
         const id = ++reqId;
         const t = await fetchElevation(lat, lng);
         if (id === reqId)
-          box.textContent = t ? `⛰ 標高 ${t}` : "⛰ 標高 取得不可";
+          box.textContent = t ? `標高 ${t}` : "標高 取得不可";
       }, 280);
     };
     const onOut = () => {
@@ -176,7 +176,7 @@ function FollowController({ active }: { active: boolean }) {
       keyboard: false,
     }).addTo(map);
     // 自車マークの横に標高を常設表示（移動に追従）
-    marker.bindTooltip("⛰ 標高 …", {
+    marker.bindTooltip("標高 …", {
       permanent: true,
       direction: "right",
       offset: [12, 0],
@@ -240,7 +240,7 @@ function FollowController({ active }: { active: boolean }) {
         const id = ++elevReqId;
         fetchElevation(latitude, longitude).then((t) => {
           if (id === elevReqId)
-            marker.setTooltipContent(t ? `⛰ ${t}` : "⛰ 標高 -");
+            marker.setTooltipContent(t ? `標高 ${t}` : "標高 -");
         });
       }
       const sp = speed != null && !Number.isNaN(speed) ? speed : null;
