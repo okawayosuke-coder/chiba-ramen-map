@@ -56,6 +56,7 @@ export default function App() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [follow, setFollow] = useState(false);
   const [driving, setDriving] = useDriving();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Shop | null>(null);
@@ -212,6 +213,26 @@ export default function App() {
             <span>{geo.status === "loading" ? "取得中…" : "現在地"}</span>
           </button>
           <button
+            className={`tool-btn${follow ? " on" : ""}`}
+            aria-pressed={follow}
+            onClick={() =>
+              setFollow((f) => {
+                const n = !f;
+                setToast(
+                  n
+                    ? "走行モード: 自車を追従します（操作は停車中に）"
+                    : "走行モードを終了しました"
+                );
+                return n;
+              })
+            }
+          >
+            <span className="ic" aria-hidden="true">
+              🧭
+            </span>
+            <span>走行</span>
+          </button>
+          <button
             className={`tool-btn${driving ? " on" : ""}`}
             aria-pressed={driving}
             onClick={() => setDriving(!driving)}
@@ -219,7 +240,7 @@ export default function App() {
             <span className="ic" aria-hidden="true">
               🚗
             </span>
-            <span>運転モード</span>
+            <span>運転</span>
           </button>
           <button
             className="tool-btn"
@@ -231,7 +252,7 @@ export default function App() {
             <span className="ic" aria-hidden="true">
               {theme.resolved === "dark" ? "☀️" : "🌙"}
             </span>
-            <span>{theme.resolved === "dark" ? "ライトに" : "夜間モード"}</span>
+            <span>{theme.resolved === "dark" ? "ライト" : "夜間"}</span>
           </button>
           <button className="tool-btn" onClick={() => setSettingsOpen(true)}>
             <span className="ic" aria-hidden="true">
@@ -437,6 +458,7 @@ export default function App() {
         <RamenMap
           shops={shops}
           focus={focus}
+          follow={follow}
           theme={theme.resolved}
           userPos={geo.pos}
           isFav={isFav}

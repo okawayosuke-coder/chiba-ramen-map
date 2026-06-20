@@ -155,10 +155,104 @@ function ElevationProbe() {
   return null;
 }
 
+/** 走行モード: watchPositionで自車を追従（DOM直接操作・再描画なし）。
+ * 自車矢印=進行方向に回転 / 地図が追従 / 速度表示 / 画面常時点灯 */
+function FollowController({ active }: { active: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!active) return;
+    if (!("geolocation" in navigator) || !window.isSecureContext) return;
+
+    const icon = L.divIcon({
+      className: "",
+      html: `<div class="car"><svg class="car-arrow" width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/><path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+    const marker = L.marker(map.getCenter(), {
+      icon,
+      zIndexOffset: 1000,
+      interactive: false,
+      keyboard: false,
+    }).addTo(map);
+
+    const box = L.DomUtil.create("div", "follow-box");
+    box.textContent = "🧭 走行モード（測位中…）";
+    map.getContainer().appendChild(box);
+
+    let first = true;
+    let lastHeading = 0;
+    const onFix = (p: GeolocationPosition) => {
+      const { latitude, longitude, heading, speed, accuracy } = p.coords;
+      marker.setLatLng([latitude, longitude]);
+      const el = marker
+        .getElement()
+        ?.querySelector(".car-arrow") as HTMLElement | null;
+      if (el) {
+        if (heading != null && !Number.isNaN(heading)) lastHeading = heading;
+        el.style.transform = `rotate(${lastHeading}deg)`;
+      }
+      if (first) {
+        map.setView([latitude, longitude], 16, { animate: true });
+        first = false;
+      } else {
+        map.panTo([latitude, longitude], { animate: true, duration: 0.5 });
+      }
+      const kmh =
+        speed != null && !Number.isNaN(speed) ? Math.round(speed * 3.6) : null;
+      box.textContent =
+        "🧭 走行中" +
+        (kmh != null ? ` ・ ${kmh} km/h` : "") +
+        (accuracy ? ` ・ ±${Math.round(accuracy)}m` : "");
+    };
+    const onErr = () => {
+      box.textContent = "🧭 位置情報を取得できません（許可を確認）";
+    };
+    const watchId = navigator.geolocation.watchPosition(onFix, onErr, {
+      enableHighAccuracy: true,
+      maximumAge: 1000,
+      timeout: 20000,
+    });
+
+    // 画面常時点灯（iOS16.4+/Android対応。タブ復帰時に再取得）
+    const nav = navigator as unknown as {
+      wakeLock?: { request: (t: string) => Promise<{ release: () => void }> };
+    };
+    let wl: { release: () => void } | null = null;
+    const reqWake = () => {
+      nav.wakeLock
+        ?.request("screen")
+        .then((s) => {
+          wl = s;
+        })
+        .catch(() => {});
+    };
+    reqWake();
+    const onVis = () => {
+      if (document.visibilityState === "visible") reqWake();
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      marker.remove();
+      box.remove();
+      document.removeEventListener("visibilitychange", onVis);
+      try {
+        wl?.release();
+      } catch {
+        /* noop */
+      }
+    };
+  }, [active, map]);
+  return null;
+}
+
 interface Props {
   shops: Shop[];
   focus: Shop | null;
   theme: "light" | "dark";
+  follow: boolean;
   userPos: Pt | null;
   isFav: (s: Shop) => boolean;
   onToggleFav: (s: Shop) => void;
@@ -171,6 +265,7 @@ function RamenMap({
   shops,
   focus,
   theme,
+  follow,
   userPos,
   isFav,
   onToggleFav,
@@ -206,8 +301,11 @@ function RamenMap({
       <FocusController focus={focus} />
       <UserFocus pos={userPos} />
       <ElevationProbe />
+      <FollowController active={follow} />
 
-      {userPos && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />}
+      {userPos && !follow && (
+        <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />
+      )}
 
       <MarkerClusterGroup
         chunkedLoading
