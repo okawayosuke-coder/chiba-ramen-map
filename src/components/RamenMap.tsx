@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -6,6 +6,7 @@ import {
   Popup,
   Tooltip,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -71,6 +72,53 @@ function UserFocus({ pos }: { pos: Pt | null }) {
   return null;
 }
 
+/** 標高取得: 国土地理院DEM(高精度)を主、open-meteoを予備に */
+async function fetchElevation(lat: number, lng: number): Promise<string | null> {
+  try {
+    const r = await fetch(
+      `https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=${lng}&lat=${lat}&outtype=JSON`
+    );
+    const j = await r.json();
+    if (j && j.elevation !== "-----" && j.elevation != null && !isNaN(Number(j.elevation)))
+      return `${Number(j.elevation).toFixed(1)} m`;
+  } catch {
+    /* GSI失敗時は予備へ */
+  }
+  try {
+    const r = await fetch(
+      `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`
+    );
+    const j = await r.json();
+    if (j && Array.isArray(j.elevation) && j.elevation[0] != null)
+      return `${Number(j.elevation[0]).toFixed(0)} m（概算）`;
+  } catch {
+    /* 取得不可 */
+  }
+  return null;
+}
+
+/** マウス位置の標高を取得（移動が止まったらAPI呼び出し） */
+function ElevationProbe({ onChange }: { onChange: (t: string | null) => void }) {
+  const timer = useRef<number | undefined>(undefined);
+  const reqId = useRef(0);
+  useMapEvents({
+    mousemove(e) {
+      const { lat, lng } = e.latlng;
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(async () => {
+        const id = ++reqId.current;
+        const t = await fetchElevation(lat, lng);
+        if (id === reqId.current) onChange(t);
+      }, 280);
+    },
+    mouseout() {
+      window.clearTimeout(timer.current);
+      onChange(null);
+    },
+  });
+  return null;
+}
+
 interface Props {
   shops: Shop[];
   focus: Shop | null;
@@ -94,6 +142,7 @@ function RamenMap({
   onShare,
   distanceTo,
 }: Props) {
+  const [elev, setElev] = useState<string | null>(null);
   const icons = useMemo(() => {
     const cache = new Map<string, L.DivIcon>();
     return (rating: number) => {
@@ -117,10 +166,12 @@ function RamenMap({
         };
 
   return (
+    <>
     <MapContainer className="map" center={[35.55, 140.18]} zoom={10} scrollWheelZoom>
       <TileLayer key={theme} attribution={tile.attribution} url={tile.url} maxZoom={19} />
       <FocusController focus={focus} />
       <UserFocus pos={userPos} />
+      <ElevationProbe onChange={setElev} />
 
       {userPos && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />}
 
@@ -181,6 +232,8 @@ function RamenMap({
 
       <Legend />
     </MapContainer>
+    {elev && <div className="elev-box">⛰ 標高 {elev}</div>}
+    </>
   );
 }
 
