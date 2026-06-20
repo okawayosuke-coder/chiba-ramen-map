@@ -181,34 +181,59 @@ function FollowController({ active }: { active: boolean }) {
     map.getContainer().appendChild(box);
 
     let first = true;
-    // 自車の向き: 移動中はGPS進行方向、停車/低速時はコンパス(ジャイロ)
+    // 自車の向き:
+    //  - 走行中はGPSの進行方位(travel course)を表示（端末向き/画面回転に依存せず正確）
+    //  - 走行中にGPS方位とコンパス生値の差(offset)を学習 → 停車時は (コンパス+offset)
+    //  これでiOSのコンパス符号/画面向きの仕様に依存せず、走れば自動で正しい向きになる
     let gpsHeading: number | null = null;
     let gpsMoving = false;
-    let compassHeading: number | null = null;
+    let rawCompass: number | null = null;
+    let offset: number | null = null; // 真方位 ≒ rawCompass + offset
     let currentRot = 0;
 
+    const norm = (d: number) => ((d % 360) + 360) % 360;
+    const angDiff = (a: number, b: number) => (((a - b + 540) % 360) - 180); // a-b を[-180,180)
+
+    const chooseHeading = (): number | null => {
+      if (gpsMoving && gpsHeading != null) return gpsHeading;
+      if (rawCompass != null)
+        return offset != null ? norm(rawCompass + offset) : rawCompass;
+      return gpsHeading;
+    };
     const applyRotation = () => {
-      const target =
-        gpsMoving && gpsHeading != null
-          ? gpsHeading
-          : compassHeading ?? gpsHeading;
+      const target = chooseHeading();
       if (target == null) return;
       const el = marker
         .getElement()
         ?.querySelector(".car-arrow") as HTMLElement | null;
       if (!el) return;
-      // 最短回転（0/360跨ぎの逆回転を防ぐため連続角を保持）
-      const delta = ((((target - currentRot) % 360) + 540) % 360) - 180;
-      currentRot += delta;
+      currentRot += angDiff(target, currentRot); // 最短回転で連続角を更新
       el.style.transform = `rotate(${currentRot}deg)`;
+    };
+
+    const DEBUG =
+      new URLSearchParams(window.location.search).get("debug") === "1";
+    const dbg = () => {
+      box.textContent = `🧭 raw ${
+        rawCompass == null ? "-" : Math.round(rawCompass)
+      } / off ${offset == null ? "-" : Math.round(offset)} / 表示 ${Math.round(
+        norm(currentRot)
+      )}`;
     };
 
     const onFix = (p: GeolocationPosition) => {
       const { latitude, longitude, heading, speed, accuracy } = p.coords;
       marker.setLatLng([latitude, longitude]);
-      gpsMoving = speed != null && !Number.isNaN(speed) && speed > 1.5;
-      if (gpsMoving && heading != null && !Number.isNaN(heading))
+      const sp = speed != null && !Number.isNaN(speed) ? speed : null;
+      gpsMoving = sp != null && sp > 1.5;
+      if (gpsMoving && heading != null && !Number.isNaN(heading)) {
         gpsHeading = heading;
+        // 十分な速度で進行中はGPS方位を正解とし、コンパスのoffsetを学習(低域通過)
+        if (sp != null && sp > 3 && rawCompass != null) {
+          const o = angDiff(heading, rawCompass);
+          offset = offset == null ? o : offset + 0.3 * angDiff(o, offset);
+        }
+      }
       applyRotation();
       if (first) {
         map.setView([latitude, longitude], 16, { animate: true });
@@ -216,8 +241,11 @@ function FollowController({ active }: { active: boolean }) {
       } else {
         map.panTo([latitude, longitude], { animate: true, duration: 0.5 });
       }
-      const kmh =
-        speed != null && !Number.isNaN(speed) ? Math.round(speed * 3.6) : null;
+      if (DEBUG) {
+        dbg();
+        return;
+      }
+      const kmh = sp != null ? Math.round(sp * 3.6) : null;
       box.textContent =
         "🧭 走行中" +
         (kmh != null ? ` ・ ${kmh} km/h` : "") +
@@ -232,16 +260,7 @@ function FollowController({ active }: { active: boolean }) {
       timeout: 20000,
     });
 
-    // 画面の向き(縦/横)を取得。webkitCompassHeadingは端末の縦基準なので、画面回転分を補正する
-    const screenAngle = () => {
-      const so = window.screen && window.screen.orientation;
-      if (so && typeof so.angle === "number") return so.angle;
-      const wo = (window as unknown as { orientation?: number }).orientation;
-      return typeof wo === "number" ? ((wo % 360) + 360) % 360 : 0;
-    };
-    const DEBUG =
-      new URLSearchParams(window.location.search).get("debug") === "1";
-    // 端末のコンパス（ジャイロ/方位センサー）で向きを補正（許可は走行ボタンで取得済み）
+    // 端末のコンパス（ジャイロ/方位センサー）の生値。停車時の向きに使う（offsetで較正）
     const onOrient = (e: DeviceOrientationEvent) => {
       const ev = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
       let raw: number | null = null;
@@ -249,19 +268,12 @@ function FollowController({ active }: { active: boolean }) {
         ev.webkitCompassHeading != null &&
         !Number.isNaN(ev.webkitCompassHeading)
       )
-        raw = ev.webkitCompassHeading; // iOS: 真北基準の方位（端末の縦基準）
+        raw = ev.webkitCompassHeading;
       else if (e.absolute && e.alpha != null) raw = (360 - e.alpha) % 360;
       if (raw == null || Number.isNaN(raw)) return;
-      // iOSのwebkitCompassHeadingは画面の縦/横に合わせて自動補正済みのため、
-      // 画面回転の手動補正は加えない（加えると横で90°ズレる）。
-      const a = screenAngle(); // 参考表示用
-      const h = ((raw % 360) + 360) % 360;
-      compassHeading = h;
+      rawCompass = norm(raw);
       applyRotation();
-      if (DEBUG)
-        box.textContent = `🧭 raw ${Math.round(raw)}° / 画面 ${a}° / 表示 ${Math.round(
-          h
-        )}°`;
+      if (DEBUG) dbg();
     };
     window.addEventListener(
       "deviceorientationabsolute",
