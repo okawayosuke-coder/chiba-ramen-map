@@ -250,7 +250,7 @@ function FollowController({ active }: { active: boolean }) {
         h = ev.webkitCompassHeading; // iOS: 真北基準の方位（端末の縦基準）
       else if (e.absolute && e.alpha != null) h = (360 - e.alpha) % 360;
       if (h == null || Number.isNaN(h)) return;
-      h = (((h + screenAngle()) % 360) + 360) % 360; // 縦/横の画面回転を補正
+      h = (((h - screenAngle()) % 360) + 360) % 360; // 縦/横の画面回転を補正
       compassHeading = h;
       applyRotation();
     };
