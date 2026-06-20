@@ -252,8 +252,10 @@ function FollowController({ active }: { active: boolean }) {
         raw = ev.webkitCompassHeading; // iOS: 真北基準の方位（端末の縦基準）
       else if (e.absolute && e.alpha != null) raw = (360 - e.alpha) % 360;
       if (raw == null || Number.isNaN(raw)) return;
-      const a = screenAngle();
-      const h = (((raw - a) % 360) + 360) % 360; // 縦/横の画面回転を補正
+      // iOSのwebkitCompassHeadingは画面の縦/横に合わせて自動補正済みのため、
+      // 画面回転の手動補正は加えない（加えると横で90°ズレる）。
+      const a = screenAngle(); // 参考表示用
+      const h = ((raw % 360) + 360) % 360;
       compassHeading = h;
       applyRotation();
       if (DEBUG)
