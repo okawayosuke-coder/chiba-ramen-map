@@ -209,7 +209,12 @@ function RamenMap({
 
       {userPos && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />}
 
-      <MarkerClusterGroup chunkedLoading maxClusterRadius={45}>
+      <MarkerClusterGroup
+        chunkedLoading
+        maxClusterRadius={22}
+        showCoverageOnHover={false}
+        spiderfyOnMaxZoom
+      >
         {shops.map((s, i) => {
           const km = distanceTo(s);
           return (
