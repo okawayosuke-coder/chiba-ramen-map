@@ -108,6 +108,16 @@ export async function shareNav(
   }
 }
 
+// iOSは方位センサー利用に許可が必要。必ずユーザー操作(タップ)内で呼ぶこと
+export function requestOrientationPermission() {
+  const DOE = window.DeviceOrientationEvent as unknown as {
+    requestPermission?: () => Promise<string>;
+  };
+  if (DOE && typeof DOE.requestPermission === "function") {
+    DOE.requestPermission().catch(() => {});
+  }
+}
+
 export function haversineKm(a: Pt, b: Pt): number {
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;

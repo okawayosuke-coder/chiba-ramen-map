@@ -19,32 +19,24 @@ import {
   multiStopUrl,
   NAV_APP_META,
   navAppsForPlatform,
+  requestOrientationPermission,
   roughMinutes,
   shareNav,
   type NavApp,
 } from "./nav";
 import {
   shopKey,
+  useAutoDrive,
   useDriving,
   useFavorites,
   useNavApp,
   useSafetyAck,
   useTheme,
 } from "./storage";
-import { useGeolocation } from "./hooks";
+import { useGeolocation, useMovementDetector } from "./hooks";
 import shopsData from "./data/shops.json";
 
 const ALL_SHOPS = shopsData as Shop[];
-
-// iOSは方位センサー利用に許可が必要。必ずユーザー操作(タップ)内で呼ぶこと
-function requestOrientationPermission() {
-  const DOE = window.DeviceOrientationEvent as unknown as {
-    requestPermission?: () => Promise<string>;
-  };
-  if (DOE && typeof DOE.requestPermission === "function") {
-    DOE.requestPermission().catch(() => {});
-  }
-}
 
 // スキーム起動(Yahoo等)は起動可否を検知できないため文言を中立に
 const navToast = (app: NavApp, name: string) =>
@@ -76,8 +68,18 @@ export default function App() {
   const { favs, toggle, isFav, importKeys } = useFavorites();
   const [navApp, setNavApp] = useNavApp();
   const [safetyAck, setSafetyAck] = useSafetyAck();
+  const [autoDrive, setAutoDrive] = useAutoDrive();
   const theme = useTheme();
   const geo = useGeolocation();
+
+  // 自動走行: 設定ON かつ 走行モードOFF の時だけ移動を監視し、走り出しで自動ON
+  useMovementDetector(
+    autoDrive && !follow,
+    useCallback(() => {
+      setFollow(true);
+      setToast("移動を検知 → 走行モードに切替");
+    }, [])
+  );
 
   const set = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
@@ -512,6 +514,8 @@ export default function App() {
           setNavApp={setNavApp}
           themePref={theme.pref}
           setThemePref={theme.setPref}
+          autoDrive={autoDrive}
+          setAutoDrive={setAutoDrive}
           favs={favs}
           importKeys={importKeys}
           onResetSafety={() => {
