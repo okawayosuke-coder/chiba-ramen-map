@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -6,7 +6,6 @@ import {
   Popup,
   Tooltip,
   useMap,
-  useMapEvents,
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -97,25 +96,62 @@ async function fetchElevation(lat: number, lng: number): Promise<string | null> 
   return null;
 }
 
-/** マウス位置の標高を取得（移動が止まったらAPI呼び出し） */
-function ElevationProbe({ onChange }: { onChange: (t: string | null) => void }) {
-  const timer = useRef<number | undefined>(undefined);
-  const reqId = useRef(0);
-  useMapEvents({
-    mousemove(e) {
+/** マウス位置の横に標高を表示（DOM直接操作・再描画なし。移動が止まったら取得） */
+function ElevationProbe() {
+  const map = useMap();
+  useEffect(() => {
+    const box = L.DomUtil.create("div", "elev-box");
+    box.style.display = "none";
+    map.getContainer().appendChild(box);
+    let timer: number | undefined;
+    let reqId = 0;
+
+    const place = (px: number, py: number) => {
+      const sz = map.getSize();
+      if (px < sz.x - 150) {
+        box.style.left = px + 14 + "px";
+        box.style.right = "";
+      } else {
+        box.style.right = sz.x - px + 14 + "px";
+        box.style.left = "";
+      }
+      if (py < sz.y - 44) {
+        box.style.top = py + 14 + "px";
+        box.style.bottom = "";
+      } else {
+        box.style.bottom = sz.y - py + 14 + "px";
+        box.style.top = "";
+      }
+    };
+
+    const onMove = (e: L.LeafletMouseEvent) => {
+      place(e.containerPoint.x, e.containerPoint.y);
+      box.style.display = "";
+      if (!box.textContent) box.textContent = "⛰ 標高 計測中…";
       const { lat, lng } = e.latlng;
-      window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(async () => {
-        const id = ++reqId.current;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(async () => {
+        const id = ++reqId;
         const t = await fetchElevation(lat, lng);
-        if (id === reqId.current) onChange(t);
+        if (id === reqId)
+          box.textContent = t ? `⛰ 標高 ${t}` : "⛰ 標高 取得不可";
       }, 280);
-    },
-    mouseout() {
-      window.clearTimeout(timer.current);
-      onChange(null);
-    },
-  });
+    };
+    const onOut = () => {
+      window.clearTimeout(timer);
+      box.style.display = "none";
+      box.textContent = "";
+    };
+
+    map.on("mousemove", onMove);
+    map.on("mouseout", onOut);
+    return () => {
+      map.off("mousemove", onMove);
+      map.off("mouseout", onOut);
+      window.clearTimeout(timer);
+      box.remove();
+    };
+  }, [map]);
   return null;
 }
 
@@ -142,7 +178,6 @@ function RamenMap({
   onShare,
   distanceTo,
 }: Props) {
-  const [elev, setElev] = useState<string | null>(null);
   const icons = useMemo(() => {
     const cache = new Map<string, L.DivIcon>();
     return (rating: number) => {
@@ -166,12 +201,11 @@ function RamenMap({
         };
 
   return (
-    <>
     <MapContainer className="map" center={[35.55, 140.18]} zoom={10} scrollWheelZoom>
       <TileLayer key={theme} attribution={tile.attribution} url={tile.url} maxZoom={19} />
       <FocusController focus={focus} />
       <UserFocus pos={userPos} />
-      <ElevationProbe onChange={setElev} />
+      <ElevationProbe />
 
       {userPos && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />}
 
@@ -232,8 +266,6 @@ function RamenMap({
 
       <Legend />
     </MapContainer>
-    {elev && <div className="elev-box">⛰ 標高 {elev}</div>}
-    </>
   );
 }
 

@@ -753,13 +753,12 @@ body {
   border-top-color: var(--panel);
 }
 
-/* ===== マウス位置の標高表示 ===== */
+/* ===== マウス位置の横に標高表示（位置はJSで設定） ===== */
 .elev-box {
   position: absolute;
-  top: 10px;
-  right: 10px;
   z-index: 600;
   pointer-events: none;
+  white-space: nowrap;
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
