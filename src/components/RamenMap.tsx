@@ -239,20 +239,27 @@ function FollowController({ active }: { active: boolean }) {
       const wo = (window as unknown as { orientation?: number }).orientation;
       return typeof wo === "number" ? ((wo % 360) + 360) % 360 : 0;
     };
+    const DEBUG =
+      new URLSearchParams(window.location.search).get("debug") === "1";
     // 端末のコンパス（ジャイロ/方位センサー）で向きを補正（許可は走行ボタンで取得済み）
     const onOrient = (e: DeviceOrientationEvent) => {
       const ev = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
-      let h: number | null = null;
+      let raw: number | null = null;
       if (
         ev.webkitCompassHeading != null &&
         !Number.isNaN(ev.webkitCompassHeading)
       )
-        h = ev.webkitCompassHeading; // iOS: 真北基準の方位（端末の縦基準）
-      else if (e.absolute && e.alpha != null) h = (360 - e.alpha) % 360;
-      if (h == null || Number.isNaN(h)) return;
-      h = (((h - screenAngle()) % 360) + 360) % 360; // 縦/横の画面回転を補正
+        raw = ev.webkitCompassHeading; // iOS: 真北基準の方位（端末の縦基準）
+      else if (e.absolute && e.alpha != null) raw = (360 - e.alpha) % 360;
+      if (raw == null || Number.isNaN(raw)) return;
+      const a = screenAngle();
+      const h = (((raw - a) % 360) + 360) % 360; // 縦/横の画面回転を補正
       compassHeading = h;
       applyRotation();
+      if (DEBUG)
+        box.textContent = `🧭 raw ${Math.round(raw)}° / 画面 ${a}° / 表示 ${Math.round(
+          h
+        )}°`;
     };
     window.addEventListener(
       "deviceorientationabsolute",
