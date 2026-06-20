@@ -10,7 +10,7 @@ import {
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Shop } from "../types";
-import { fmtDistance, roughMinutes, type Pt } from "../nav";
+import { fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
 
 function rawTierColor(rating: number): string {
   if (rating >= 4.3) return "#d6336c";
@@ -175,6 +175,13 @@ function FollowController({ active }: { active: boolean }) {
       interactive: false,
       keyboard: false,
     }).addTo(map);
+    // 自車マークの横に標高を常設表示（移動に追従）
+    marker.bindTooltip("⛰ 標高 …", {
+      permanent: true,
+      direction: "right",
+      offset: [12, 0],
+      className: "car-elev",
+    });
 
     const box = L.DomUtil.create("div", "follow-box");
     box.textContent = "🧭 走行モード（測位中…）";
@@ -190,6 +197,8 @@ function FollowController({ active }: { active: boolean }) {
     let rawCompass: number | null = null;
     let offset: number | null = null; // 真方位 ≒ rawCompass + offset
     let currentRot = 0;
+    let lastElevPt: Pt | null = null; // 標高を取得した最後の地点
+    let elevReqId = 0;
 
     const norm = (d: number) => ((d % 360) + 360) % 360;
     const angDiff = (a: number, b: number) => (((a - b + 540) % 360) - 180); // a-b を[-180,180)
@@ -224,6 +233,16 @@ function FollowController({ active }: { active: boolean }) {
     const onFix = (p: GeolocationPosition) => {
       const { latitude, longitude, heading, speed, accuracy } = p.coords;
       marker.setLatLng([latitude, longitude]);
+      // 標高: 約40m以上動いたら取得し直してツールチップ更新（過剰リクエスト抑制）
+      const here = { lat: latitude, lng: longitude };
+      if (!lastElevPt || haversineKm(lastElevPt, here) > 0.04) {
+        lastElevPt = here;
+        const id = ++elevReqId;
+        fetchElevation(latitude, longitude).then((t) => {
+          if (id === elevReqId)
+            marker.setTooltipContent(t ? `⛰ ${t}` : "⛰ 標高 -");
+        });
+      }
       const sp = speed != null && !Number.isNaN(speed) ? speed : null;
       gpsMoving = sp != null && sp > 1.5;
       if (gpsMoving && heading != null && !Number.isNaN(heading)) {

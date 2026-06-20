@@ -753,6 +753,21 @@ body {
   border-top-color: var(--panel);
 }
 
+/* 自車マーク横の標高ツールチップ */
+.car-elev.leaflet-tooltip {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.car-elev.leaflet-tooltip-right::before {
+  border-right-color: var(--panel);
+}
+
 /* ===== 走行モード（自車追従） ===== */
 .car-arrow {
   display: block;
