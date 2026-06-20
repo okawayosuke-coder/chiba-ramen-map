@@ -8,6 +8,7 @@ const BASE =
   "https://raw.githubusercontent.com/smartnews-smri/japan-topography/main/data/municipality/geojson/s0010";
 const TOKYO = `${BASE}/N03-21_13_210101.json`; // 東京都(市区町村・詳細)
 const CHIBA = `${BASE}/N03-21_12_210101.json`; // 千葉県(市区町村・詳細)
+const IBARAKI = `${BASE}/N03-21_08_210101.json`; // 茨城県(市区町村・詳細)
 
 const out = {};
 
@@ -17,6 +18,19 @@ for (const name of ["江東区", "江戸川区"]) {
   if (!f) throw new Error("not found: " + name);
   out[name] = f.geometry;
 }
+
+// つくば市（茨城）。市は複数フィーチャに分かれることがあるので統合
+const ib = await (await fetch(IBARAKI)).json();
+const tkbPolys = [];
+for (const f of ib.features) {
+  if ((f.properties.N03_004 || "") !== "つくば市") continue;
+  const g = f.geometry;
+  if (g.type === "Polygon") tkbPolys.push(g.coordinates);
+  else if (g.type === "MultiPolygon") tkbPolys.push(...g.coordinates);
+}
+if (!tkbPolys.length) throw new Error("つくば市 not found");
+out["つくば市"] = { type: "MultiPolygon", coordinates: tkbPolys };
+console.log("つくば市 polygons", tkbPolys.length);
 
 // 千葉県は全市区町村のポリゴンを1つのMultiPolygonに統合（詳細な海岸線で誤除外を防ぐ）
 const cb = await (await fetch(CHIBA)).json();

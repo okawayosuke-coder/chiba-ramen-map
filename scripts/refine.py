@@ -111,6 +111,8 @@ def main():
         lat, lng = s["lat"], s["lng"]
         if in_named(lat, lng, "江東区") or in_named(lat, lng, "江戸川区"):
             region = "tokyo"
+        elif in_named(lat, lng, "つくば市"):
+            region = "tsukuba"
         elif in_named(lat, lng, "千葉県"):
             region = chiba_region(lat, lng)
         else:
