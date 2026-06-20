@@ -13,19 +13,6 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%B2%B9%E3%81%9D%E3%81%B0+%E4%B8%80%E5%BF%83/@35.6844728,139.9146497,17z/data=!3m1!4b1!4m6!3m5!1s0x6018874b12c7d3bd:0x9f5c9cdb360c3867!8m2!3d35.6844728!4d139.9146497!16s%2Fg%2F11ww_yjyr0!9m1!1b1?hl=ja"
  },
  {
-  "name": "つけめん蕎麦 和中ダイニング ゑ富",
-  "rating": 4.7,
-  "reviews": 71,
-  "lat": 35.8572984,
-  "lng": 139.977118,
-  "genre": "ラーメン",
-  "address": "東１丁目２−７",
-  "placeId": "0x60189d61c788e49f:0xe222fbed1972bb35",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d61c788e49f:0xe222fbed1972bb35&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E3%81%A4%E3%81%91%E3%82%81%E3%82%93%E8%95%8E%E9%BA%A6+%E5%92%8C%E4%B8%AD%E3%83%80%E3%82%A4%E3%83%8B%E3%83%B3%E3%82%B0+%E3%82%91%E5%AF%8C/@35.8572984,139.977118,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d61c788e49f:0xe222fbed1972bb35!8m2!3d35.8572984!4d139.977118!16s%2Fg%2F11xgrlmxhz!9m1!1b1?hl=ja"
- },
- {
   "name": "RAMEN MONDAY",
   "rating": 4.7,
   "reviews": 64,
@@ -39,9 +26,21 @@
   "reviewsUrl": "https://www.google.com/maps/place/RAMEN+MONDAY/@35.9492655,139.8774348,17z/data=!3m1!4b1!4m6!3m5!1s0x6018990044a9d511:0x338d03aff46ae5f!8m2!3d35.9492655!4d139.8774348!16s%2Fg%2F11m_0n2d_q!9m1!1b1?hl=ja"
  },
  {
+  "name": "武蔵",
+  "rating": 4.6,
+  "reviews": 97,
+  "lat": 35.9470452,
+  "lng": 140.056988,
+  "genre": "ラーメン",
+  "address": "谷井田２４７２",
+  "placeId": "0x6022773a206cc2ed:0x56b62a49196dfcc5",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022773a206cc2ed:0x56b62a49196dfcc5&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "成田山らーめんストリート（Naritasan Ramen Street)",
   "rating": 4.5,
-  "reviews": 1355,
+  "reviews": 1360,
   "lat": 35.7770803,
   "lng": 140.3140815,
   "genre": "ラーメン",
@@ -76,6 +75,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x602283a655404e73:0x366c9309c0195915&hl=ja",
   "region": "chiba",
   "reviewsUrl": "https://www.google.com/maps/place/%E9%B6%8F%E7%99%BD%E6%B9%AF%E3%82%89%E3%81%81%E3%82%81%E3%82%93+%E7%AC%B9%E6%9C%AC%E7%88%B2%E6%AC%A1%E9%83%8E%E5%95%86%E5%BA%97/@35.6365249,140.096521,17z/data=!3m1!4b1!4m6!3m5!1s0x602283a655404e73:0x366c9309c0195915!8m2!3d35.6365249!4d140.096521!16s%2Fg%2F11kr1l6prz!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "レニー食堂",
+  "rating": 4.5,
+  "reviews": 124,
+  "lat": 35.8979992,
+  "lng": 140.4951235,
+  "genre": "ラーメン",
+  "address": "北２丁目１２−１９",
+  "placeId": "0x6022f7e0e6b9d63f:0xd840b373c47afcec",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022f7e0e6b9d63f:0xd840b373c47afcec&hl=ja",
+  "region": "tosou"
  },
  {
   "name": "千葉家",
@@ -156,7 +167,7 @@
  {
   "name": "GINBOSHI 麺屋銀星 成田店",
   "rating": 4.4,
-  "reviews": 379,
+  "reviews": 380,
   "lat": 35.7776894,
   "lng": 140.3175985,
   "genre": "ラーメン",
@@ -234,7 +245,7 @@
  {
   "name": "煮干し中華蕎麦 彩葉に",
   "rating": 4.4,
-  "reviews": 226,
+  "reviews": 227,
   "lat": 35.7013066,
   "lng": 140.0929134,
   "genre": "ラーメン",
@@ -256,6 +267,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6023231a5a3ab663:0x67ba8a61fc82f404&hl=ja",
   "region": "tosou",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E7%84%A1%E9%81%93%E5%B1%85/@35.73179,140.838437,17z/data=!3m1!4b1!4m6!3m5!1s0x6023231a5a3ab663:0x67ba8a61fc82f404!8m2!3d35.73179!4d140.838437!16s%2Fg%2F11rxjtsd6r!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "鮨割烹 のはら",
+  "rating": 4.4,
+  "reviews": 195,
+  "lat": 36.1167815,
+  "lng": 140.238892,
+  "genre": "ラーメン",
+  "address": "神立町６６３−２１",
+  "placeId": "0x60221316bd165bcf:0x6fb223422a6f8e89",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60221316bd165bcf:0x6fb223422a6f8e89&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "ジャパニーズラーメン マンちゃん",
@@ -556,22 +579,9 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%BF%83%E5%8E%9A%E3%82%BF%E3%83%B3%E3%83%A1%E3%83%B3+%E3%81%8B%E3%82%81%E3%81%97%E3%81%92/@35.6963833,139.8249572,17z/data=!3m1!4b1!4m6!3m5!1s0x60188986c3179e8b:0x9807028bbf397f50!8m2!3d35.6963833!4d139.8249572!16s%2Fg%2F11gy6vplxf!9m1!1b1?hl=ja"
  },
  {
-  "name": "麺処 にし尾",
-  "rating": 4.3,
-  "reviews": 736,
-  "lat": 35.8579018,
-  "lng": 139.9766915,
-  "genre": "ラーメン",
-  "address": "東１丁目２−４５ 石戸第3ビル 101",
-  "placeId": "0x60189d1c7dba7547:0x17d954275097d34",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d1c7dba7547:0x17d954275097d34&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%87%A6+%E3%81%AB%E3%81%97%E5%B0%BE/@35.8579018,139.9766915,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d1c7dba7547:0x17d954275097d34!8m2!3d35.8579018!4d139.9766915!16s%2Fg%2F11rvbgsbtg!9m1!1b1?hl=ja"
- },
- {
   "name": "鶏白湯そば 鶏すけ",
   "rating": 4.3,
-  "reviews": 733,
+  "reviews": 734,
   "lat": 35.7354166,
   "lng": 140.2732418,
   "genre": "ラーメン",
@@ -710,19 +720,6 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E9%A4%A8%E5%B1%B1+%E7%94%9F%E5%A7%9C%E9%86%A4%E6%B2%B9%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E6%B3%A2%E9%9F%B3%E9%A3%9F%E5%A0%82/@34.9720697,139.8636191,17z/data=!3m1!4b1!4m6!3m5!1s0x6017fa0dc0338933:0x4f4815a44f05b7f8!8m2!3d34.9720697!4d139.8636191!16s%2Fg%2F11bw2hgvkh!9m1!1b1?hl=ja"
  },
  {
-  "name": "中華そば れもん",
-  "rating": 4.3,
-  "reviews": 526,
-  "lat": 35.894723,
-  "lng": 139.9594648,
-  "genre": "ラーメン",
-  "address": "若柴６９−１",
-  "placeId": "0x60189df9abf8cb8d:0xf41a80c96f8b5e5",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189df9abf8cb8d:0xf41a80c96f8b5e5&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E3%81%9D%E3%81%B0+%E3%82%8C%E3%82%82%E3%82%93/@35.894723,139.9594648,17z/data=!3m1!4b1!4m6!3m5!1s0x60189df9abf8cb8d:0xf41a80c96f8b5e5!8m2!3d35.894723!4d139.9594648!16s%2Fg%2F11ghsgcrw6!9m1!1b1?hl=ja"
- },
- {
   "name": "長洲屋",
   "rating": 4.3,
   "reviews": 488,
@@ -738,7 +735,7 @@
  {
   "name": "麺や福々三座",
   "rating": 4.3,
-  "reviews": 471,
+  "reviews": 472,
   "lat": 35.7220973,
   "lng": 140.0717419,
   "genre": "ラーメン",
@@ -828,7 +825,7 @@
  {
   "name": "麺屋 ぱんどら",
   "rating": 4.3,
-  "reviews": 426,
+  "reviews": 428,
   "lat": 35.7136575,
   "lng": 140.2245412,
   "genre": "ラーメン",
@@ -837,6 +834,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60228ed7d791947b:0x85ba9d7b9db960b8&hl=ja",
   "region": "inba",
   "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%B1%8B+%E3%81%B1%E3%82%93%E3%81%A9%E3%82%89/@35.7136575,140.2245412,17z/data=!3m1!4b1!4m6!3m5!1s0x60228ed7d791947b:0x85ba9d7b9db960b8!8m2!3d35.7136575!4d140.2245412!16s%2Fg%2F1vmr1hgf!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "火門拉麺",
+  "rating": 4.3,
+  "reviews": 405,
+  "lat": 36.0748694,
+  "lng": 140.1691254,
+  "genre": "ラーメン",
+  "address": "上高津１３４４−１",
+  "placeId": "0x60220d4f15f4a3a9:0xe0a1840794788c35",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60220d4f15f4a3a9:0xe0a1840794788c35&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "手打ちらーめん 与三郎",
@@ -942,32 +951,6 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%80%E6%9D%A1%E6%B5%81%E3%81%8C%E3%82%93%E3%81%9311%E4%BB%A3%E7%9B%AE/@35.6828992,139.9112342,17z/data=!3m1!4b1!4m6!3m5!1s0x6018876931aaaaab:0x6e6952d8de2fbc6!8m2!3d35.6828992!4d139.9112342!16s%2Fg%2F11cn5p_jdd!9m1!1b1?hl=ja"
  },
  {
-  "name": "元祖油堂 油そば 柏西口店",
-  "rating": 4.3,
-  "reviews": 267,
-  "lat": 35.8634963,
-  "lng": 139.9700884,
-  "genre": "ラーメン",
-  "address": "末広町４−５ 一番ビル 1F",
-  "placeId": "0x60189d2177f6e221:0x6b7eccf816c002dd",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d2177f6e221:0x6b7eccf816c002dd&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E5%85%83%E7%A5%96%E6%B2%B9%E5%A0%82+%E6%B2%B9%E3%81%9D%E3%81%B0+%E6%9F%8F%E8%A5%BF%E5%8F%A3%E5%BA%97/@35.8634963,139.9700884,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d2177f6e221:0x6b7eccf816c002dd!8m2!3d35.8634963!4d139.9700884!16s%2Fg%2F11svs625hj!9m1!1b1?hl=ja"
- },
- {
-  "name": "横浜家系ラーメン 隆希家",
-  "rating": 4.3,
-  "reviews": 264,
-  "lat": 35.8655991,
-  "lng": 139.9302881,
-  "genre": "ラーメン",
-  "address": "豊四季20番地",
-  "placeId": "0x60189bc6c256272b:0x306f651e6b70bf31",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189bc6c256272b:0x306f651e6b70bf31&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E6%A8%AA%E6%B5%9C%E5%AE%B6%E7%B3%BB%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E9%9A%86%E5%B8%8C%E5%AE%B6/@35.8655991,139.9302881,17z/data=!3m1!4b1!4m6!3m5!1s0x60189bc6c256272b:0x306f651e6b70bf31!8m2!3d35.8655991!4d139.9302881!16s%2Fg%2F11vklwm6kf!9m1!1b1?hl=ja"
- },
- {
   "name": "らぁ麺 大塚",
   "rating": 4.3,
   "reviews": 264,
@@ -979,6 +962,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60180d09b7886d6b:0xb0dfa28ddbced6f3&hl=ja",
   "region": "boso",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%82%89%E3%81%81%E9%BA%BA+%E5%A4%A7%E5%A1%9A/@35.3323343,139.8581229,17z/data=!3m1!4b1!4m6!3m5!1s0x60180d09b7886d6b:0xb0dfa28ddbced6f3!8m2!3d35.3323343!4d139.8581229!16s%2Fg%2F11sy1bhx9p!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "麺や まさき",
+  "rating": 4.3,
+  "reviews": 264,
+  "lat": 35.9315781,
+  "lng": 140.176889,
+  "genre": "ラーメン",
+  "address": "久保台１丁目１−１１ ピアパレス 101",
+  "placeId": "0x60227004b8962797:0xd7a27931c5b18ce0",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227004b8962797:0xd7a27931c5b18ce0&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "こしょうや",
@@ -1163,6 +1158,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%84%E3%81%93%E3%81%84%E9%A3%9F%E5%A0%82/@35.220661,139.8724125,17z/data=!3m1!4b1!4m6!3m5!1s0x60180ff26097fcf7:0x30a7532d6a3de14!8m2!3d35.220661!4d139.8724125!16s%2Fg%2F1v2kxd8k!9m1!1b1?hl=ja"
  },
  {
+  "name": "中華の福来軒",
+  "rating": 4.3,
+  "reviews": 196,
+  "lat": 36.0832201,
+  "lng": 140.2005824,
+  "genre": "ラーメン",
+  "address": "中央１丁目１２−２３",
+  "placeId": "0x602212b4399ea2d3:0xa99726e60a9e3797",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602212b4399ea2d3:0xa99726e60a9e3797&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "さくちゃんラーメン",
   "rating": 4.3,
   "reviews": 193,
@@ -1187,6 +1194,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60188571d03c2c53:0x34a3007616f0b507&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E8%B1%9A%E9%AA%A8%E9%86%AC%E6%B2%B9%E3%82%89%E3%83%BC%E3%82%81%E3%82%93+%E4%B8%80%E5%BF%83/@35.8199765,139.9322683,17z/data=!3m1!4b1!4m6!3m5!1s0x60188571d03c2c53:0x34a3007616f0b507!8m2!3d35.8199765!4d139.9322683!16s%2Fg%2F11vymqx3dw!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "カフェと迷ってラーメン屋",
+  "rating": 4.3,
+  "reviews": 181,
+  "lat": 36.0574024,
+  "lng": 140.2145879,
+  "genre": "ラーメン",
+  "address": "大岩田１２８７−１",
+  "placeId": "0x60226df377f86c93:0x66343365fa879c25",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226df377f86c93:0x66343365fa879c25&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "板前ラーメン青山あそこ",
@@ -1345,6 +1364,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E3%81%9D%E3%81%B0+%E9%8D%B5%E5%B1%B1/@35.7879231,139.9003234,17z/data=!3m1!4b1!4m6!3m5!1s0x601885df21a95dff:0x537f10432f9d9a8a!8m2!3d35.7879231!4d139.9003234!16s%2Fg%2F11vy75mz2y!9m1!1b1?hl=ja"
  },
  {
+  "name": "ダイニングバーさかい",
+  "rating": 4.3,
+  "reviews": 125,
+  "lat": 36.0311698,
+  "lng": 140.1659069,
+  "genre": "ラーメン",
+  "address": "中荒川沖町２−６",
+  "placeId": "0x6022728a52a2d33d:0xb71a0ab6d9f1708e",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022728a52a2d33d:0xb71a0ab6d9f1708e&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "中華そば間合 AWAI （アワイ）",
   "rating": 4.3,
   "reviews": 121,
@@ -1496,6 +1527,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60229b70fbdaee37:0xed49b6c334e51ca3&hl=ja",
   "region": "chiba",
   "reviewsUrl": "https://www.google.com/maps/place/%E9%99%BD%E3%82%92%E8%BC%9D%E3%82%89%E3%81%99/@35.5477373,140.1462187,17z/data=!3m1!4b1!4m6!3m5!1s0x60229b70fbdaee37:0xed49b6c334e51ca3!8m2!3d35.5477373!4d140.1462187!16s%2Fg%2F11rhvkn9dv!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "タイガーパンチ",
+  "rating": 4.3,
+  "reviews": 84,
+  "lat": 35.9129957,
+  "lng": 140.1903792,
+  "genre": "ラーメン",
+  "address": "愛戸町６０−２",
+  "placeId": "0x602265006836c707:0x2755c095bd9ea9f1",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602265006836c707:0x2755c095bd9ea9f1&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "らぁめん「ただ作」",
@@ -1667,7 +1710,7 @@
  {
   "name": "喜多方食堂 麺や玄 佐倉分店",
   "rating": 4.2,
-  "reviews": 1285,
+  "reviews": 1286,
   "lat": 35.7120478,
   "lng": 140.231216,
   "genre": "ラーメン",
@@ -1766,6 +1809,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x602280527862b0af:0xc3b5692def084a65&hl=ja",
   "region": "keiyo",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E4%BA%8C%E9%83%8E+%E4%BA%AC%E6%88%90%E5%A4%A7%E4%B9%85%E4%BF%9D%E5%BA%97/@35.6915473,140.0496147,17z/data=!3m1!4b1!4m6!3m5!1s0x602280527862b0af:0xc3b5692def084a65!8m2!3d35.6915473!4d140.0496147!16s%2Fg%2F1tfwq27x!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "拉麺 人生",
+  "rating": 4.2,
+  "reviews": 872,
+  "lat": 36.024931,
+  "lng": 139.981961,
+  "genre": "ラーメン",
+  "address": "豊岡町乙１４８５−１",
+  "placeId": "0x6018a054062b02eb:0xfa6820850da6ac0d",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a054062b02eb:0xfa6820850da6ac0d&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "ら～麺 あけどや",
@@ -1947,6 +2002,18 @@
   "region": "tsukuba"
  },
  {
+  "name": "麺屋壱心",
+  "rating": 4.2,
+  "reviews": 607,
+  "lat": 35.9205539,
+  "lng": 140.1472622,
+  "genre": "ラーメン",
+  "address": "南中島町６８−１２",
+  "placeId": "0x6022707b5565b713:0xbf261af3837d3648",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022707b5565b713:0xbf261af3837d3648&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "七福軒",
   "rating": 4.2,
   "reviews": 600,
@@ -2024,19 +2091,6 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E3%81%BF%E3%81%A1%E3%81%AE%E3%81%8F/@35.475915,140.0516377,17z/data=!3m1!4b1!4m6!3m5!1s0x60229e505ae493c5:0xdea5f8c2f873f835!8m2!3d35.475915!4d140.0516377!16s%2Fg%2F1wt3njp4!9m1!1b1?hl=ja"
  },
  {
-  "name": "麺屋 ひぶた",
-  "rating": 4.2,
-  "reviews": 471,
-  "lat": 35.8692159,
-  "lng": 139.9540344,
-  "genre": "ラーメン",
-  "address": "篠籠田９６９−１",
-  "placeId": "0x60189c8a525f0359:0xffc4e3a19cb9623b",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189c8a525f0359:0xffc4e3a19cb9623b&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%B1%8B+%E3%81%B2%E3%81%B6%E3%81%9F/@35.8692159,139.9540344,17z/data=!3m1!4b1!4m6!3m5!1s0x60189c8a525f0359:0xffc4e3a19cb9623b!8m2!3d35.8692159!4d139.9540344!16s%2Fg%2F11b7q8wkcw!9m1!1b1?hl=ja"
- },
- {
   "name": "幸福軒",
   "rating": 4.2,
   "reviews": 468,
@@ -2060,6 +2114,30 @@
   "placeId": "0x60220c58e626f2f7:0xb1943e845c6f32f6",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60220c58e626f2f7:0xb1943e845c6f32f6&hl=ja",
   "region": "tsukuba"
+ },
+ {
+  "name": "らーめん 一遊",
+  "rating": 4.2,
+  "reviews": 444,
+  "lat": 35.9887314,
+  "lng": 140.3386439,
+  "genre": "ラーメン",
+  "address": "佐倉１９７５−１",
+  "placeId": "0x60226807c4fbcc49:0x1e278b7156b454cb",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226807c4fbcc49:0x1e278b7156b454cb&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "拉麺 時代遅れ",
+  "rating": 4.2,
+  "reviews": 439,
+  "lat": 36.0240078,
+  "lng": 139.9868709,
+  "genre": "ラーメン",
+  "address": "水海道元町３４５９",
+  "placeId": "0x6018a05061280fa3:0x44a3433f9f8a7f27",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a05061280fa3:0x44a3433f9f8a7f27&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "中国ラーメン栄",
@@ -2179,6 +2257,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E3%81%9D%E3%81%B0+%E3%81%9F%E3%81%8C%E3%82%84/@35.6580124,140.0542967,17z/data=!3m1!4b1!4m6!3m5!1s0x602281fa6f60cdd9:0xfc2818720efbf16a!8m2!3d35.6580124!4d140.0542967!16s%2Fg%2F11q884nvjq!9m1!1b1?hl=ja"
  },
  {
+  "name": "激辛ラーメン専門店 レッチリ 土浦店",
+  "rating": 4.2,
+  "reviews": 352,
+  "lat": 36.0807827,
+  "lng": 140.2016664,
+  "genre": "ラーメン",
+  "address": "川口１丁目１−２７",
+  "placeId": "0x602212b5236af5ed:0x46fbdd355028c1c0",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602212b5236af5ed:0x46fbdd355028c1c0&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "九州ラーメン日吉八重原店",
   "rating": 4.2,
   "reviews": 350,
@@ -2190,6 +2280,42 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60180c0a03a50441:0x9efeb3c87c8376a9&hl=ja",
   "region": "boso",
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B9%9D%E5%B7%9E%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E6%97%A5%E5%90%89%E5%85%AB%E9%87%8D%E5%8E%9F%E5%BA%97/@35.3250018,139.937272,17z/data=!3m1!4b1!4m6!3m5!1s0x60180c0a03a50441:0x9efeb3c87c8376a9!8m2!3d35.3250018!4d139.937272!16s%2Fg%2F1tl1hvrp!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "とんこつとん太",
+  "rating": 4.2,
+  "reviews": 348,
+  "lat": 36.0303519,
+  "lng": 139.9923485,
+  "genre": "ラーメン",
+  "address": "水海道森下町４３４３",
+  "placeId": "0x6018a0593af93069:0x9a608ee016f42afb",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a0593af93069:0x9a608ee016f42afb&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "麺屋 隆志",
+  "rating": 4.2,
+  "reviews": 346,
+  "lat": 36.0437152,
+  "lng": 140.1531143,
+  "genre": "ラーメン",
+  "address": "中村西根２１４０−７",
+  "placeId": "0x602273d674338ab5:0x42ad3aa8f72612e1",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602273d674338ab5:0x42ad3aa8f72612e1&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "らぁめん力丸",
+  "rating": 4.2,
+  "reviews": 345,
+  "lat": 35.9842106,
+  "lng": 139.9612747,
+  "genre": "ラーメン",
+  "address": "内守谷町きぬの里１丁目１０−３ モンブラン 103",
+  "placeId": "0x6018a1df5e260915:0xca87aed1e94e3023",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a1df5e260915:0xca87aed1e94e3023&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "ラーメン ニュー松戸",
@@ -2231,6 +2357,19 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%89%8B%E6%89%93+%E4%BC%9A%E6%B4%A5%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E7%99%BD%E8%99%8E/@35.7175667,140.6580419,17z/data=!3m1!4b1!4m6!3m5!1s0x6022e1b87d22a091:0x5d4bb2bee8e4f6f5!8m2!3d35.7175667!4d140.6580419!16s%2Fg%2F1w665jf0!9m1!1b1?hl=ja"
  },
  {
+  "name": "味噌らーめん 比田井",
+  "rating": 4.2,
+  "reviews": 314,
+  "lat": 35.7156232,
+  "lng": 140.1419427,
+  "genre": "ラーメン",
+  "address": "上志津１６２２−２",
+  "placeId": "0x602286f7fcdf8b91:0xb928c93f18ae6de",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602286f7fcdf8b91:0xb928c93f18ae6de&hl=ja",
+  "region": "inba",
+  "reviewsUrl": "https://www.google.com/maps/place/%E5%91%B3%E5%99%8C%E3%82%89%E3%83%BC%E3%82%81%E3%82%93+%E6%AF%94%E7%94%B0%E4%BA%95/@35.7156232,140.1419427,17z/data=!3m1!4b1!4m6!3m5!1s0x602286f7fcdf8b91:0xb928c93f18ae6de!8m2!3d35.7156232!4d140.1419427!16s%2Fg%2F11fffs7b5f!9m1!1b1?hl=ja"
+ },
+ {
   "name": "麺座まねき",
   "rating": 4.2,
   "reviews": 313,
@@ -2242,19 +2381,6 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x601884eae8a11f13:0xcfc8f62fccffa34d&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%BA%A7%E3%81%BE%E3%81%AD%E3%81%8D/@35.7987856,139.9146143,17z/data=!3m1!4b1!4m6!3m5!1s0x601884eae8a11f13:0xcfc8f62fccffa34d!8m2!3d35.7987856!4d139.9146143!16s%2Fg%2F1tx4pbd_!9m1!1b1?hl=ja"
- },
- {
-  "name": "味噌らーめん 比田井",
-  "rating": 4.2,
-  "reviews": 313,
-  "lat": 35.7156232,
-  "lng": 140.1419427,
-  "genre": "ラーメン",
-  "address": "上志津１６２２−２",
-  "placeId": "0x602286f7fcdf8b91:0xb928c93f18ae6de",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x602286f7fcdf8b91:0xb928c93f18ae6de&hl=ja",
-  "region": "inba",
-  "reviewsUrl": "https://www.google.com/maps/place/%E5%91%B3%E5%99%8C%E3%82%89%E3%83%BC%E3%82%81%E3%82%93+%E6%AF%94%E7%94%B0%E4%BA%95/@35.7156232,140.1419427,17z/data=!3m1!4b1!4m6!3m5!1s0x602286f7fcdf8b91:0xb928c93f18ae6de!8m2!3d35.7156232!4d140.1419427!16s%2Fg%2F11fffs7b5f!9m1!1b1?hl=ja"
  },
  {
   "name": "RAGUMAN 2014",
@@ -2413,9 +2539,21 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%81%AE%E3%81%8B%E3%81%A9%E3%82%84/@35.5485106,140.1439466,17z/data=!3m1!4b1!4m6!3m5!1s0x60229b11df4c0979:0xa2f94c57ab276222!8m2!3d35.5485106!4d140.1439466!16s%2Fg%2F11h1hn9cm8!9m1!1b1?hl=ja"
  },
  {
+  "name": "フレンチラーメンの店 MATOYA",
+  "rating": 4.2,
+  "reviews": 258,
+  "lat": 35.9092974,
+  "lng": 140.1862134,
+  "genre": "ラーメン",
+  "address": "寺後３４７０−１",
+  "placeId": "0x60189cefbb4e6d3d:0xd3f9bc8d868332db",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189cefbb4e6d3d:0xd3f9bc8d868332db&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "激旨麺厨房 劉",
   "rating": 4.2,
-  "reviews": 255,
+  "reviews": 254,
   "lat": 35.8350102,
   "lng": 139.946057,
   "genre": "ラーメン",
@@ -2489,6 +2627,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6018757399d546d3:0x766fe81af2013c6d&hl=ja",
   "region": "boso",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%82%86%E3%81%8D/@35.442821,140.001436,17z/data=!3m1!4b1!4m6!3m5!1s0x6018757399d546d3:0x766fe81af2013c6d!8m2!3d35.442821!4d140.001436!16s%2Fg%2F1th7y9v5!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "麺屋 鎌倉山",
+  "rating": 4.2,
+  "reviews": 229,
+  "lat": 35.920456,
+  "lng": 140.111843,
+  "genre": "ラーメン",
+  "address": "藤代６７８−１ 藤代ハイム 102",
+  "placeId": "0x602270c5fd463771:0xfee1da1d8960eb6",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602270c5fd463771:0xfee1da1d8960eb6&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "麺屋いとう東金店",
@@ -2594,6 +2744,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%B0%86+%E6%9D%BE%E9%A2%A8/@35.623903,140.103074,17z/data=!3m1!4b1!4m6!3m5!1s0x602285057c47001b:0xb94bc48d3843d646!8m2!3d35.623903!4d140.103074!16s%2Fg%2F11s7kpf9gp!9m1!1b1?hl=ja"
  },
  {
+  "name": "中華そば専門 田中そば店 クイズモール龍ヶ崎店",
+  "rating": 4.2,
+  "reviews": 191,
+  "lat": 35.9289546,
+  "lng": 140.1338354,
+  "genre": "ラーメン",
+  "address": "小通幸谷町２８８ クイズモール龍ヶ崎",
+  "placeId": "0x6022713567271cf5:0xebad2dd5705948d8",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022713567271cf5:0xebad2dd5705948d8&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "麺食道 孝作",
   "rating": 4.2,
   "reviews": 188,
@@ -2622,7 +2784,7 @@
  {
   "name": "らぁ麺 ろく壱",
   "rating": 4.2,
-  "reviews": 182,
+  "reviews": 183,
   "lat": 35.7560984,
   "lng": 140.2984045,
   "genre": "ラーメン",
@@ -2866,6 +3028,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E8%87%AA%E5%AE%B6%E8%A3%BD%E9%BA%BA%E3%81%84%E3%81%91%E3%81%A0/@35.6607194,140.0556415,17z/data=!3m1!4b1!4m6!3m5!1s0x602281d9ec4c93c5:0x3d8c5bab3b5e6432!8m2!3d35.6607194!4d140.0556415!16s%2Fg%2F11yw5fcdzf!9m1!1b1?hl=ja"
  },
  {
+  "name": "飛騨ラーメン",
+  "rating": 4.2,
+  "reviews": 108,
+  "lat": 35.9522713,
+  "lng": 139.975691,
+  "genre": "ラーメン",
+  "address": "立沢２３９−５",
+  "placeId": "0x60189effc83fca85:0x5ccf8914a7cb900d",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189effc83fca85:0x5ccf8914a7cb900d&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "らぁ麺 富士虎屋",
   "rating": 4.2,
   "reviews": 106,
@@ -2929,6 +3103,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022eb191d33644b:0x534d85855add7c8c&hl=ja",
   "region": "tosou",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%97%E2%97%AF%E5%8C%96+%E6%88%90%E6%9D%B1%E5%BA%97/@35.5887201,140.3915117,17z/data=!3m1!4b1!4m6!3m5!1s0x6022eb191d33644b:0x534d85855add7c8c!8m2!3d35.5887201!4d140.3915117!16s%2Fg%2F11mrwzvbz7!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "佐波理",
+  "rating": 4.2,
+  "reviews": 93,
+  "lat": 36.0942794,
+  "lng": 140.2529699,
+  "genre": "ラーメン",
+  "address": "おおつ野８丁目２４−１５",
+  "placeId": "0x60226d004ea49ffb:0x57b44b61a2b06dd9",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d004ea49ffb:0x57b44b61a2b06dd9&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "手打ラーメン珍来",
@@ -3034,6 +3220,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%82%89%E3%82%93%E3%81%BD/@35.1143333,140.1130414,17z/data=!3m1!4b1!4m6!3m5!1s0x603d538f7a9f4621:0xdac3107bde93be98!8m2!3d35.1143333!4d140.1130414!16s%2Fg%2F1v41_lc7!9m1!1b1?hl=ja"
  },
  {
+  "name": "中華そばトキマタトモル",
+  "rating": 4.2,
+  "reviews": 58,
+  "lat": 35.8928074,
+  "lng": 140.4951463,
+  "genre": "ラーメン",
+  "address": "佐原イ１３６−１",
+  "placeId": "0x6022f70006a9879d:0x28c56fc3b133ea5",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022f70006a9879d:0x28c56fc3b133ea5&hl=ja",
+  "region": "tosou"
+ },
+ {
   "name": "天好",
   "rating": 4.2,
   "reviews": 53,
@@ -3112,6 +3310,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%A8%E3%82%89%E9%A3%9F%E5%A0%82+%E6%9D%BE%E6%88%B8%E5%88%86%E5%BA%97/@35.7759798,139.9578273,16z/data=!3m1!4b1!4m6!3m5!1s0x601883c203328c5f:0x9f34c48d029ed7e2!8m2!3d35.7759798!4d139.9578273!16s%2Fg%2F1tcwljzb!9m1!1b1?hl=ja"
  },
  {
+  "name": "特級鶏蕎麦 龍介",
+  "rating": 4.1,
+  "reviews": 1833,
+  "lat": 36.0613614,
+  "lng": 140.1803455,
+  "genre": "ラーメン",
+  "address": "永国７７８",
+  "placeId": "0x602272a8765de6ef:0xe60334e91bcdcf93",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602272a8765de6ef:0xe60334e91bcdcf93&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "松屋製麺所",
   "rating": 4.1,
   "reviews": 1821,
@@ -3150,6 +3360,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%A0%B4+%E7%94%B0%E6%89%80%E5%95%86%E5%BA%97+%E6%AD%A6%E7%9F%B3%E6%9C%AC%E5%BA%97/@35.6712961,140.0647341,17z/data=!3m1!4b1!4m6!3m5!1s0x6022817431beca49:0xa3a712269c14d3ca!8m2!3d35.6712961!4d140.0647341!16s%2Fg%2F1tdyfrlt!9m1!1b1?hl=ja"
  },
  {
+  "name": "ラーメン山岡家 牛久店",
+  "rating": 4.1,
+  "reviews": 1583,
+  "lat": 35.9993098,
+  "lng": 140.1532573,
+  "genre": "ラーメン",
+  "address": "中根町２７０−３",
+  "placeId": "0x6022723a65ef6093:0xad9c328cce33f8b6",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022723a65ef6093:0xad9c328cce33f8b6&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "二九八家 いわせ",
   "rating": 4.1,
   "reviews": 1577,
@@ -3163,9 +3385,21 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E4%BA%8C%E4%B9%9D%E5%85%AB%E5%AE%B6+%E3%81%84%E3%82%8F%E3%81%9B/@35.714802,139.9166306,17z/data=!3m1!4b1!4m6!3m5!1s0x601886dd8b614abd:0xa56e2ee8225e1dfa!8m2!3d35.714802!4d139.9166306!16s%2Fg%2F1v6wp9fx!9m1!1b1?hl=ja"
  },
  {
+  "name": "ラーメンショップ椿 牛久店",
+  "rating": 4.1,
+  "reviews": 1465,
+  "lat": 36.0086526,
+  "lng": 140.1551973,
+  "genre": "ラーメン",
+  "address": "ひたち野西２丁目３０−２",
+  "placeId": "0x6022724706b54687:0xad1cbaef0b420173",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022724706b54687:0xad1cbaef0b420173&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "中華そば金ちゃん",
   "rating": 4.1,
-  "reviews": 1436,
+  "reviews": 1438,
   "lat": 35.7170955,
   "lng": 140.0922192,
   "genre": "ラーメン",
@@ -3174,6 +3408,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x602280ccc7c41e0b:0x38dc523faff22218&hl=ja",
   "region": "chiba",
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E3%81%9D%E3%81%B0%E9%87%91%E3%81%A1%E3%82%83%E3%82%93/@35.7170955,140.0922192,16z/data=!3m1!4b1!4m6!3m5!1s0x602280ccc7c41e0b:0x38dc523faff22218!8m2!3d35.7170955!4d140.0922192!16s%2Fg%2F12hrymh2x!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "らーめん すすきの",
+  "rating": 4.1,
+  "reviews": 1392,
+  "lat": 36.111255,
+  "lng": 139.972657,
+  "genre": "ラーメン",
+  "address": "新石下４５３７",
+  "placeId": "0x6018a64c2068e347:0xc949c8cc04bcea6b",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a64c2068e347:0xc949c8cc04bcea6b&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "ラーメン BooBoo太郎。",
@@ -3213,19 +3459,6 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x601884c1c217ffb1:0xa6bc209347c73f8b&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E5%85%83%E7%A5%96%E3%81%8A%E3%81%8B%E3%81%9A%E7%B3%BB%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E8%82%89%E7%8E%89%E3%81%9D%E3%81%B0%E3%81%8A%E3%81%A8%E3%81%A9+%E5%8C%97%E6%9D%BE%E6%88%B8%E5%BA%97/@35.800477,139.9123958,17z/data=!3m1!4b1!4m6!3m5!1s0x601884c1c217ffb1:0xa6bc209347c73f8b!8m2!3d35.800477!4d139.9123958!16s%2Fg%2F1th1v0mt!9m1!1b1?hl=ja"
- },
- {
-  "name": "横浜ラーメン寺田家",
-  "rating": 4.1,
-  "reviews": 1118,
-  "lat": 35.8079923,
-  "lng": 140.0396508,
-  "genre": "ラーメン",
-  "address": "折立４７８−１１",
-  "placeId": "0x602278c75e98efb1:0x24a4027d5936b872",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x602278c75e98efb1:0x24a4027d5936b872&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E6%A8%AA%E6%B5%9C%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E5%AF%BA%E7%94%B0%E5%AE%B6/@35.8079923,140.0396508,17z/data=!3m1!4b1!4m6!3m5!1s0x602278c75e98efb1:0x24a4027d5936b872!8m2!3d35.8079923!4d140.0396508!16s%2Fg%2F1tftff7k!9m1!1b1?hl=ja"
  },
  {
   "name": "ラーメン 杉田家 千葉駅前店",
@@ -3472,6 +3705,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%8A%E3%83%80%E3%82%B7%E3%81%A8%E9%8A%80%E3%81%97%E3%82%83%E3%82%8A+%E4%B8%AD%E8%8F%AF%E3%81%9D%E3%81%B0+%E7%84%A1%E4%BD%9C/@35.7187038,139.9282429,17z/data=!3m1!4b1!4m6!3m5!1s0x6018870039cda5df:0x13e18898b16396c7!8m2!3d35.7187038!4d139.9282429!16s%2Fg%2F11y5g_s_g3!9m1!1b1?hl=ja"
  },
  {
+  "name": "中華蕎麦 はざま",
+  "rating": 4.1,
+  "reviews": 699,
+  "lat": 35.9124069,
+  "lng": 140.0333862,
+  "genre": "ラーメン",
+  "address": "野々井１５８２−８",
+  "placeId": "0x6022763a092d1d23:0xe13c2e8e49af46c9",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022763a092d1d23:0xe13c2e8e49af46c9&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "らーめん いやどうも",
   "rating": 4.1,
   "reviews": 697,
@@ -3482,6 +3727,18 @@
   "placeId": "0x602209ec9f4c1751:0x9568b826f3ec3c28",
   "mapsUrl": "https://www.google.com/maps?ftid=0x602209ec9f4c1751:0x9568b826f3ec3c28&hl=ja",
   "region": "tsukuba"
+ },
+ {
+  "name": "麺匠 ことぶき",
+  "rating": 4.1,
+  "reviews": 662,
+  "lat": 35.9560227,
+  "lng": 140.1578081,
+  "genre": "ラーメン",
+  "address": "さくら台１丁目７６−１０",
+  "placeId": "0x602271b40b8dbaf9:0xa176dbcb0e944b83",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602271b40b8dbaf9:0xa176dbcb0e944b83&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "元祖手打つけ麺 丸長",
@@ -3511,7 +3768,7 @@
  {
   "name": "中華ソバ 篤々 TOKU−TOKU",
   "rating": 4.1,
-  "reviews": 629,
+  "reviews": 630,
   "lat": 35.71472,
   "lng": 140.1242586,
   "genre": "ラーメン",
@@ -3573,6 +3830,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E3%82%84+%E5%A4%9A%E4%B9%85%E5%91%B3/@35.686893,139.8637222,16z/data=!3m1!4b1!4m6!3m5!1s0x601887d293590085:0x25d2b109a9684cf6!8m2!3d35.686893!4d139.8637222!16s%2Fg%2F1tfpv7h1!9m1!1b1?hl=ja"
  },
  {
+  "name": "鶏そば炭や 常総店",
+  "rating": 4.1,
+  "reviews": 594,
+  "lat": 36.104254,
+  "lng": 139.9842062,
+  "genre": "ラーメン",
+  "address": "新石下６２５−９５",
+  "placeId": "0x6018a799a415b10f:0xbfa604a5a46d8f12",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a799a415b10f:0xbfa604a5a46d8f12&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "長八",
   "rating": 4.1,
   "reviews": 582,
@@ -3599,19 +3868,6 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%94%AF%E9%82%A3%E3%81%9D%E3%81%B0%E6%99%B4%E5%BC%98/@35.6707343,139.800409,17z/data=!3m1!4b1!4m6!3m5!1s0x6018890e4f4db24b:0x830dd3b56844e58a!8m2!3d35.6707343!4d139.800409!16s%2Fg%2F1tg9n3hk!9m1!1b1?hl=ja"
  },
  {
-  "name": "柏 濃麺や 39名",
-  "rating": 4.1,
-  "reviews": 576,
-  "lat": 35.8170311,
-  "lng": 139.9700087,
-  "genre": "ラーメン",
-  "address": "南増尾２丁目３−１３",
-  "placeId": "0x6018839d6e7eb9e7:0xa8e9b020bfe943e4",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x6018839d6e7eb9e7:0xa8e9b020bfe943e4&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E6%9F%8F+%E6%BF%83%E9%BA%BA%E3%82%84+39%E5%90%8D/@35.8170311,139.9700087,17z/data=!3m1!4b1!4m6!3m5!1s0x6018839d6e7eb9e7:0xa8e9b020bfe943e4!8m2!3d35.8170311!4d139.9700087!16s%2Fg%2F11sdymd8__!9m1!1b1?hl=ja"
- },
- {
   "name": "博多・長浜ラーメン 一途",
   "rating": 4.1,
   "reviews": 565,
@@ -3636,6 +3892,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022bfbee98163bb:0xf26a850b2354afcc&hl=ja",
   "region": "tosou",
   "reviewsUrl": "https://www.google.com/maps/place/%E6%81%B5%E6%AF%94%E5%AF%BF%E3%83%96%E3%82%BF%E3%83%A1%E3%83%B3+%E5%A4%A7%E7%B6%B2%E6%9C%AC%E5%BA%97/@35.523995,140.328535,17z/data=!3m1!4b1!4m6!3m5!1s0x6022bfbee98163bb:0xf26a850b2354afcc!8m2!3d35.523995!4d140.328535!16s%2Fg%2F12qh56dhc!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "土浦ラーメン",
+  "rating": 4.1,
+  "reviews": 554,
+  "lat": 36.0729484,
+  "lng": 140.2050707,
+  "genre": "ラーメン",
+  "address": "蓮河原新町１−３３ マヤビル",
+  "placeId": "0x60226d37eca531d5:0xde06b691a25c0c82",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d37eca531d5:0xde06b691a25c0c82&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "東陽らーめん",
@@ -3699,6 +3967,42 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60188e46f5df8d0d:0x2c8442feb2fe679d&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E7%8C%AA%E5%A4%AA/@35.8605243,139.9768224,17z/data=!3m1!4b1!4m6!3m5!1s0x60188e46f5df8d0d:0x2c8442feb2fe679d!8m2!3d35.8605243!4d139.9768224!16s%2Fg%2F11byxh4tn7!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "清六家 江戸崎店",
+  "rating": 4.1,
+  "reviews": 520,
+  "lat": 35.9761974,
+  "lng": 140.3236532,
+  "genre": "ラーメン",
+  "address": "佐倉３２５２−２",
+  "placeId": "0x602267dd79ba75fb:0xa75413e12b9eebb0",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602267dd79ba75fb:0xa75413e12b9eebb0&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "山びこ",
+  "rating": 4.1,
+  "reviews": 517,
+  "lat": 35.9208708,
+  "lng": 140.1033824,
+  "genre": "ラーメン",
+  "address": "小浮気179−１",
+  "placeId": "0x602270cd77a86903:0x179703a6fe40185d",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602270cd77a86903:0x179703a6fe40185d&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "麺屋京介",
+  "rating": 4.1,
+  "reviews": 514,
+  "lat": 36.1284652,
+  "lng": 140.1659384,
+  "genre": "ラーメン",
+  "address": "大畑８３７−１",
+  "placeId": "0x60220de8ee1121fd:0xb749dd093380362f",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60220de8ee1121fd:0xb749dd093380362f&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "めん結び 光の葉",
@@ -3777,6 +4081,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x601884fb7844d345:0x461caec966ec604&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%82%89%E3%81%81%E3%82%81%E3%82%93+%E4%B8%80%E6%92%83/@35.7838374,139.9014473,17z/data=!3m1!4b1!4m6!3m5!1s0x601884fb7844d345:0x461caec966ec604!8m2!3d35.7838374!4d139.9014473!16s%2Fg%2F1v26m28r!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "麺ゃ こもん",
+  "rating": 4.1,
+  "reviews": 442,
+  "lat": 35.9113088,
+  "lng": 140.1831932,
+  "genre": "ラーメン",
+  "address": "寺後３６７０−１",
+  "placeId": "0x60227ab4ad83aaab:0x6b58a358f55f737e",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227ab4ad83aaab:0x6b58a358f55f737e&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "らーめんなが田",
@@ -3947,19 +4263,6 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%A8%AA%E6%B5%9C%E3%82%89%E3%83%BC%E3%82%81%E3%82%93+%E5%AF%BF%E4%B8%89%E5%AE%B6%E3%81%93%E3%81%A8%E3%81%BF%E3%82%84/@35.8659512,140.020996,17z/data=!3m1!4b1!4m6!3m5!1s0x60227784039aa359:0x44e39d2548465590!8m2!3d35.8659512!4d140.020996!16s%2Fg%2F11h3v68xlz!9m1!1b1?hl=ja"
  },
  {
-  "name": "鶏白湯らーめん叶",
-  "rating": 4.1,
-  "reviews": 378,
-  "lat": 35.8589956,
-  "lng": 139.9691375,
-  "genre": "ラーメン",
-  "address": "中央町７−１８",
-  "placeId": "0x60189df31b053bff:0x67755b26f541e06",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189df31b053bff:0x67755b26f541e06&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E9%B6%8F%E7%99%BD%E6%B9%AF%E3%82%89%E3%83%BC%E3%82%81%E3%82%93%E5%8F%B6/@35.8589956,139.9691375,17z/data=!3m1!4b1!4m6!3m5!1s0x60189df31b053bff:0x67755b26f541e06!8m2!3d35.8589956!4d139.9691375!16s%2Fg%2F11ty4q837j!9m1!1b1?hl=ja"
- },
- {
   "name": "らーめん まる玉 大島店",
   "rating": 4.1,
   "reviews": 372,
@@ -4102,6 +4405,18 @@
   "region": "tsukuba"
  },
  {
+  "name": "中華そば あたり",
+  "rating": 4.1,
+  "reviews": 310,
+  "lat": 36.061543,
+  "lng": 139.979976,
+  "genre": "ラーメン",
+  "address": "中妻町３９７１",
+  "placeId": "0x6018a1560137fcf9:0x737771d2bf6c077d",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a1560137fcf9:0x737771d2bf6c077d&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "らーめん太助",
   "rating": 4.1,
   "reviews": 308,
@@ -4180,6 +4495,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%B1%8B+%E3%81%BE%E3%82%8B%E3%81%8D%E3%81%9F%E5%95%86%E5%BA%97/@35.6540698,140.3047531,17z/data=!3m1!4b1!4m6!3m5!1s0x602293c958f5312b:0xa29fc714e9c287f!8m2!3d35.6540698!4d140.3047531!16s%2Fg%2F11j2xsckkl!9m1!1b1?hl=ja"
  },
  {
+  "name": "麺屋のの18",
+  "rating": 4.1,
+  "reviews": 290,
+  "lat": 36.1129343,
+  "lng": 139.9529799,
+  "genre": "ラーメン",
+  "address": "向石下８２９−５３",
+  "placeId": "0x6018a6141163ffff:0xccc25f47cbec0466",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a6141163ffff:0xccc25f47cbec0466&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "禪（ひらめき）",
   "rating": 4.1,
   "reviews": 283,
@@ -4208,7 +4535,7 @@
  {
   "name": "麺屋 星花灯",
   "rating": 4.1,
-  "reviews": 279,
+  "reviews": 280,
   "lat": 35.8520854,
   "lng": 140.5884176,
   "genre": "ラーメン",
@@ -4297,6 +4624,30 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%82%A2%E3%82%AB%E3%82%B7%E3%83%A4/@35.7262958,139.8883947,17z/data=!3m1!4b1!4m6!3m5!1s0x6018867b2f56b3e1:0x43e84249bf193e01!8m2!3d35.7262958!4d139.8883947!16s%2Fg%2F1tc_8nc8!9m1!1b1?hl=ja"
  },
  {
+  "name": "麺屋 い志だ",
+  "rating": 4.1,
+  "reviews": 260,
+  "lat": 36.0646673,
+  "lng": 140.1864486,
+  "genre": "ラーメン",
+  "address": "中高津１丁目１５−２１ 藤井ビル 101",
+  "placeId": "0x60226d47bff1e0c9:0x60185c6c6d916a59",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d47bff1e0c9:0x60185c6c6d916a59&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "シビカラ味噌らー麺 鬼の目にも涙",
+  "rating": 4.1,
+  "reviews": 260,
+  "lat": 36.0627814,
+  "lng": 140.1814981,
+  "genre": "ラーメン",
+  "address": "永国８４８−５",
+  "placeId": "0x6022732e7d9a3153:0xd68ca9787dc926fe",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022732e7d9a3153:0xd68ca9787dc926fe&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "活龍大衆麺処 真壁屋",
   "rating": 4.1,
   "reviews": 257,
@@ -4307,6 +4658,18 @@
   "placeId": "0x60220d1bc1650e6d:0xacae926b9af2e96",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60220d1bc1650e6d:0xacae926b9af2e96&hl=ja",
   "region": "tsukuba"
+ },
+ {
+  "name": "釜焼きチャーシュー らーめん喜楽",
+  "rating": 4.1,
+  "reviews": 257,
+  "lat": 35.9785651,
+  "lng": 140.1499888,
+  "genre": "ラーメン",
+  "address": "中央３丁目１６−１",
+  "placeId": "0x6022718502d25555:0x7feb5bb70aa2ca3d",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022718502d25555:0x7feb5bb70aa2ca3d&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "まきば",
@@ -4413,6 +4776,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E9%A6%99%E5%91%B3%E5%B1%8B/@35.6924273,139.867506,17z/data=!3m1!4b1!4m6!3m5!1s0x6018863252d8e0e3:0x23b54197ee74bd8a!8m2!3d35.6924273!4d139.867506!16s%2Fg%2F1tczkg6x!9m1!1b1?hl=ja"
  },
  {
+  "name": "麺屋 秀",
+  "rating": 4.1,
+  "reviews": 231,
+  "lat": 36.0493094,
+  "lng": 140.2166769,
+  "genre": "ラーメン",
+  "address": "青宿４９０−５",
+  "placeId": "0x60226d077f8fcda1:0xfaff83826de5bbba",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d077f8fcda1:0xfaff83826de5bbba&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "横浜家系ラーメン 吟家 袖ヶ浦店",
   "rating": 4.1,
   "reviews": 228,
@@ -4426,6 +4801,19 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%A8%AA%E6%B5%9C%E5%AE%B6%E7%B3%BB%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E5%90%9F%E5%AE%B6+%E8%A2%96%E3%83%B6%E6%B5%A6%E5%BA%97/@35.4223514,139.9594118,17z/data=!3m1!4b1!4m6!3m5!1s0x601875f26a58a389:0x4b92f4f2766f6121!8m2!3d35.4223514!4d139.9594118!16s%2Fg%2F11wnzrs68d!9m1!1b1?hl=ja"
  },
  {
+  "name": "ラーメンショップ○化多古店",
+  "rating": 4.1,
+  "reviews": 226,
+  "lat": 35.7289685,
+  "lng": 140.4603848,
+  "genre": "ラーメン",
+  "address": "多古１８５４−３",
+  "placeId": "0x6022ef0078293d51:0x46edc1ef7749e888",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022ef0078293d51:0x46edc1ef7749e888&hl=ja",
+  "region": "tosou",
+  "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%97%E2%97%8B%E5%8C%96%E5%A4%9A%E5%8F%A4%E5%BA%97/@35.7289685,140.4603848,17z/data=!3m1!4b1!4m6!3m5!1s0x6022ef0078293d51:0x46edc1ef7749e888!8m2!3d35.7289685!4d140.4603848!16s%2Fg%2F11y641dw59!9m1!1b1?hl=ja"
+ },
+ {
   "name": "じゃっこい",
   "rating": 4.1,
   "reviews": 225,
@@ -4437,19 +4825,6 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189bdf2fd5f7c9:0xb17858e800470564&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%98%E3%82%83%E3%81%A3%E3%81%93%E3%81%84/@35.8285159,139.9055484,17z/data=!3m1!4b1!4m6!3m5!1s0x60189bdf2fd5f7c9:0xb17858e800470564!8m2!3d35.8285159!4d139.9055484!16s%2Fg%2F11qprtpj49!9m1!1b1?hl=ja"
- },
- {
-  "name": "ラーメンショップ○化多古店",
-  "rating": 4.1,
-  "reviews": 225,
-  "lat": 35.7289685,
-  "lng": 140.4603848,
-  "genre": "ラーメン",
-  "address": "多古１８５４−３",
-  "placeId": "0x6022ef0078293d51:0x46edc1ef7749e888",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x6022ef0078293d51:0x46edc1ef7749e888&hl=ja",
-  "region": "tosou",
-  "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%97%E2%97%8B%E5%8C%96%E5%A4%9A%E5%8F%A4%E5%BA%97/@35.7289685,140.4603848,17z/data=!3m1!4b1!4m6!3m5!1s0x6022ef0078293d51:0x46edc1ef7749e888!8m2!3d35.7289685!4d140.4603848!16s%2Fg%2F11y641dw59!9m1!1b1?hl=ja"
  },
  {
   "name": "麺匠 風流",
@@ -4659,6 +5034,18 @@
   "region": "tsukuba"
  },
  {
+  "name": "天心楼",
+  "rating": 4.1,
+  "reviews": 181,
+  "lat": 36.044906,
+  "lng": 139.81233,
+  "genre": "ラーメン",
+  "address": "柏寺６０６−１",
+  "placeId": "0x6018ba5840fdff67:0x61158cf021ea5745",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018ba5840fdff67:0x61158cf021ea5745&hl=ja",
+  "region": "toukatsu"
+ },
+ {
   "name": "ラーメン異国龍",
   "rating": 4.1,
   "reviews": 178,
@@ -4695,6 +5082,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189ccb27331c8f:0x1003d067f1750a3c&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E7%84%A6%E3%81%8C%E3%81%97%E3%82%89%E3%83%BC%E3%82%81%E3%82%93+%E9%BA%BA%E5%B1%8B%E8%AA%A0/@35.8377982,139.959864,17z/data=!3m1!4b1!4m6!3m5!1s0x60189ccb27331c8f:0x1003d067f1750a3c!8m2!3d35.8377982!4d139.959864!16s%2Fg%2F11gxsbz5z1!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "源助",
+  "rating": 4.1,
+  "reviews": 170,
+  "lat": 36.076639,
+  "lng": 140.203725,
+  "genre": "ラーメン",
+  "address": "桜町１丁目５−６",
+  "placeId": "0x60226d4a071fa78f:0x95e6da2ddc75bd3f",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d4a071fa78f:0x95e6da2ddc75bd3f&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "そら 江戸川中央店",
@@ -4943,6 +5342,19 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%A4%E3%81%8F%E3%82%82%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3/@35.2465884,139.9925925,17z/data=!3m1!4b1!4m6!3m5!1s0x601807c403716569:0xe3942fbb7c836669!8m2!3d35.2465884!4d139.9925925!16s%2Fg%2F1tph1pty!9m1!1b1?hl=ja"
  },
  {
+  "name": "中華そば えんび",
+  "rating": 4.1,
+  "reviews": 122,
+  "lat": 35.7009902,
+  "lng": 140.0898889,
+  "genre": "ラーメン",
+  "address": "八千代台西１丁目１−５",
+  "placeId": "0x60228100505cf1d3:0xbf096f79ab979047",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60228100505cf1d3:0xbf096f79ab979047&hl=ja",
+  "region": "chiba",
+  "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E3%81%9D%E3%81%B0+%E3%81%88%E3%82%93%E3%81%B3/@35.7009902,140.0898889,17z/data=!3m1!4b1!4m6!3m5!1s0x60228100505cf1d3:0xbf096f79ab979047!8m2!3d35.7009902!4d140.0898889!16s%2Fg%2F11x0pd1rs7!9m1!1b1?hl=ja"
+ },
+ {
   "name": "むつみ",
   "rating": 4.1,
   "reviews": 122,
@@ -4954,19 +5366,6 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x603d5474709b7509:0xda656c3652d3c622&hl=ja",
   "region": "boso",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%82%80%E3%81%A4%E3%81%BF/@35.1003532,140.0962635,17z/data=!3m1!4b1!4m6!3m5!1s0x603d5474709b7509:0xda656c3652d3c622!8m2!3d35.1003532!4d140.0962635!16s%2Fg%2F1tk6_mp0!9m1!1b1?hl=ja"
- },
- {
-  "name": "中華そば えんび",
-  "rating": 4.1,
-  "reviews": 121,
-  "lat": 35.7009902,
-  "lng": 140.0898889,
-  "genre": "ラーメン",
-  "address": "八千代台西１丁目１−５",
-  "placeId": "0x60228100505cf1d3:0xbf096f79ab979047",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60228100505cf1d3:0xbf096f79ab979047&hl=ja",
-  "region": "chiba",
-  "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E3%81%9D%E3%81%B0+%E3%81%88%E3%82%93%E3%81%B3/@35.7009902,140.0898889,17z/data=!3m1!4b1!4m6!3m5!1s0x60228100505cf1d3:0xbf096f79ab979047!8m2!3d35.7009902!4d140.0898889!16s%2Fg%2F11x0pd1rs7!9m1!1b1?hl=ja"
  },
  {
   "name": "らーめん屋くろちゃん",
@@ -5030,6 +5429,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189d5f32331555:0xa14019d2bacb142c&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%82%89%E3%83%BC%E3%82%81%E3%82%93%E5%86%85%E5%91%B3%E5%96%9C/@35.8737115,140.0169898,16z/data=!3m1!4b1!4m6!3m5!1s0x60189d5f32331555:0xa14019d2bacb142c!8m2!3d35.8737115!4d140.0169898!16s%2Fg%2F1tdc0nfh!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "博多翔龍",
+  "rating": 4.1,
+  "reviews": 102,
+  "lat": 36.0311481,
+  "lng": 140.1672727,
+  "genre": "ラーメン",
+  "address": "荒川沖東２丁目４−１",
+  "placeId": "0x6022728a24eeb5b9:0xde979acd0dc2b631",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022728a24eeb5b9:0xde979acd0dc2b631&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "一忠",
@@ -5136,6 +5547,19 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E5%AE%B6%E7%B3%BB%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E7%8E%8B%E9%81%93%E5%AE%B6%E7%9B%B4%E4%BC%9D+%E3%81%A8%E3%81%AE%E4%B8%B8%E5%AE%B6+%E8%88%B9%E5%8F%96%E5%BA%97/@35.7509577,139.9986271,17z/data=!3m1!4b1!4m6!3m5!1s0x60188128a5731fc1:0xe5949d4daa8f9de1!8m2!3d35.7509577!4d139.9986271!16s%2Fg%2F11z2t8449d!9m1!1b1?hl=ja"
  },
  {
+  "name": "手作りラーメンの店 Rustic Noodles",
+  "rating": 4.1,
+  "reviews": 80,
+  "lat": 35.9494905,
+  "lng": 139.8645859,
+  "genre": "ラーメン",
+  "address": "野田５６０−１ こまやビル 1F",
+  "placeId": "0x6018a380ee9035ab:0xf2a908a2070c898",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a380ee9035ab:0xf2a908a2070c898&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E6%89%8B%E4%BD%9C%E3%82%8A%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%81%AE%E5%BA%97+Rustic+Noodles/@35.9494905,139.8645859,17z/data=!3m1!4b1!4m6!3m5!1s0x6018a380ee9035ab:0xf2a908a2070c898!8m2!3d35.9494905!4d139.8645859!16s%2Fg%2F11x_yxs9ml!9m1!1b1?hl=ja"
+ },
+ {
   "name": "竹岡式ラーメン たか木屋 千葉富士見店",
   "rating": 4.1,
   "reviews": 79,
@@ -5160,6 +5584,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60180d0289276279:0x134cd381431c2d63&hl=ja",
   "region": "boso",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%94%E3%83%8E%E3%82%AD%E3%82%AA%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3/@35.3328835,139.9130998,17z/data=!3m1!4b1!4m6!3m5!1s0x60180d0289276279:0x134cd381431c2d63!8m2!3d35.3328835!4d139.9130998!16s%2Fg%2F11j5grrfzf!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "喜楽",
+  "rating": 4.1,
+  "reviews": 76,
+  "lat": 35.8713119,
+  "lng": 140.0105697,
+  "genre": "ラーメン",
+  "address": "本町２丁目６−２２",
+  "placeId": "0x60189d5c84d80c5b:0xdf50d3f0c0973d1e",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d5c84d80c5b:0xdf50d3f0c0973d1e&hl=ja",
+  "region": "toukatsu"
  },
  {
   "name": "扇やラーメン",
@@ -5253,17 +5689,16 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E7%A6%8F%E9%BA%BA/@35.7249857,139.9622935,17z/data=!3m1!4b1!4m6!3m5!1s0x60188147456ff5b9:0x79e395f083ecdec6!8m2!3d35.7249857!4d139.9622935!16s%2Fg%2F11t9npwmwf!9m1!1b1?hl=ja"
  },
  {
-  "name": "豚骨醤油ラーメン 王道家",
+  "name": "ラーメンショップ 牛久結束店",
   "rating": 4,
-  "reviews": 2781,
-  "lat": 35.8629897,
-  "lng": 139.967405,
+  "reviews": 4973,
+  "lat": 35.966218,
+  "lng": 140.1708885,
   "genre": "ラーメン",
-  "address": "明原１丁目７−２６",
-  "placeId": "0x60189ce7dace6d51:0x330aa341297bcc4f",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189ce7dace6d51:0x330aa341297bcc4f&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E8%B1%9A%E9%AA%A8%E9%86%A4%E6%B2%B9%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E7%8E%8B%E9%81%93%E5%AE%B6/@35.8629897,139.967405,16z/data=!3m1!4b1!4m6!3m5!1s0x60189ce7dace6d51:0x330aa341297bcc4f!8m2!3d35.8629897!4d139.967405!16s%2Fg%2F1tmpkj4r!9m1!1b1?hl=ja"
+  "address": "結束町５０４−１",
+  "placeId": "0x602271cf852a0ee1:0x37970dfb5786d8d9",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602271cf852a0ee1:0x37970dfb5786d8d9&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "兎に角 松戸店",
@@ -5279,6 +5714,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E5%85%8E%E3%81%AB%E8%A7%92+%E6%9D%BE%E6%88%B8%E5%BA%97/@35.785838,139.901765,17z/data=!3m1!4b1!4m6!3m5!1s0x601884fb4eb5a4b1:0xf7c57666d664d5b1!8m2!3d35.785838!4d139.901765!16s%2Fg%2F1tnl1cjr!9m1!1b1?hl=ja"
  },
  {
+  "name": "家系ラーメン 王道家 取手店 本店",
+  "rating": 4,
+  "reviews": 1768,
+  "lat": 35.9126165,
+  "lng": 140.0469148,
+  "genre": "ラーメン",
+  "address": "寺田４９８８",
+  "placeId": "0x6022764c2ca4c0c3:0x6ae03d865ea1c081",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022764c2ca4c0c3:0x6ae03d865ea1c081&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "中華麺専門店 赤坂味一",
   "rating": 4,
   "reviews": 1561,
@@ -5290,6 +5737,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60187fd6bee841fd:0x9d150b2cc9deb5f9&hl=ja",
   "region": "keiyo",
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E9%BA%BA%E5%B0%82%E9%96%80%E5%BA%97+%E8%B5%A4%E5%9D%82%E5%91%B3%E4%B8%80/@35.6958333,139.9838889,17z/data=!3m1!4b1!4m6!3m5!1s0x60187fd6bee841fd:0x9d150b2cc9deb5f9!8m2!3d35.6958333!4d139.9838889!16s%2Fg%2F1tflg6b2!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "ラーメンショップ 新守谷店",
+  "rating": 4,
+  "reviews": 1422,
+  "lat": 35.9669978,
+  "lng": 139.9849641,
+  "genre": "ラーメン",
+  "address": "御所ケ丘１丁目４−２",
+  "placeId": "0x60189fa59bad7487:0xc3f1de7aca26f298",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189fa59bad7487:0xc3f1de7aca26f298&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "麺場 田所商店 千葉北店",
@@ -5359,7 +5818,7 @@
  {
   "name": "麺場 龍吟",
   "rating": 4,
-  "reviews": 995,
+  "reviews": 996,
   "lat": 35.8959298,
   "lng": 139.9682497,
   "genre": "ラーメン",
@@ -5600,6 +6059,160 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%8B%E3%83%A5%E3%83%BC%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%97+%E6%9D%BE%E6%88%B8%E4%B8%B8%E5%B1%B1%E5%BA%97/@35.7682047,139.9106938,17z/data=!3m1!4b1!4m6!3m5!1s0x6018844474eb918f:0x7cd5fd340740b5a9!8m2!3d35.7682047!4d139.9106938!16s%2Fg%2F1tl9mkb9!9m1!1b1?hl=ja"
  },
  {
+  "name": "麺処 にし尾",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8579018,
+  "lng": 139.9766915,
+  "genre": "ラーメン屋",
+  "address": "東１丁目２−４５ 石戸第3ビル 101",
+  "placeId": "0x60189d1c7dba7547:0x17d954275097d34",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d1c7dba7547:0x17d954275097d34&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%87%A6+%E3%81%AB%E3%81%97%E5%B0%BE/@35.8579018,139.9766915,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d1c7dba7547:0x17d954275097d34!8m2!3d35.8579018!4d139.9766915!16s%2Fg%2F11rvbgsbtg!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "豚骨醤油ラーメン 王道家",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8629897,
+  "lng": 139.967405,
+  "genre": "ラーメン屋",
+  "address": "明原１丁目７−２６",
+  "placeId": "0x60189ce7dace6d51:0x330aa341297bcc4f",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189ce7dace6d51:0x330aa341297bcc4f&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E8%B1%9A%E9%AA%A8%E9%86%A4%E6%B2%B9%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E7%8E%8B%E9%81%93%E5%AE%B6/@35.8629897,139.967405,16z/data=!3m1!4b1!4m6!3m5!1s0x60189ce7dace6d51:0x330aa341297bcc4f!8m2!3d35.8629897!4d139.967405!16s%2Fg%2F1tmpkj4r!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "横浜家系ラーメン 隆希家",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8655991,
+  "lng": 139.9302881,
+  "genre": "ラーメン屋",
+  "address": "豊四季20番地",
+  "placeId": "0x60189bc6c256272b:0x306f651e6b70bf31",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189bc6c256272b:0x306f651e6b70bf31&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E6%A8%AA%E6%B5%9C%E5%AE%B6%E7%B3%BB%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E9%9A%86%E5%B8%8C%E5%AE%B6/@35.8655991,139.9302881,17z/data=!3m1!4b1!4m6!3m5!1s0x60189bc6c256272b:0x306f651e6b70bf31!8m2!3d35.8655991!4d139.9302881!16s%2Fg%2F11vklwm6kf!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "四代目鷹蔵",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8545351,
+  "lng": 139.9669209,
+  "genre": "ラーメン屋",
+  "address": "泉町１７−２６ イタリア食堂フェルマータ 内",
+  "placeId": "0x60189d6062198717:0xe11802bd796d9c13",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d6062198717:0xe11802bd796d9c13&hl=ja",
+  "region": "toukatsu"
+ },
+ {
+  "name": "元祖油堂 油そば 柏西口店",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8634963,
+  "lng": 139.9700884,
+  "genre": "ラーメン屋",
+  "address": "末広町４−５ 一番ビル 1F",
+  "placeId": "0x60189d2177f6e221:0x6b7eccf816c002dd",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d2177f6e221:0x6b7eccf816c002dd&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E5%85%83%E7%A5%96%E6%B2%B9%E5%A0%82+%E6%B2%B9%E3%81%9D%E3%81%B0+%E6%9F%8F%E8%A5%BF%E5%8F%A3%E5%BA%97/@35.8634963,139.9700884,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d2177f6e221:0x6b7eccf816c002dd!8m2!3d35.8634963!4d139.9700884!16s%2Fg%2F11svs625hj!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "鶏白湯らーめん叶",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8589956,
+  "lng": 139.9691375,
+  "genre": "ラーメン屋",
+  "address": "中央町７−１８",
+  "placeId": "0x60189df31b053bff:0x67755b26f541e06",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189df31b053bff:0x67755b26f541e06&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E9%B6%8F%E7%99%BD%E6%B9%AF%E3%82%89%E3%83%BC%E3%82%81%E3%82%93%E5%8F%B6/@35.8589956,139.9691375,17z/data=!3m1!4b1!4m6!3m5!1s0x60189df31b053bff:0x67755b26f541e06!8m2!3d35.8589956!4d139.9691375!16s%2Fg%2F11ty4q837j!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "つけめん蕎麦 和中ダイニング ゑ富",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8572984,
+  "lng": 139.977118,
+  "genre": "ラーメン屋",
+  "address": "東１丁目２−７",
+  "placeId": "0x60189d61c788e49f:0xe222fbed1972bb35",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d61c788e49f:0xe222fbed1972bb35&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E3%81%A4%E3%81%91%E3%82%81%E3%82%93%E8%95%8E%E9%BA%A6+%E5%92%8C%E4%B8%AD%E3%83%80%E3%82%A4%E3%83%8B%E3%83%B3%E3%82%B0+%E3%82%91%E5%AF%8C/@35.8572984,139.977118,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d61c788e49f:0xe222fbed1972bb35!8m2!3d35.8572984!4d139.977118!16s%2Fg%2F11xgrlmxhz!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "柏 濃麺や 39名",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8170311,
+  "lng": 139.9700087,
+  "genre": "ラーメン屋",
+  "address": "南増尾２丁目３−１３",
+  "placeId": "0x6018839d6e7eb9e7:0xa8e9b020bfe943e4",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018839d6e7eb9e7:0xa8e9b020bfe943e4&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E6%9F%8F+%E6%BF%83%E9%BA%BA%E3%82%84+39%E5%90%8D/@35.8170311,139.9700087,17z/data=!3m1!4b1!4m6!3m5!1s0x6018839d6e7eb9e7:0xa8e9b020bfe943e4!8m2!3d35.8170311!4d139.9700087!16s%2Fg%2F11sdymd8__!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "麺屋 ひぶた",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8692159,
+  "lng": 139.9540344,
+  "genre": "ラーメン屋",
+  "address": "篠籠田９６９−１",
+  "placeId": "0x60189c8a525f0359:0xffc4e3a19cb9623b",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189c8a525f0359:0xffc4e3a19cb9623b&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%B1%8B+%E3%81%B2%E3%81%B6%E3%81%9F/@35.8692159,139.9540344,17z/data=!3m1!4b1!4m6!3m5!1s0x60189c8a525f0359:0xffc4e3a19cb9623b!8m2!3d35.8692159!4d139.9540344!16s%2Fg%2F11b7q8wkcw!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "横浜ラーメン寺田家",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8079923,
+  "lng": 140.0396508,
+  "genre": "ラーメン屋",
+  "address": "折立４７８−１１",
+  "placeId": "0x602278c75e98efb1:0x24a4027d5936b872",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602278c75e98efb1:0x24a4027d5936b872&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E6%A8%AA%E6%B5%9C%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E5%AF%BA%E7%94%B0%E5%AE%B6/@35.8079923,140.0396508,17z/data=!3m1!4b1!4m6!3m5!1s0x602278c75e98efb1:0x24a4027d5936b872!8m2!3d35.8079923!4d140.0396508!16s%2Fg%2F1tftff7k!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "らぁ麺 ろく壱 柏支店",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8603769,
+  "lng": 139.9668604,
+  "genre": "ラーメン屋",
+  "address": "旭町１丁目１４−８ 日の出ビル 1階101号",
+  "placeId": "0x60189d23e0e1b093:0xdd0e4bb2f2bcc3b5",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d23e0e1b093:0xdd0e4bb2f2bcc3b5&hl=ja",
+  "region": "toukatsu"
+ },
+ {
+  "name": "中華そば れもん",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.894723,
+  "lng": 139.9594648,
+  "genre": "ラーメン屋",
+  "address": "若柴６９−１",
+  "placeId": "0x60189df9abf8cb8d:0xf41a80c96f8b5e5",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189df9abf8cb8d:0xf41a80c96f8b5e5&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E3%81%9D%E3%81%B0+%E3%82%8C%E3%82%82%E3%82%93/@35.894723,139.9594648,17z/data=!3m1!4b1!4m6!3m5!1s0x60189df9abf8cb8d:0xf41a80c96f8b5e5!8m2!3d35.894723!4d139.9594648!16s%2Fg%2F11ghsgcrw6!9m1!1b1?hl=ja"
+ },
+ {
   "name": "大勝",
   "rating": 4,
   "reviews": 639,
@@ -5611,6 +6224,43 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189cd973e8bde1:0xcd90ce75f7b54ce5&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E5%A4%A7%E5%8B%9D/@35.85415,139.9735417,16z/data=!3m1!4b1!4m6!3m5!1s0x60189cd973e8bde1:0xcd90ce75f7b54ce5!8m2!3d35.85415!4d139.9735417!16s%2Fg%2F1tdy4gw4!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "こってりらーめん誉",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.860362,
+  "lng": 139.968904,
+  "genre": "ラーメン屋",
+  "address": "旭町１丁目７−１１",
+  "placeId": "0x60189ce7b9249ecd:0x97ccab00c75f2620",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189ce7b9249ecd:0x97ccab00c75f2620&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E3%81%93%E3%81%A3%E3%81%A6%E3%82%8A%E3%82%89%E3%83%BC%E3%82%81%E3%82%93%E8%AA%89/@35.860362,139.968904,17z/data=!3m1!4b1!4m6!3m5!1s0x60189ce7b9249ecd:0x97ccab00c75f2620!8m2!3d35.860362!4d139.968904!16s%2Fg%2F1th49dr_!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "岩間らーめん",
+  "rating": 4,
+  "reviews": 639,
+  "lat": 35.8080869,
+  "lng": 140.0864962,
+  "genre": "ラーメン屋",
+  "address": "神々廻１８６５ 手打ラーメン岩間",
+  "placeId": "0x60227eb140b27355:0x7472d48b43ecbdf0",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227eb140b27355:0x7472d48b43ecbdf0&hl=ja",
+  "region": "toukatsu"
+ },
+ {
+  "name": "タンメン トナリ 酒々井店",
+  "rating": 4,
+  "reviews": 636,
+  "lat": 35.7056059,
+  "lng": 140.272104,
+  "genre": "ラーメン",
+  "address": "馬橋５８−１ 字出戸58-1",
+  "placeId": "0x60228d3295a60489:0x476d6c1d0e74b9c0",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60228d3295a60489:0x476d6c1d0e74b9c0&hl=ja",
+  "region": "inba"
  },
  {
   "name": "らあめん 葫 行徳店",
@@ -5652,6 +6302,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%BF%80%E8%BE%9B%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%81%AE%E6%8B%89%E9%BA%BA%E5%B8%9D%E7%8E%8B+%E5%90%9B%E6%B4%A5%E5%BA%97/@35.3314852,139.9230443,17z/data=!3m1!4b1!4m6!3m5!1s0x60180c6ee594605f:0xb8afa5e5b1c1bfd5!8m2!3d35.3314852!4d139.9230443!16s%2Fg%2F119v7bzx3!9m1!1b1?hl=ja"
  },
  {
+  "name": "浜屋",
+  "rating": 4,
+  "reviews": 585,
+  "lat": 35.8692005,
+  "lng": 140.1541707,
+  "genre": "ラーメン",
+  "address": "横須賀１１７１−２",
+  "placeId": "0x60227b1a92f9c55b:0xc55c50fa39c9ed0b",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227b1a92f9c55b:0xc55c50fa39c9ed0b&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "麺屋祐",
   "rating": 4,
   "reviews": 568,
@@ -5676,6 +6338,30 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022c2a6a7e95555:0x56c6402ab605ef49&hl=ja",
   "region": "tosou",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%AF%E3%82%84%E3%81%95%E3%81%8B/@35.6044395,140.4940281,17z/data=!3m1!4b1!4m6!3m5!1s0x6022c2a6a7e95555:0x56c6402ab605ef49!8m2!3d35.6044395!4d140.4940281!16s%2Fg%2F11d_z21_pg!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "麺処 春の風",
+  "rating": 4,
+  "reviews": 554,
+  "lat": 35.9586109,
+  "lng": 139.9759722,
+  "genre": "ラーメン",
+  "address": "立沢１０９７−１１",
+  "placeId": "0x60189f43a546e549:0xfb89cc3711741233",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189f43a546e549:0xfb89cc3711741233&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "もつの屋",
+  "rating": 4,
+  "reviews": 553,
+  "lat": 35.9842811,
+  "lng": 139.9813919,
+  "genre": "ラーメン",
+  "address": "小絹６８３−１",
+  "placeId": "0x60189f83158545f3:0x74fc4d79ca62dcb1",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189f83158545f3:0x74fc4d79ca62dcb1&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "家系ラーメン 王道家直系 修",
@@ -5756,6 +6442,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%82%82%E3%81%AE%E3%81%AE%E3%81%93%E3%81%93%E3%82%8D/@35.7707208,139.9424795,17z/data=!3m1!4b1!4m6!3m5!1s0x6018832d149efbff:0x7e77cb0fff82c50c!8m2!3d35.7707208!4d139.9424795!16s%2Fg%2F11fd4vmgwg!9m1!1b1?hl=ja"
  },
  {
+  "name": "麺屋とん嬉",
+  "rating": 4,
+  "reviews": 517,
+  "lat": 36.0389464,
+  "lng": 140.175971,
+  "genre": "ラーメン",
+  "address": "摩利山新田２７３−５",
+  "placeId": "0x6022728449a8399d:0x24cd1c396ec68000",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022728449a8399d:0x24cd1c396ec68000&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "栄昇らーめん 匠",
   "rating": 4,
   "reviews": 516,
@@ -5793,6 +6491,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60228021074ba5a7:0xe7214260679bb898&hl=ja",
   "region": "keiyo",
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B9%9D%E5%B7%9E%E3%81%A8%E3%82%93%E3%81%93%E3%81%A4%E3%82%89%E3%83%BC%E3%82%81%E3%82%93+%E5%8D%97%E6%9C%A8%E5%95%86%E5%BA%97/@35.6941419,140.0248714,17z/data=!3m1!4b1!4m6!3m5!1s0x60228021074ba5a7:0xe7214260679bb898!8m2!3d35.6941419!4d140.0248714!16s%2Fg%2F1tdc5bgw!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "良温 (Ra-on)",
+  "rating": 4,
+  "reviews": 506,
+  "lat": 36.1071244,
+  "lng": 140.2053207,
+  "genre": "ラーメン",
+  "address": "若松町３−５",
+  "placeId": "0x602212ed19aa67a9:0x484cfa84bcad03dc",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602212ed19aa67a9:0x484cfa84bcad03dc&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "つけ麺一合",
@@ -5913,7 +6623,7 @@
  {
   "name": "茅橋らーめん",
   "rating": 4,
-  "reviews": 446,
+  "reviews": 447,
   "lat": 35.7925482,
   "lng": 140.1323149,
   "genre": "ラーメン",
@@ -6067,6 +6777,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E7%8E%8B%E5%B0%86+%E5%B1%B1%E5%80%89%E5%BA%97/@35.4908569,140.1255501,17z/data=!3m1!4b1!4m6!3m5!1s0x602298e68b9cfd39:0xba3189a6afbfef51!8m2!3d35.4908569!4d140.1255501!16s%2Fg%2F1tfpjyfj!9m1!1b1?hl=ja"
  },
  {
+  "name": "りんりん",
+  "rating": 4,
+  "reviews": 402,
+  "lat": 35.9651443,
+  "lng": 140.1549331,
+  "genre": "ラーメン",
+  "address": "神谷２丁目５０−１９",
+  "placeId": "0x602271bc808c715b:0x82e44d028805ad1f",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602271bc808c715b:0x82e44d028805ad1f&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "旨麺",
   "rating": 4,
   "reviews": 400,
@@ -6186,7 +6908,7 @@
  {
   "name": "野田醤油ラーメン 麺屋あじくま 初石店",
   "rating": 4,
-  "reviews": 344,
+  "reviews": 346,
   "lat": 35.8842106,
   "lng": 139.9171081,
   "genre": "ラーメン",
@@ -6208,6 +6930,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60188776de26d9bf:0xcbe065249205e1c1&hl=ja",
   "region": "keiyo",
   "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%B1%8B+%E6%9C%AC%E6%97%A5%E3%82%82%E6%99%B4%E5%A4%A9%E3%81%A7%E3%81%99/@35.6774528,139.899575,17z/data=!3m1!4b1!4m6!3m5!1s0x60188776de26d9bf:0xcbe065249205e1c1!8m2!3d35.6774528!4d139.899575!16s%2Fg%2F11byxf5d0g!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "横浜ラーメン 一心",
+  "rating": 4,
+  "reviews": 343,
+  "lat": 35.9219905,
+  "lng": 140.0062495,
+  "genre": "ラーメン",
+  "address": "戸頭１２７４−３",
+  "placeId": "0x60189de4fe41bb09:0x9bf32968ea621f28",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189de4fe41bb09:0x9bf32968ea621f28&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "yagu-noodle",
@@ -6275,6 +7009,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%A8%AA%E6%BF%B1%E5%AE%B6%E7%B3%BB%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E5%8D%81%E4%BB%A3%E7%9B%AE%E9%87%8E%E4%B8%AD%E5%AE%B6/@35.6716778,139.7960765,17z/data=!3m1!4b1!4m6!3m5!1s0x601889000200fab5:0xb1e2c8abb95bf8ed!8m2!3d35.6716778!4d139.7960765!16s%2Fg%2F11yhyg40c3!9m1!1b1?hl=ja"
  },
  {
+  "name": "中華そば専門 田中そば店 荒川沖店",
+  "rating": 4,
+  "reviews": 316,
+  "lat": 36.0471732,
+  "lng": 140.1673826,
+  "genre": "ラーメン",
+  "address": "西根南１丁目１−２",
+  "placeId": "0x602273b2a7678fe1:0x46065a9e671a2198",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602273b2a7678fe1:0x46065a9e671a2198&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "えびね",
   "rating": 4,
   "reviews": 309,
@@ -6301,17 +7047,16 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%BF%E3%81%9D%E8%86%B3+%E4%BF%B5%E7%94%B0%E5%BA%97/@35.3173024,140.0583698,17z/data=!3m1!4b1!4m6!3m5!1s0x6022a7aceca745bf:0xa1b5ceb458decfba!8m2!3d35.3173024!4d140.0583698!16s%2Fg%2F1tjdlw94!9m1!1b1?hl=ja"
  },
  {
-  "name": "手打ラーメン岩間",
+  "name": "中華そば かもまる",
   "rating": 4,
-  "reviews": 296,
-  "lat": 35.8080754,
-  "lng": 140.0865298,
-  "genre": "中華料理",
-  "address": "千葉県白井市神々廻１８６５",
-  "placeId": "0x60227eb140b3462b:0x965097c2d9f5db97",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60227eb140b3462b:0x965097c2d9f5db97&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E3%80%92270-1416+%E5%8D%83%E8%91%89%E7%9C%8C%E7%99%BD%E4%BA%95%E5%B8%82%E7%A5%9E%E3%80%85%E5%BB%BB%EF%BC%91%EF%BC%98%EF%BC%96%EF%BC%95+%E6%89%8B%E6%89%93%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E5%B2%A9%E9%96%93/@35.8080754,140.0865298,17z/data=!3m1!4b1!4m6!3m5!1s0x60227eb140b3462b:0x965097c2d9f5db97!8m2!3d35.8080754!4d140.0865298!16s%2Fg%2F11dxmf2xhv!9m1!1b1?hl=ja"
+  "reviews": 303,
+  "lat": 36.0393749,
+  "lng": 140.2132548,
+  "genre": "ラーメン",
+  "address": "８, ２丁目-８-８ 中郷",
+  "placeId": "0x60226d92e4392add:0x11cecf0730f2df63",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d92e4392add:0x11cecf0730f2df63&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "麺屋龍月",
@@ -6351,6 +7096,30 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x601887efd284b345:0x8b2acde6d64f3be5&hl=ja",
   "region": "tokyo",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%A1%E3%82%8A%E3%82%81%E3%82%93%E4%BA%AD+%E4%B8%AD%E8%91%9B%E8%A5%BF%E5%BA%97/@35.6627635,139.8674057,17z/data=!3m1!4b1!4m6!3m5!1s0x601887efd284b345:0x8b2acde6d64f3be5!8m2!3d35.6627635!4d139.8674057!16s%2Fg%2F1ts3l5mc!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "味よし",
+  "rating": 4,
+  "reviews": 293,
+  "lat": 35.867813,
+  "lng": 140.153927,
+  "genre": "ラーメン",
+  "address": "横須賀１１９５−４",
+  "placeId": "0x60227b1073fb04b5:0xcc0dba593d2136eb",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227b1073fb04b5:0xcc0dba593d2136eb&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "らーめん 珍来軒 神宮寺店",
+  "rating": 4,
+  "reviews": 292,
+  "lat": 35.9601833,
+  "lng": 140.3688667,
+  "genre": "ラーメン",
+  "address": "神宮寺２２６３−１",
+  "placeId": "0x60225da02a3b2343:0xa598bf4d521af0b4",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60225da02a3b2343:0xa598bf4d521af0b4&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "とんこつらーめん一代",
@@ -6626,6 +7395,30 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E5%BE%B3%E3%81%A8%E3%81%8F/@35.6520321,140.2981326,17z/data=!3m1!4b1!4m6!3m5!1s0x602293b153e25fe7:0x5239d2d19f9aee2!8m2!3d35.6520321!4d140.2981326!16s%2Fg%2F11h77zlly3!9m1!1b1?hl=ja"
  },
  {
+  "name": "中華そば来陣",
+  "rating": 4,
+  "reviews": 226,
+  "lat": 35.9960368,
+  "lng": 139.8439189,
+  "genre": "ラーメン",
+  "address": "中里９４２−１",
+  "placeId": "0x6018a1702e3e9cdd:0xdb306084552f321",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a1702e3e9cdd:0xdb306084552f321&hl=ja",
+  "region": "toukatsu"
+ },
+ {
+  "name": "らーめん 幸香",
+  "rating": 4,
+  "reviews": 225,
+  "lat": 36.0850805,
+  "lng": 140.1696389,
+  "genre": "中華料理",
+  "address": "宍塚１７３０−２",
+  "placeId": "0x60220d42701ca845:0xe359dafb539bbfc5",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60220d42701ca845:0xe359dafb539bbfc5&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "竹岡式ラーメン びーどろ食堂",
   "rating": 4,
   "reviews": 216,
@@ -6654,7 +7447,7 @@
  {
   "name": "らーめん 柊",
   "rating": 4,
-  "reviews": 210,
+  "reviews": 211,
   "lat": 35.6905041,
   "lng": 140.0698584,
   "genre": "ラーメン",
@@ -6676,6 +7469,42 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022991efc996afb:0xa86a2854760a463b&hl=ja",
   "region": "chiba",
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E8%95%8E%E9%BA%A6+%E5%86%86%E9%9B%80/@35.5204678,140.106259,17z/data=!3m1!4b1!4m6!3m5!1s0x6022991efc996afb:0xa86a2854760a463b!8m2!3d35.5204678!4d140.106259!16s%2Fg%2F11g4l8b7mj!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "Mukachou",
+  "rating": 4,
+  "reviews": 206,
+  "lat": 36.078022,
+  "lng": 140.1145146,
+  "genre": "ラーメン",
+  "address": "竹園１丁目９−７ 林ビル",
+  "placeId": "0x60220d0018e9e8d7:0xd5c4d5e7aca0b896",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60220d0018e9e8d7:0xd5c4d5e7aca0b896&hl=ja",
+  "region": "tsukuba"
+ },
+ {
+  "name": "がんこやラーメン 江戸崎店",
+  "rating": 4,
+  "reviews": 206,
+  "lat": 35.9679079,
+  "lng": 140.3199452,
+  "genre": "ラーメン",
+  "address": "江戸崎甲９３４−３ ９３４−３",
+  "placeId": "0x602267c45370480f:0x9c05100e9c59a42a",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602267c45370480f:0x9c05100e9c59a42a&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "拉麺・呑み食い処 伊八",
+  "rating": 4,
+  "reviews": 204,
+  "lat": 36.0000516,
+  "lng": 140.0408276,
+  "genre": "ラーメン",
+  "address": "紫峰ヶ丘１丁目２１−３ ブリリアントパレス",
+  "placeId": "0x6022758c8c959665:0x706854cee6a0f659",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022758c8c959665:0x706854cee6a0f659&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "和風らーめん夢館",
@@ -6821,6 +7650,42 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E9%80%B2/@35.6793315,139.829347,17z/data=!3m1!4b1!4m6!3m5!1s0x601888f40a968ac1:0x10b30d3e2eee0004!8m2!3d35.6793315!4d139.829347!16s%2Fg%2F1ydpf64mm!9m1!1b1?hl=ja"
  },
  {
+  "name": "佐原中華麺類のお店 皐月",
+  "rating": 4,
+  "reviews": 187,
+  "lat": 35.8904527,
+  "lng": 140.4948457,
+  "genre": "ラーメン",
+  "address": "佐原イ５９７",
+  "placeId": "0x6022f7e85d01afdd:0x22aa840541435a59",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022f7e85d01afdd:0x22aa840541435a59&hl=ja",
+  "region": "tosou"
+ },
+ {
+  "name": "喜多方ラーメン坂内 牛久店",
+  "rating": 4,
+  "reviews": 186,
+  "lat": 35.9693941,
+  "lng": 140.1511409,
+  "genre": "ラーメン",
+  "address": "神谷６丁目１−２ フードスクエア牛久 別棟",
+  "placeId": "0x602271002e63e7e1:0xdd6ee29fb0715ce1",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602271002e63e7e1:0xdd6ee29fb0715ce1&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "手打ラーメン 悟空",
+  "rating": 4,
+  "reviews": 185,
+  "lat": 36.0241691,
+  "lng": 140.1689202,
+  "genre": "ラーメン",
+  "address": "荒川本郷１３２９−１２０",
+  "placeId": "0x60227264391e7679:0x1f2de36b44005c0",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227264391e7679:0x1f2de36b44005c0&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "中華そば 一休",
   "rating": 4,
   "reviews": 179,
@@ -6832,6 +7697,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022997fa87d62b5:0xf517b8d3370fb6ed&hl=ja",
   "region": "chiba",
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E3%81%9D%E3%81%B0+%E4%B8%80%E4%BC%91/@35.4727087,140.1233175,17z/data=!3m1!4b1!4m6!3m5!1s0x6022997fa87d62b5:0xf517b8d3370fb6ed!8m2!3d35.4727087!4d140.1233175!16s%2Fg%2F11fqc0g_cw!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "ラーメン清六家 神立店",
+  "rating": 4,
+  "reviews": 177,
+  "lat": 36.1199665,
+  "lng": 140.2306355,
+  "genre": "ラーメン",
+  "address": "神立中央５丁目４−３",
+  "placeId": "0x602213001a18727f:0x13ad688cddb7498",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602213001a18727f:0x13ad688cddb7498&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "麺屋 一瀧（いちりゅう）",
@@ -6910,6 +7787,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022977890b3f57d:0xcc854c205974606a&hl=ja",
   "region": "chiba",
   "reviewsUrl": "https://www.google.com/maps/place/%E5%8D%83%E4%B9%83%E5%AE%B6/@35.5319743,140.262783,17z/data=!3m1!4b1!4m6!3m5!1s0x6022977890b3f57d:0xcc854c205974606a!8m2!3d35.5319743!4d140.262783!16s%2Fg%2F11v3qf8p4w!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "中華そば だいかつ",
+  "rating": 4,
+  "reviews": 164,
+  "lat": 36.0469108,
+  "lng": 140.15366,
+  "genre": "ラーメン",
+  "address": "西根西１丁目１３−２８",
+  "placeId": "0x602272c35e1eaaab:0xf397a425c7a260b1",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602272c35e1eaaab:0xf397a425c7a260b1&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "らーめん 松信 八千代台店",
@@ -7028,6 +7917,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E5%9B%BD%E6%96%99%E7%90%86+%E9%A6%99%E5%A6%83+%E6%97%AD%E6%9C%AC%E5%BA%97/@35.7200672,140.647658,17z/data=!3m1!4b1!4m6!3m5!1s0x6022e1a2afee9983:0xcfa51af50fc8b5fb!8m2!3d35.7200672!4d140.647658!16s%2Fg%2F1tgk0rql!9m1!1b1?hl=ja"
  },
  {
+  "name": "油そば・まぜそば 油武（あぶたけ）",
+  "rating": 4,
+  "reviews": 141,
+  "lat": 36.0780463,
+  "lng": 140.2046893,
+  "genre": "ラーメン",
+  "address": "大和町９−１",
+  "placeId": "0x60226d2c1b7b66e5:0x9eacaa0f8114f70b",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d2c1b7b66e5:0x9eacaa0f8114f70b&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "へいきち 東金店",
   "rating": 4,
   "reviews": 139,
@@ -7067,6 +7968,19 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%89%B2%E7%83%B9+%E4%BA%80%E5%A3%B1/@35.7885632,139.9312647,17z/data=!3m1!4b1!4m6!3m5!1s0x6018847dfe907edf:0x5387174fda67835b!8m2!3d35.7885632!4d139.9312647!16s%2Fg%2F1pv5xs2xq!9m1!1b1?hl=ja"
  },
  {
+  "name": "MENYA TOMOSHIBI",
+  "rating": 4,
+  "reviews": 133,
+  "lat": 35.9765974,
+  "lng": 139.8406064,
+  "genre": "ラーメン",
+  "address": "春日町１５−１０",
+  "placeId": "0x6018bd003b9c92e3:0x69717076bbbdacc9",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018bd003b9c92e3:0x69717076bbbdacc9&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/MENYA+TOMOSHIBI/@35.9765974,139.8406064,17z/data=!3m1!4b1!4m6!3m5!1s0x6018bd003b9c92e3:0x69717076bbbdacc9!8m2!3d35.9765974!4d139.8406064!16s%2Fg%2F11x728ts5k!9m1!1b1?hl=ja"
+ },
+ {
   "name": "柏龍",
   "rating": 4,
   "reviews": 133,
@@ -7078,19 +7992,6 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189bdd4531496d:0x7e95ce9f45149870&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E6%9F%8F%E9%BE%8D/@35.8841568,139.9154768,17z/data=!3m1!4b1!4m6!3m5!1s0x60189bdd4531496d:0x7e95ce9f45149870!8m2!3d35.8841568!4d139.9154768!16s%2Fg%2F1tdfn8gh!9m1!1b1?hl=ja"
- },
- {
-  "name": "MENYA TOMOSHIBI",
-  "rating": 4,
-  "reviews": 132,
-  "lat": 35.9765974,
-  "lng": 139.8406064,
-  "genre": "ラーメン",
-  "address": "春日町１５−１０",
-  "placeId": "0x6018bd003b9c92e3:0x69717076bbbdacc9",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x6018bd003b9c92e3:0x69717076bbbdacc9&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/MENYA+TOMOSHIBI/@35.9765974,139.8406064,17z/data=!3m1!4b1!4m6!3m5!1s0x6018bd003b9c92e3:0x69717076bbbdacc9!8m2!3d35.9765974!4d139.8406064!16s%2Fg%2F11x728ts5k!9m1!1b1?hl=ja"
  },
  {
   "name": "らーめんだいこう",
@@ -7145,6 +8046,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%81%B5%E6%AF%94%E5%AF%BF%E3%83%96%E3%82%BF%E3%83%A1%E3%83%B3+%E8%A5%BF%E5%8D%83%E8%91%89%E9%A7%85%E5%89%8D%E5%BA%97/@35.6236068,140.103195,17z/data=!3m1!4b1!4m6!3m5!1s0x6022855d220fae6d:0x37eaab375fa43592!8m2!3d35.6236068!4d140.103195!16s%2Fg%2F11t6drw8k4!9m1!1b1?hl=ja"
  },
  {
+  "name": "栄来軒",
+  "rating": 4,
+  "reviews": 125,
+  "lat": 35.8556065,
+  "lng": 140.1511975,
+  "genre": "ラーメン",
+  "address": "布川２２８２",
+  "placeId": "0x60227b728b207fd7:0xc74951cf2bd0c659",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227b728b207fd7:0xc74951cf2bd0c659&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "大和食堂",
   "rating": 4,
   "reviews": 125,
@@ -7156,6 +8069,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6017fdcceb92d063:0x61d71722569a819&hl=ja",
   "region": "boso",
   "reviewsUrl": "https://www.google.com/maps/place/%E5%A4%A7%E5%92%8C%E9%A3%9F%E5%A0%82/@35.0202211,139.9793487,17z/data=!3m1!4b1!4m6!3m5!1s0x6017fdcceb92d063:0x61d71722569a819!8m2!3d35.0202211!4d139.9793487!16s%2Fg%2F1tplq8hk!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "王様ラーメン関宿店",
+  "rating": 4,
+  "reviews": 124,
+  "lat": 36.026087,
+  "lng": 139.8248011,
+  "genre": "ラーメン",
+  "address": "木間ケ瀬２１３５",
+  "placeId": "0x6018bb0e94171389:0xc4b9db588c5127a6",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018bb0e94171389:0xc4b9db588c5127a6&hl=ja",
+  "region": "toukatsu"
  },
  {
   "name": "麺やギブタンクス",
@@ -7366,19 +8291,6 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%98%E3%82%83%E3%82%89%E3%81%97/@35.345626,139.906162,17z/data=!3m1!4b1!4m6!3m5!1s0x60180cf006f13d85:0xe2f718f8bb0f5a56!8m2!3d35.345626!4d139.906162!16s%2Fg%2F11r8qm_32!9m1!1b1?hl=ja"
  },
  {
-  "name": "手作りラーメンの店 Rustic Noodles",
-  "rating": 4,
-  "reviews": 79,
-  "lat": 35.9494905,
-  "lng": 139.8645859,
-  "genre": "ラーメン",
-  "address": "野田５６０−１ こまやビル 1F",
-  "placeId": "0x6018a380ee9035ab:0xf2a908a2070c898",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a380ee9035ab:0xf2a908a2070c898&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E6%89%8B%E4%BD%9C%E3%82%8A%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%81%AE%E5%BA%97+Rustic+Noodles/@35.9494905,139.8645859,17z/data=!3m1!4b1!4m6!3m5!1s0x6018a380ee9035ab:0xf2a908a2070c898!8m2!3d35.9494905!4d139.8645859!16s%2Fg%2F11x_yxs9ml!9m1!1b1?hl=ja"
- },
- {
   "name": "屋台ラーメン桜",
   "rating": 4,
   "reviews": 77,
@@ -7428,6 +8340,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6017f74b1dda4e59:0x9a727755ba829523&hl=ja",
   "region": "boso",
   "reviewsUrl": "https://www.google.com/maps/place/%E6%A2%85%E8%BB%92/@34.9779325,139.8369021,17z/data=!3m1!4b1!4m6!3m5!1s0x6017f74b1dda4e59:0x9a727755ba829523!8m2!3d34.9779325!4d139.8369021!16s%2Fg%2F1tfkfjy7!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "広東軒",
+  "rating": 4,
+  "reviews": 69,
+  "lat": 35.8943313,
+  "lng": 140.5029056,
+  "genre": "ラーメン",
+  "address": "佐原３９２２",
+  "placeId": "0x6022f7efe4826caf:0x10da15af20ce67a0",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022f7efe4826caf:0x10da15af20ce67a0&hl=ja",
+  "region": "tosou"
  },
  {
   "name": "サンハウス",
@@ -7494,6 +8418,30 @@
   "region": "tsukuba"
  },
  {
+  "name": "中華蕎麦 ごとう",
+  "rating": 4,
+  "reviews": 64,
+  "lat": 35.9676556,
+  "lng": 140.0286811,
+  "genre": "ラーメン",
+  "address": "豊体１６１９",
+  "placeId": "0x602275519df3cec5:0xd366becdb19c3a7d",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602275519df3cec5:0xd366becdb19c3a7d&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "大井屋",
+  "rating": 4,
+  "reviews": 63,
+  "lat": 35.9028234,
+  "lng": 140.1845596,
+  "genre": "ラーメン",
+  "address": "上町４６７５−２",
+  "placeId": "0x602265344d6dda93:0xfe30b0fe5884e81f",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602265344d6dda93:0xfe30b0fe5884e81f&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "ちゃんこらーめん",
   "rating": 4,
   "reviews": 62,
@@ -7531,6 +8479,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60231f0005efac45:0xaa7b702576a12287&hl=ja",
   "region": "tosou",
   "reviewsUrl": "https://www.google.com/maps/place/%E6%94%AF%E9%82%A3%E3%81%9D%E3%81%B0+%E3%81%B8%E3%81%84%E3%81%8D%E3%81%A1/@35.7110502,140.7166776,17z/data=!3m1!4b1!4m6!3m5!1s0x60231f0005efac45:0xaa7b702576a12287!8m2!3d35.7110502!4d140.7166776!16s%2Fg%2F11wq990kbn!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "麺屋 いつき",
+  "rating": 4,
+  "reviews": 50,
+  "lat": 35.9350269,
+  "lng": 139.864371,
+  "genre": "ラーメン",
+  "address": "上花輪新町38−３３",
+  "placeId": "0x60188184c65c9e7d:0xbc6dcf26a8d65348",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60188184c65c9e7d:0xbc6dcf26a8d65348&hl=ja",
+  "region": "toukatsu"
  },
  {
   "name": "松戸中華そば 富田食堂",
@@ -7572,19 +8532,6 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%82%89%E3%83%BC%E3%82%81%E3%82%93%E5%BC%81%E6%85%B6+%E9%96%80%E5%89%8D%E4%BB%B2%E7%94%BA%E5%BA%97/@35.6745145,139.7957872,17z/data=!3m1!4b1!4m6!3m5!1s0x6018891378faed81:0x39a1c20703ef1e14!8m2!3d35.6745145!4d139.7957872!16s%2Fg%2F1td330jv!9m1!1b1?hl=ja"
  },
  {
-  "name": "つけ麺・家系ラーメン 藤崎家 柏店",
-  "rating": 3.9,
-  "reviews": 2046,
-  "lat": 35.8505431,
-  "lng": 139.971249,
-  "genre": "宅配/出前",
-  "address": "緑ケ丘２３−１１",
-  "placeId": "0x60189d0038a11823:0xcdaa32dc1ab863df",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d0038a11823:0xcdaa32dc1ab863df&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E3%81%A4%E3%81%91%E9%BA%BA%E3%83%BB%E5%AE%B6%E7%B3%BB%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E8%97%A4%E5%B4%8E%E5%AE%B6+%E6%9F%8F%E5%BA%97/@35.8505431,139.971249,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d0038a11823:0xcdaa32dc1ab863df!8m2!3d35.8505431!4d139.971249!16s%2Fg%2F11ymjz5p6r!9m1!1b1?hl=ja"
- },
- {
   "name": "一蘭 柏店",
   "rating": 3.9,
   "reviews": 2046,
@@ -7600,7 +8547,7 @@
  {
   "name": "もちもちの木 野田店",
   "rating": 3.9,
-  "reviews": 2019,
+  "reviews": 2020,
   "lat": 35.9756195,
   "lng": 139.8636919,
   "genre": "ラーメン",
@@ -7665,7 +8612,7 @@
  {
   "name": "神道家",
   "rating": 3.9,
-  "reviews": 1688,
+  "reviews": 1691,
   "lat": 35.9242579,
   "lng": 139.8946237,
   "genre": "ラーメン",
@@ -7689,17 +8636,16 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E5%96%9C%E5%A4%9A%E6%96%B9%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E5%9D%82%E5%86%85+%E8%98%87%E6%88%91%E5%BA%97/@35.5860033,140.1246749,17z/data=!3m1!4b1!4m6!3m5!1s0x60229b1467c2e3cf:0x11cbafbb246ec579!8m2!3d35.5860033!4d140.1246749!16s%2Fg%2F1tt8ccx8!9m1!1b1?hl=ja"
  },
  {
-  "name": "こってりらーめん誉",
+  "name": "ラーメンショップ 椿 河内店",
   "rating": 3.9,
-  "reviews": 1479,
-  "lat": 35.860362,
-  "lng": 139.968904,
+  "reviews": 1464,
+  "lat": 35.8764719,
+  "lng": 140.2937706,
   "genre": "ラーメン",
-  "address": "旭町１丁目７−１１",
-  "placeId": "0x60189ce7b9249ecd:0x97ccab00c75f2620",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189ce7b9249ecd:0x97ccab00c75f2620&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E3%81%93%E3%81%A3%E3%81%A6%E3%82%8A%E3%82%89%E3%83%BC%E3%82%81%E3%82%93%E8%AA%89/@35.860362,139.968904,17z/data=!3m1!4b1!4m6!3m5!1s0x60189ce7b9249ecd:0x97ccab00c75f2620!8m2!3d35.860362!4d139.968904!16s%2Fg%2F1th49dr_!9m1!1b1?hl=ja"
+  "address": "金江津８９３５",
+  "placeId": "0x60226116346634ef:0xd151aa897f44f977",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226116346634ef:0xd151aa897f44f977&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "中国ラーメン揚州商人 市川二俣店",
@@ -8039,7 +8985,7 @@
  {
   "name": "ラーメン ヨシベー 八千代店",
   "rating": 3.9,
-  "reviews": 792,
+  "reviews": 793,
   "lat": 35.723317,
   "lng": 140.0898029,
   "genre": "ラーメン",
@@ -8076,9 +9022,21 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E5%9B%BD%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E6%8F%9A%E5%B7%9E%E5%95%86%E4%BA%BA%E5%8D%83%E8%91%89%E9%83%BD%E7%94%BA%E5%BA%97/@35.6142442,140.150772,17z/data=!3m1!4b1!4m6!3m5!1s0x60229ad23caa93a9:0x3353b01901964895!8m2!3d35.6142442!4d140.150772!16s%2Fg%2F1tg6q6z6!9m1!1b1?hl=ja"
  },
  {
+  "name": "麺場 田所商店 牛久店",
+  "rating": 3.9,
+  "reviews": 737,
+  "lat": 35.968726,
+  "lng": 140.1394169,
+  "genre": "ラーメン",
+  "address": "牛久町籠田５２４−３",
+  "placeId": "0x6022717688440001:0x57667c84dee45368",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022717688440001:0x57667c84dee45368&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "AKEBI",
   "rating": 3.9,
-  "reviews": 733,
+  "reviews": 734,
   "lat": 35.8606326,
   "lng": 139.9742503,
   "genre": "ラーメン",
@@ -8087,6 +9045,31 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189cdd4b9211ff:0x683611b8d27806df&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/AKEBI/@35.8606326,139.9742503,17z/data=!3m1!4b1!4m6!3m5!1s0x60189cdd4b9211ff:0x683611b8d27806df!8m2!3d35.8606326!4d139.9742503!16s%2Fg%2F12qhfmkl3!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "つけ麺・家系ラーメン 藤崎家 柏店",
+  "rating": 3.9,
+  "reviews": 734,
+  "lat": 35.8505431,
+  "lng": 139.971249,
+  "genre": "宅配/出前",
+  "address": "緑ケ丘２３−１１",
+  "placeId": "0x60189d0038a11823:0xcdaa32dc1ab863df",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d0038a11823:0xcdaa32dc1ab863df&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E3%81%A4%E3%81%91%E9%BA%BA%E3%83%BB%E5%AE%B6%E7%B3%BB%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E8%97%A4%E5%B4%8E%E5%AE%B6+%E6%9F%8F%E5%BA%97/@35.8505431,139.971249,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d0038a11823:0xcdaa32dc1ab863df!8m2!3d35.8505431!4d139.971249!16s%2Fg%2F11ymjz5p6r!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "大勝軒 ROSSO",
+  "rating": 3.9,
+  "reviews": 733,
+  "lat": 35.9532191,
+  "lng": 140.1712363,
+  "genre": "ラーメン",
+  "address": "女化町６４８−３",
+  "placeId": "0x602270309e1ef04d:0xdb34b943d0dd3c81",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602270309e1ef04d:0xdb34b943d0dd3c81&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "煮干中華ソバ イチカワ",
@@ -8205,6 +9188,19 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%A8%E3%82%93%E3%81%93%E3%81%A4%E5%B1%8B%E5%8F%B0%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E8%B2%B4%E7%94%9F+%E7%A8%94%E5%8F%B0%E5%BA%97/@35.7849939,139.9218137,17z/data=!3m1!4b1!4m6!3m5!1s0x6018846207827a05:0x218e2c342d9ed7d1!8m2!3d35.7849939!4d139.9218137!16s%2Fg%2F1vg_cvdb!9m1!1b1?hl=ja"
  },
  {
+  "name": "ラーメン二郎 柏店",
+  "rating": 3.9,
+  "reviews": 651,
+  "lat": 35.8822046,
+  "lng": 139.9591994,
+  "genre": "ラーメン",
+  "address": "十余二２４９−５",
+  "placeId": "0x60189d5afdd15d27:0x1d42b10d3c7f9b47",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d5afdd15d27:0x1d42b10d3c7f9b47&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E4%BA%8C%E9%83%8E+%E6%9F%8F%E5%BA%97/@35.8822046,139.9591994,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d5afdd15d27:0x1d42b10d3c7f9b47!8m2!3d35.8822046!4d139.9591994!16s%2Fg%2F11sdzz9rc6!9m1!1b1?hl=ja"
+ },
+ {
   "name": "ラーメン屋セキグチ",
   "rating": 3.9,
   "reviews": 651,
@@ -8218,17 +9214,16 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E5%B1%8B%E3%82%BB%E3%82%AD%E3%82%B0%E3%83%81/@35.9680761,139.8397213,16z/data=!3m1!4b1!4m6!3m5!1s0x6018bce7904e3109:0xb0cef716f800e97e!8m2!3d35.9680761!4d139.8397213!16s%2Fg%2F1tdbws20!9m1!1b1?hl=ja"
  },
  {
-  "name": "ラーメン二郎 柏店",
+  "name": "らーめん ゆうきや 総本店",
   "rating": 3.9,
-  "reviews": 650,
-  "lat": 35.8822046,
-  "lng": 139.9591994,
+  "reviews": 634,
+  "lat": 35.9384563,
+  "lng": 140.1963283,
   "genre": "ラーメン",
-  "address": "十余二２４９−５",
-  "placeId": "0x60189d5afdd15d27:0x1d42b10d3c7f9b47",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d5afdd15d27:0x1d42b10d3c7f9b47&hl=ja",
-  "region": "toukatsu",
-  "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E4%BA%8C%E9%83%8E+%E6%9F%8F%E5%BA%97/@35.8822046,139.9591994,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d5afdd15d27:0x1d42b10d3c7f9b47!8m2!3d35.8822046!4d139.9591994!16s%2Fg%2F11sdzz9rc6!9m1!1b1?hl=ja"
+  "address": "藤ケ丘４丁目２−６",
+  "placeId": "0x60226ff1b3a5da3d:0x538a6211b01f3f0d",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226ff1b3a5da3d:0x538a6211b01f3f0d&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "ラーメンの柵柵（さんさん）",
@@ -8255,6 +9250,19 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189d0012918f95:0x6c370e5102e1ca27&hl=ja",
   "region": "toukatsu",
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%AD%E8%8F%AF%E8%95%8E%E9%BA%A6+%E3%81%BF%E3%82%84%E3%81%BE/@35.8806785,139.9789288,16z/data=!3m1!4b1!4m6!3m5!1s0x60189d0012918f95:0x6c370e5102e1ca27!8m2!3d35.8806785!4d139.9789288!16s%2Fg%2F11c3t_4zg1!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "手打ラーメン岩間",
+  "rating": 3.9,
+  "reviews": 607,
+  "lat": 35.8080754,
+  "lng": 140.0865298,
+  "genre": "ラーメン",
+  "address": "千葉県白井市神々廻１８６５",
+  "placeId": "0x60227eb140b3462b:0x965097c2d9f5db97",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227eb140b3462b:0x965097c2d9f5db97&hl=ja",
+  "region": "toukatsu",
+  "reviewsUrl": "https://www.google.com/maps/place/%E3%80%92270-1416+%E5%8D%83%E8%91%89%E7%9C%8C%E7%99%BD%E4%BA%95%E5%B8%82%E7%A5%9E%E3%80%85%E5%BB%BB%EF%BC%91%EF%BC%98%EF%BC%96%EF%BC%95+%E6%89%8B%E6%89%93%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E5%B2%A9%E9%96%93/@35.8080754,140.0865298,17z/data=!3m1!4b1!4m6!3m5!1s0x60227eb140b3462b:0x965097c2d9f5db97!8m2!3d35.8080754!4d140.0865298!16s%2Fg%2F11dxmf2xhv!9m1!1b1?hl=ja"
  },
  {
   "name": "頑々坊子",
@@ -8357,6 +9365,30 @@
   "placeId": "0x60220bf87b35ff49:0xa7e3099cb71e7a80",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60220bf87b35ff49:0xa7e3099cb71e7a80&hl=ja",
   "region": "tsukuba"
+ },
+ {
+  "name": "佐野らーめん 中村屋 蔵 荒川沖店",
+  "rating": 3.9,
+  "reviews": 559,
+  "lat": 36.022194,
+  "lng": 140.1602942,
+  "genre": "ラーメン",
+  "address": "荒川沖４−６",
+  "placeId": "0x6022725dd59eaaab:0x79bc57d22f281f62",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022725dd59eaaab:0x79bc57d22f281f62&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "佐野らーめん中村屋 石下店",
+  "rating": 3.9,
+  "reviews": 547,
+  "lat": 36.10777,
+  "lng": 139.983837,
+  "genre": "ラーメン",
+  "address": "新石下１６３３−１",
+  "placeId": "0x6018a63606a8f605:0xd5422e535acc2788",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018a63606a8f605:0xd5422e535acc2788&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "富士屋ラーメン 五井店",
@@ -8525,6 +9557,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60187d74313f0dcf:0x33fac448f0735386&hl=ja",
   "region": "keiyo",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%8B%E3%83%A5%E3%83%BC%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%97%E6%B5%A6%E5%AE%89%E5%AF%8C%E5%A3%AB%E8%A6%8B%E5%BA%97/@35.6484575,139.8926096,17z/data=!3m1!4b1!4m6!3m5!1s0x60187d74313f0dcf:0x33fac448f0735386!8m2!3d35.6484575!4d139.8926096!16s%2Fg%2F1tfb1zhh!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "麺王 南柏店",
+  "rating": 3.9,
+  "reviews": 467,
+  "lat": 35.8447402,
+  "lng": 139.9535086,
+  "genre": "ラーメン",
+  "address": "南柏１丁目２−３",
+  "placeId": "0x60189cb9bf8409a5:0x23d179c4a4356b64",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189cb9bf8409a5:0x23d179c4a4356b64&hl=ja",
+  "region": "toukatsu"
  },
  {
   "name": "ラーメン富士屋 木更津店",
@@ -8720,7 +9764,7 @@
  {
   "name": "麺場 龍吟 野田店",
   "rating": 3.9,
-  "reviews": 376,
+  "reviews": 377,
   "lat": 35.9544101,
   "lng": 139.8694848,
   "genre": "ラーメン",
@@ -8807,6 +9851,30 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x601885d92ed389db:0x5fa74c246cee26b2&hl=ja",
   "region": "tokyo",
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B9%9D%E5%B7%9E%E8%B1%9A%E9%AA%A8%E3%81%A1%E3%82%83%E3%82%93%E3%81%BD%E3%82%93+%E9%A0%83%E5%A0%B4/@35.7307976,139.8812732,17z/data=!3m1!4b1!4m6!3m5!1s0x601885d92ed389db:0x5fa74c246cee26b2!8m2!3d35.7307976!4d139.8812732!16s%2Fg%2F1td2twn1!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "味の店 楽生",
+  "rating": 3.9,
+  "reviews": 351,
+  "lat": 36.031978,
+  "lng": 140.194363,
+  "genre": "ラーメン",
+  "address": "阿見５４４２−２",
+  "placeId": "0x60226d9aba35c699:0x337ab8d2170744eb",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d9aba35c699:0x337ab8d2170744eb&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "sois",
+  "rating": 3.9,
+  "reviews": 343,
+  "lat": 36.0243164,
+  "lng": 140.1752066,
+  "genre": "ラーメン",
+  "address": "本郷３丁目2−１３",
+  "placeId": "0x6022734f7c562a45:0x9b05b33157b75d70",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022734f7c562a45:0x9b05b33157b75d70&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "竹三屋",
@@ -8976,6 +10044,18 @@
   "region": "tsukuba"
  },
  {
+  "name": "麺屋玄徳",
+  "rating": 3.9,
+  "reviews": 303,
+  "lat": 35.9179311,
+  "lng": 140.0181151,
+  "genre": "ラーメン",
+  "address": "戸頭２０８−１",
+  "placeId": "0x60189df59b2bc751:0x47c5392e4dc9dc7b",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189df59b2bc751:0x47c5392e4dc9dc7b&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "らぁーめん たむぞう",
   "rating": 3.9,
   "reviews": 298,
@@ -9080,6 +10160,30 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E9%BA%BA%E5%B1%8B%E3%83%AB%E3%83%AA%E3%82%AB%E3%82%B1%E3%82%B9/@35.6696841,139.8101211,17z/data=!3m1!4b1!4m6!3m5!1s0x6018892dc8107b3b:0x53e23166e83f2384!8m2!3d35.6696841!4d139.8101211!16s%2Fg%2F11s379350x!9m1!1b1?hl=ja"
  },
  {
+  "name": "北海道ラーメン なまら",
+  "rating": 3.9,
+  "reviews": 269,
+  "lat": 36.0391206,
+  "lng": 140.1951757,
+  "genre": "ラーメン",
+  "address": "阿見４５５５−２２",
+  "placeId": "0x60226d9d16d1f453:0x85aa110985ad5c08",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d9d16d1f453:0x85aa110985ad5c08&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "THE・ラーメン",
+  "rating": 3.9,
+  "reviews": 268,
+  "lat": 35.8809942,
+  "lng": 139.9828024,
+  "genre": "レストラン",
+  "address": "松ケ崎４３１−１",
+  "placeId": "0x60189d92e42931db:0x916e1acf1835ae8d",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d92e42931db:0x916e1acf1835ae8d&hl=ja",
+  "region": "toukatsu"
+ },
+ {
   "name": "正楽園",
   "rating": 3.9,
   "reviews": 268,
@@ -9158,6 +10262,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E7%94%B0%E5%B3%B6%E5%95%86%E5%BA%97/@35.5407062,140.192481,17z/data=!3m1!4b1!4m6!3m5!1s0x60229782aeecec09:0xfd7833637ee62d29!8m2!3d35.5407062!4d140.192481!16s%2Fg%2F11ftmm4ydl!9m1!1b1?hl=ja"
  },
  {
+  "name": "中華料理 しらかば",
+  "rating": 3.9,
+  "reviews": 243,
+  "lat": 36.0396417,
+  "lng": 140.2161034,
+  "genre": "ラーメン",
+  "address": "岡崎３丁目１６−１",
+  "placeId": "0x60226db0289aef17:0x1d1b3cdf66dd4106",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226db0289aef17:0x1d1b3cdf66dd4106&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "ラーメン屋 ステイゴールド",
   "rating": 3.9,
   "reviews": 240,
@@ -9168,6 +10284,30 @@
   "placeId": "0x602273e6a7ab59d9:0x44f649d999a51847",
   "mapsUrl": "https://www.google.com/maps?ftid=0x602273e6a7ab59d9:0x44f649d999a51847&hl=ja",
   "region": "tsukuba"
+ },
+ {
+  "name": "麺屋黒源",
+  "rating": 3.9,
+  "reviews": 239,
+  "lat": 36.0349122,
+  "lng": 140.2219222,
+  "genre": "ラーメン",
+  "address": "中央５丁目２１−２３",
+  "placeId": "0x60226dec2432a62b:0x2e8606608f3965ba",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226dec2432a62b:0x2e8606608f3965ba&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "麺屋 たかみ",
+  "rating": 3.9,
+  "reviews": 228,
+  "lat": 35.9292722,
+  "lng": 140.2056688,
+  "genre": "ラーメン",
+  "address": "松ケ丘２丁目２４−１７",
+  "placeId": "0x60226544e2825931:0x54d331b72a2f925c",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226544e2825931:0x54d331b72a2f925c&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "らーめんつけ麺 光そば",
@@ -9313,6 +10453,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E4%B8%B8%E6%BA%90%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3+%E6%88%91%E5%AD%AB%E5%AD%90%E5%BA%97/@35.8771389,139.9981959,17z/data=!3m1!4b1!4m6!3m5!1s0x60189d00135c9adb:0x6c2e7e2fc5a59b3d!8m2!3d35.8771389!4d139.9981959!16s%2Fg%2F11vx6zyk4d!9m1!1b1?hl=ja"
  },
  {
+  "name": "清六家 龍ヶ崎店",
+  "rating": 3.9,
+  "reviews": 179,
+  "lat": 35.9094126,
+  "lng": 140.1847278,
+  "genre": "ラーメン",
+  "address": "寺後３６０４",
+  "placeId": "0x60226500390d2c0f:0x54b2f5a6e53c95af",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226500390d2c0f:0x54b2f5a6e53c95af&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "麺処餃子処 TESHI",
   "rating": 3.9,
   "reviews": 177,
@@ -9363,6 +10515,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022898dcbedee7f:0xc93375b71d537b13&hl=ja",
   "region": "inba",
   "reviewsUrl": "https://www.google.com/maps/place/%E3%83%8B%E3%82%A4%E3%83%8F%E3%82%AA/@35.7856493,140.2578603,17z/data=!3m1!4b1!4m6!3m5!1s0x6022898dcbedee7f:0xc93375b71d537b13!8m2!3d35.7856493!4d140.2578603!16s%2Fg%2F1thq5dph!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "Noodles Labo 香蕎庵",
+  "rating": 3.9,
+  "reviews": 160,
+  "lat": 35.890501,
+  "lng": 140.4987988,
+  "genre": "ラーメン",
+  "address": "佐原イ３４１２−１",
+  "placeId": "0x6022f79df214d7c9:0xef4390920287f027",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022f79df214d7c9:0xef4390920287f027&hl=ja",
+  "region": "tosou"
  },
  {
   "name": "横浜家系ラーメン 町田商店 野田店",
@@ -9469,6 +10633,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E9%A3%B2%E9%A3%9F%E5%BA%97/@35.2960587,139.867526,17z/data=!3m1!4b1!4m6!3m5!1s0x60180d91f212b425:0xdc2beda64585c8dd!8m2!3d35.2960587!4d139.867526!16s%2Fg%2F11xn3tkhrx!9m1!1b1?hl=ja"
  },
  {
+  "name": "らぁーめん滿帆家",
+  "rating": 3.9,
+  "reviews": 137,
+  "lat": 36.0042401,
+  "lng": 140.1707605,
+  "genre": "ラーメン",
+  "address": "ひたち野東３丁目1−３",
+  "placeId": "0x6022732f8ae10c4d:0x432b3f6f911461ae",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022732f8ae10c4d:0x432b3f6f911461ae&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "ラーメン王将",
   "rating": 3.9,
   "reviews": 133,
@@ -9506,6 +10682,18 @@
   "mapsUrl": "https://www.google.com/maps?ftid=0x60229952fab16c0f:0x89507ee315901f99&hl=ja",
   "region": "chiba",
   "reviewsUrl": "https://www.google.com/maps/place/%E5%B5%90%E7%A5%9E(%E3%81%82%E3%82%89%E3%81%98%E3%82%93)/@35.518068,140.102904,17z/data=!3m1!4b1!4m6!3m5!1s0x60229952fab16c0f:0x89507ee315901f99!8m2!3d35.518068!4d140.102904!16s%2Fg%2F1hhwth8y6!9m1!1b1?hl=ja"
+ },
+ {
+  "name": "龍ヶ崎 製麺堂てつ",
+  "rating": 3.9,
+  "reviews": 125,
+  "lat": 35.9367,
+  "lng": 140.2007057,
+  "genre": "ラーメン",
+  "address": "藤ケ丘１丁目3−９",
+  "placeId": "0x60226f8c537b9755:0xe868ed90b53cdd93",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226f8c537b9755:0xe868ed90b53cdd93&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "香香ラーメン",
@@ -9678,7 +10866,7 @@
  {
   "name": "京都北白川ラーメン魁力屋 千葉我孫子店",
   "rating": 3.9,
-  "reviews": 94,
+  "reviews": 95,
   "lat": 35.8687439,
   "lng": 140.0272796,
   "genre": "ラーメン",
@@ -9855,6 +11043,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E3%81%8A%E9%A3%9F%E4%BA%8B%E5%87%A6+%E9%A0%86%E5%AD%90/@35.2003463,140.3298169,17z/data=!3m1!4b1!4m6!3m5!1s0x603d4a67abe0a6f5:0x1cc9736e7d10f4b1!8m2!3d35.2003463!4d140.3298169!16s%2Fg%2F1tf6mb0_!9m1!1b1?hl=ja"
  },
  {
+  "name": "ラーメンほんだ",
+  "rating": 3.9,
+  "reviews": 76,
+  "lat": 35.9095109,
+  "lng": 140.0911079,
+  "genre": "ラーメン",
+  "address": "光風台１丁目１−１２",
+  "placeId": "0x6022773784f5cf65:0x4a5749bc9b8d964e",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022773784f5cf65:0x4a5749bc9b8d964e&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "森のてーぶる by Banriho",
   "rating": 3.9,
   "reviews": 74,
@@ -9946,6 +11146,18 @@
   "reviewsUrl": "https://www.google.com/maps/place/%E6%A8%AA%E6%B5%9C%E5%AE%B6%E7%B3%BB%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E7%9B%B4%E6%B1%9F%E5%AE%B6+%E6%9C%A8%E5%A0%B4%E5%BA%97/@35.669576,139.8064462,17z/data=!3m1!4b1!4m6!3m5!1s0x6018890059ea1977:0x1def539ec3bf3822!8m2!3d35.669576!4d139.8064462!16s%2Fg%2F11w4cb35n7!9m1!1b1?hl=ja"
  },
  {
+  "name": "りんがり",
+  "rating": 3.9,
+  "reviews": 51,
+  "lat": 35.9083931,
+  "lng": 140.1807678,
+  "genre": "ラーメン",
+  "address": "米町３９３１",
+  "placeId": "0x60227b0039072fb1:0x67ea085596a2c58a",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227b0039072fb1:0x67ea085596a2c58a&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "ラーメンかいざん 西船橋店",
   "rating": 3.8,
   "reviews": 2105,
@@ -10028,6 +11240,18 @@
   "placeId": "0x60229b188b0140f3:0x17f1e24a2737f14b",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60229b188b0140f3:0x17f1e24a2737f14b&hl=ja",
   "region": "chiba"
+ },
+ {
+  "name": "煮干しラーメン山岡家 荒川沖店",
+  "rating": 3.8,
+  "reviews": 1471,
+  "lat": 36.0387348,
+  "lng": 140.1641388,
+  "genre": "ラーメン",
+  "address": "中村南３丁目３−２４",
+  "placeId": "0x60227292eb20baad:0x7aa39ed57d16affb",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227292eb20baad:0x7aa39ed57d16affb&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "一蘭 船橋店",
@@ -10438,6 +11662,18 @@
   "region": "chiba"
  },
  {
+  "name": "兎に角 南守谷店",
+  "rating": 3.8,
+  "reviews": 827,
+  "lat": 35.9317445,
+  "lng": 140.0077605,
+  "genre": "ラーメン",
+  "address": "小山４００−１",
+  "placeId": "0x60189e086285f043:0x3b3b026429c149d6",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189e086285f043:0x3b3b026429c149d6&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "らーめん どてちんⅢ",
   "rating": 3.8,
   "reviews": 826,
@@ -10582,6 +11818,18 @@
   "region": "toukatsu"
  },
  {
+  "name": "丸源ラーメン 土浦店",
+  "rating": 3.8,
+  "reviews": 698,
+  "lat": 36.0897693,
+  "lng": 140.1995816,
+  "genre": "ラーメン",
+  "address": "真鍋１丁目１１−７",
+  "placeId": "0x602212b9ecf26307:0x16da5cb74398fdab",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602212b9ecf26307:0x16da5cb74398fdab&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "中国ラーメン揚州商人 松戸ニ十世紀ヶ丘店",
   "rating": 3.8,
   "reviews": 679,
@@ -10616,6 +11864,18 @@
   "placeId": "0x6022b91a0619b20f:0x8d5c3c53d174b69b",
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022b91a0619b20f:0x8d5c3c53d174b69b&hl=ja",
   "region": "boso"
+ },
+ {
+  "name": "喜多方ラーメン 坂内 新利根店",
+  "rating": 3.8,
+  "reviews": 655,
+  "lat": 35.9067583,
+  "lng": 140.2852945,
+  "genre": "ラーメン",
+  "address": "角崎１６６５",
+  "placeId": "0x60226736f611cf5b:0x6050b5a6b2ef5053",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226736f611cf5b:0x6050b5a6b2ef5053&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "四川担々麺 どういうわけで、",
@@ -10786,18 +12046,6 @@
   "region": "boso"
  },
  {
-  "name": "岩間らーめん",
-  "rating": 3.8,
-  "reviews": 559,
-  "lat": 35.8080869,
-  "lng": 140.0864962,
-  "genre": "ラーメン",
-  "address": "神々廻１８６５ 手打ラーメン岩間",
-  "placeId": "0x60227eb140b27355:0x7472d48b43ecbdf0",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60227eb140b27355:0x7472d48b43ecbdf0&hl=ja",
-  "region": "toukatsu"
- },
- {
   "name": "ラーメン麺徳",
   "rating": 3.8,
   "reviews": 549,
@@ -10820,6 +12068,18 @@
   "placeId": "0x60189b4be9da870d:0xfbd5e08e8e3bcdf3",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189b4be9da870d:0xfbd5e08e8e3bcdf3&hl=ja",
   "region": "toukatsu"
+ },
+ {
+  "name": "ラーメン いっとく",
+  "rating": 3.8,
+  "reviews": 521,
+  "lat": 35.9324694,
+  "lng": 140.206025,
+  "genre": "ラーメン",
+  "address": "松ケ丘１丁目２−１４",
+  "placeId": "0x60226560563abf47:0x305cc05f7877d516",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226560563abf47:0x305cc05f7877d516&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "らーめん琉神 おゆみ野店",
@@ -10846,6 +12106,18 @@
   "region": "tsukuba"
  },
  {
+  "name": "ラーメンショップふれあい通り店",
+  "rating": 3.8,
+  "reviews": 495,
+  "lat": 35.9292197,
+  "lng": 139.9955103,
+  "genre": "ラーメン",
+  "address": "けやき台２丁目３５−６",
+  "placeId": "0x60189e738089017f:0x683fdf5f0fc1c2ed",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189e738089017f:0x683fdf5f0fc1c2ed&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "とろこくチャーシュー ごとく勝田台店",
   "rating": 3.8,
   "reviews": 493,
@@ -10868,6 +12140,18 @@
   "placeId": "0x60229bfe530fa299:0x458291a6659a09bd",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60229bfe530fa299:0x458291a6659a09bd&hl=ja",
   "region": "chiba"
+ },
+ {
+  "name": "横濱家系ラーメン さがみ家",
+  "rating": 3.8,
+  "reviews": 489,
+  "lat": 35.9362197,
+  "lng": 139.9913472,
+  "genre": "ラーメン",
+  "address": "高野５０７７−２",
+  "placeId": "0x60189e6ecfac563b:0xecd694f7a9c788ef",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189e6ecfac563b:0xecd694f7a9c788ef&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "王道家直系 環家",
@@ -10976,6 +12260,18 @@
   "placeId": "0x60229750bde7d62d:0xf6bc76c8f2ed3b61",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60229750bde7d62d:0xf6bc76c8f2ed3b61&hl=ja",
   "region": "chiba"
+ },
+ {
+  "name": "ラーメン・チャーハン清六家 みらい平店",
+  "rating": 3.8,
+  "reviews": 439,
+  "lat": 35.9933274,
+  "lng": 140.0379321,
+  "genre": "ラーメン",
+  "address": "陽光台１丁目４−５",
+  "placeId": "0x6022756b142c4247:0x46ee5d1e990ded0f",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022756b142c4247:0x46ee5d1e990ded0f&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "らーめん木尾田",
@@ -11170,6 +12466,18 @@
   "region": "chiba"
  },
  {
+  "name": "手打ちラーメン いまの家",
+  "rating": 3.8,
+  "reviews": 390,
+  "lat": 35.9703528,
+  "lng": 139.9705207,
+  "genre": "ラーメン",
+  "address": "松前台２丁目６−１",
+  "placeId": "0x60189f73250823b5:0xd2f659037114accd",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189f73250823b5:0xd2f659037114accd&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "くるまやラーメン 新茂原店",
   "rating": 3.8,
   "reviews": 386,
@@ -11240,6 +12548,18 @@
   "placeId": "0x601888c3f602fb79:0x5af40a04d7ded0dc",
   "mapsUrl": "https://www.google.com/maps?ftid=0x601888c3f602fb79:0x5af40a04d7ded0dc&hl=ja",
   "region": "tokyo"
+ },
+ {
+  "name": "くるまやラーメン竜ヶ崎店",
+  "rating": 3.8,
+  "reviews": 356,
+  "lat": 35.9372496,
+  "lng": 140.2054949,
+  "genre": "ラーメン",
+  "address": "藤ケ丘２丁目１７−４",
+  "placeId": "0x60226f8b1bd34733:0x86360cef3a333ae8",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226f8b1bd34733:0x86360cef3a333ae8&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "喜多方ラーメン坂内 君津店",
@@ -11314,6 +12634,18 @@
   "region": "chiba"
  },
  {
+  "name": "らーめんみずきの",
+  "rating": 3.8,
+  "reviews": 317,
+  "lat": 35.9448486,
+  "lng": 139.9799425,
+  "genre": "ラーメン",
+  "address": "大柏１１２５−１",
+  "placeId": "0x60189e583666d52d:0x91c4a1b2c1a8c84b",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189e583666d52d:0x91c4a1b2c1a8c84b&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "麺道GENTEN",
   "rating": 3.8,
   "reviews": 316,
@@ -11348,6 +12680,18 @@
   "placeId": "0x602281277e074b83:0x49f4d8e81ea65c4e",
   "mapsUrl": "https://www.google.com/maps?ftid=0x602281277e074b83:0x49f4d8e81ea65c4e&hl=ja",
   "region": "chiba"
+ },
+ {
+  "name": "山下家",
+  "rating": 3.8,
+  "reviews": 314,
+  "lat": 35.9264627,
+  "lng": 140.0215008,
+  "genre": "ラーメン",
+  "address": "戸頭２８０−１",
+  "placeId": "0x6022760326fdac05:0x286ad372fe3f9131",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022760326fdac05:0x286ad372fe3f9131&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "かわみ家",
@@ -11408,6 +12752,18 @@
   "placeId": "0x60220b38f8b32917:0x6a6bf9c02e4909ea",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60220b38f8b32917:0x6a6bf9c02e4909ea&hl=ja",
   "region": "tsukuba"
+ },
+ {
+  "name": "麺屋小鉄 稲敷店",
+  "rating": 3.8,
+  "reviews": 279,
+  "lat": 35.9077676,
+  "lng": 140.2852951,
+  "genre": "ラーメン",
+  "address": "角崎１６４９−５",
+  "placeId": "0x602267ef50b7a4ed:0xebc531b4c9249247",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602267ef50b7a4ed:0xebc531b4c9249247&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "家系ラーメン上総家",
@@ -11482,6 +12838,18 @@
   "region": "tsukuba"
  },
  {
+  "name": "手打らーめん 珍来 岡見店",
+  "rating": 3.8,
+  "reviews": 261,
+  "lat": 35.9845835,
+  "lng": 140.1795924,
+  "genre": "ラーメン",
+  "address": "岡見町２８３８−１",
+  "placeId": "0x602271e3c2d1148d:0xe451f231ac9e7286",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602271e3c2d1148d:0xe451f231ac9e7286&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "札幌や 筑波店",
   "rating": 3.8,
   "reviews": 260,
@@ -11492,6 +12860,18 @@
   "placeId": "0x602207845e9965ef:0x17305db93db7bfdd",
   "mapsUrl": "https://www.google.com/maps?ftid=0x602207845e9965ef:0x17305db93db7bfdd&hl=ja",
   "region": "tsukuba"
+ },
+ {
+  "name": "中国料理 ぺきん亭",
+  "rating": 3.8,
+  "reviews": 258,
+  "lat": 35.8954604,
+  "lng": 140.4114773,
+  "genre": "ラーメン",
+  "address": "郡１２１９−４",
+  "placeId": "0x60225f22ac8615b5:0x97065a570099f9fe",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60225f22ac8615b5:0x97065a570099f9fe&hl=ja",
+  "region": "tosou"
  },
  {
   "name": "吟家 茂原バイパス店",
@@ -11676,7 +13056,7 @@
  {
   "name": "らぁ麺 富士虎屋 千葉ニュータウン店",
   "rating": 3.8,
-  "reviews": 196,
+  "reviews": 197,
   "lat": 35.8055476,
   "lng": 140.1350093,
   "genre": "ラーメン",
@@ -11794,6 +13174,18 @@
   "region": "chiba"
  },
  {
+  "name": "麺場 龍吟 守谷店",
+  "rating": 3.8,
+  "reviews": 160,
+  "lat": 35.9357876,
+  "lng": 139.9970801,
+  "genre": "ラーメン",
+  "address": "けやき台４丁目１−５",
+  "placeId": "0x60189f0813ca9819:0x3c76c397eca8adaa",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189f0813ca9819:0x3c76c397eca8adaa&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "麺dining けいず",
   "rating": 3.8,
   "reviews": 156,
@@ -11828,6 +13220,30 @@
   "placeId": "0x60228b6ab5131d0b:0x8e31378c8c0d1d51",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60228b6ab5131d0b:0x8e31378c8c0d1d51&hl=ja",
   "region": "tosou"
+ },
+ {
+  "name": "味噌ラーメン マルヤ商店",
+  "rating": 3.8,
+  "reviews": 145,
+  "lat": 36.0257372,
+  "lng": 140.1698342,
+  "genre": "ラーメン",
+  "address": "荒川本郷１３３４−２３",
+  "placeId": "0x602273e25101bfc5:0x934625ab246724",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602273e25101bfc5:0x934625ab246724&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "新京",
+  "rating": 3.8,
+  "reviews": 145,
+  "lat": 35.9281143,
+  "lng": 140.1381817,
+  "genre": "ラーメン",
+  "address": "佐貫町７４４",
+  "placeId": "0x602270f48cc48075:0x2b622eee2d781be3",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602270f48cc48075:0x2b622eee2d781be3&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "麺屋じんべえ",
@@ -11924,6 +13340,18 @@
   "placeId": "0x60180c569af6f8eb:0xade7a15201f4cc4c",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60180c569af6f8eb:0xade7a15201f4cc4c&hl=ja",
   "region": "boso"
+ },
+ {
+  "name": "まるおう",
+  "rating": 3.8,
+  "reviews": 104,
+  "lat": 36.0375137,
+  "lng": 139.8213485,
+  "genre": "ラーメン",
+  "address": "なみき３３７",
+  "placeId": "0x6018bb0262d6c535:0x35b1f79fa68e64c5",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018bb0262d6c535:0x35b1f79fa68e64c5&hl=ja",
+  "region": "toukatsu"
  },
  {
   "name": "真ちゃんラーメン",
@@ -12130,6 +13558,18 @@
   "region": "boso"
  },
  {
+  "name": "らーめんハウス かざぐるま",
+  "rating": 3.8,
+  "reviews": 53,
+  "lat": 35.9453841,
+  "lng": 140.1695975,
+  "genre": "ラーメン",
+  "address": "若柴町２２４０−１５０",
+  "placeId": "0x6022703bb3a8fef1:0x1207ac71d1e18f61",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022703bb3a8fef1:0x1207ac71d1e18f61&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "ニュー聚楽",
   "rating": 3.8,
   "reviews": 52,
@@ -12200,6 +13640,18 @@
   "placeId": "0x601874a8cd6d9415:0x6721675d35ec8abd",
   "mapsUrl": "https://www.google.com/maps?ftid=0x601874a8cd6d9415:0x6721675d35ec8abd&hl=ja",
   "region": "boso"
+ },
+ {
+  "name": "ラーメンスタンド とん平食堂 龍ヶ崎店",
+  "rating": 3.7,
+  "reviews": 1326,
+  "lat": 35.9152714,
+  "lng": 140.1762104,
+  "genre": "ラーメン",
+  "address": "馴馬町２５１８",
+  "placeId": "0x60227b2a67c99de5:0xbbfd318b7c71ba89",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227b2a67c99de5:0xbbfd318b7c71ba89&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "京都北白川ラーメン魁力屋 南行徳店",
@@ -12288,7 +13740,7 @@
  {
   "name": "ラーメン山岡家 野田店",
   "rating": 3.7,
-  "reviews": 941,
+  "reviews": 942,
   "lat": 35.937545,
   "lng": 139.8901699,
   "genre": "ラーメン",
@@ -12312,7 +13764,7 @@
  {
   "name": "優勝軒 柏店",
   "rating": 3.7,
-  "reviews": 928,
+  "reviews": 929,
   "lat": 35.8760397,
   "lng": 139.9685918,
   "genre": "ラーメン",
@@ -12442,6 +13894,18 @@
   "region": "keiyo"
  },
  {
+  "name": "ラーメン山岡家 土浦店",
+  "rating": 3.7,
+  "reviews": 841,
+  "lat": 36.0854676,
+  "lng": 140.2060689,
+  "genre": "ラーメン",
+  "address": "東崎町１２−３",
+  "placeId": "0x602212ca315cb6a3:0x163bb103d27b6475",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602212ca315cb6a3:0x163bb103d27b6475&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "ラーメン 華小屋",
   "rating": 3.7,
   "reviews": 831,
@@ -12476,6 +13940,18 @@
   "placeId": "0x601880786deffbf9:0x106c07821cd57000",
   "mapsUrl": "https://www.google.com/maps?ftid=0x601880786deffbf9:0x106c07821cd57000&hl=ja",
   "region": "keiyo"
+ },
+ {
+  "name": "喜多方ラーメン坂内 取手店",
+  "rating": 3.7,
+  "reviews": 796,
+  "lat": 35.9125081,
+  "lng": 140.047655,
+  "genre": "ラーメン",
+  "address": "寺田５００１−２３ ラーメンをお探しなら是非、喜多方ラーメン坂内へ",
+  "placeId": "0x6022773bafa00263:0x544c6446ff422da2",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022773bafa00263:0x544c6446ff422da2&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "京都北白川ラーメン魁力屋 東千葉店",
@@ -12516,7 +13992,7 @@
  {
   "name": "麺屋 音 柏店",
   "rating": 3.7,
-  "reviews": 750,
+  "reviews": 749,
   "lat": 35.8602044,
   "lng": 139.9683566,
   "genre": "ラーメン",
@@ -12718,18 +14194,6 @@
   "region": "inba"
  },
  {
-  "name": "京都北白川ラーメン魁力屋 ジョイフル本田千葉ニュータウン店",
-  "rating": 3.7,
-  "reviews": 598,
-  "lat": 35.807208,
-  "lng": 140.1561338,
-  "genre": "ラーメン",
-  "address": "牧の原２丁目",
-  "placeId": "0x60227d0060d587b5:0xd936ad419938ef0a",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60227d0060d587b5:0xd936ad419938ef0a&hl=ja",
-  "region": "inba"
- },
- {
   "name": "勢拉 稲毛店",
   "rating": 3.7,
   "reviews": 597,
@@ -12740,18 +14204,6 @@
   "placeId": "0x60228384f973a5e9:0x24e7026b6671d89a",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60228384f973a5e9:0x24e7026b6671d89a&hl=ja",
   "region": "chiba"
- },
- {
-  "name": "麺屋 虎と雷",
-  "rating": 3.7,
-  "reviews": 587,
-  "lat": 35.9696925,
-  "lng": 139.8402707,
-  "genre": "ラーメン",
-  "address": "岩名１７４８−６",
-  "placeId": "0x6018bd075c093bdb:0xc2bfc8c2212a7f9e",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x6018bd075c093bdb:0xc2bfc8c2212a7f9e&hl=ja",
-  "region": "toukatsu"
  },
  {
   "name": "まこちゃんラーメン",
@@ -12800,6 +14252,42 @@
   "placeId": "0x6018899ff7a3273d:0x336355b33f5af76d",
   "mapsUrl": "https://www.google.com/maps?ftid=0x6018899ff7a3273d:0x336355b33f5af76d&hl=ja",
   "region": "tokyo"
+ },
+ {
+  "name": "活龍 牛久店",
+  "rating": 3.7,
+  "reviews": 579,
+  "lat": 35.974275,
+  "lng": 140.1514558,
+  "genre": "ラーメン",
+  "address": "神谷１丁目４１−４",
+  "placeId": "0x6022719a6ea740b3:0x21e629bb686b4b93",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022719a6ea740b3:0x21e629bb686b4b93&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "手打ラーメン 珍来 木田余店",
+  "rating": 3.7,
+  "reviews": 576,
+  "lat": 36.103999,
+  "lng": 140.216267,
+  "genre": "ラーメン",
+  "address": "木田余東台３丁目１−１６",
+  "placeId": "0x602212dd7dbab4f3:0x2d06e7d791f00824",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602212dd7dbab4f3:0x2d06e7d791f00824&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "中華そば けや木（旧らーめん工房けや木）",
+  "rating": 3.7,
+  "reviews": 573,
+  "lat": 35.8945581,
+  "lng": 139.9578008,
+  "genre": "ラーメン",
+  "address": "若柴９１−２８",
+  "placeId": "0x60189c3e22ea629b:0x3484b632d711315b",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189c3e22ea629b:0x3484b632d711315b&hl=ja",
+  "region": "toukatsu"
  },
  {
   "name": "五代目らーめん処 まるは商店",
@@ -13104,7 +14592,7 @@
  {
   "name": "家系ラーメン王道家直伝 との丸家 八千代店",
   "rating": 3.7,
-  "reviews": 435,
+  "reviews": 436,
   "lat": 35.7134548,
   "lng": 140.1176812,
   "genre": "ラーメン",
@@ -13112,6 +14600,18 @@
   "placeId": "0x60228754f7e413ab:0x360da76daaf000b2",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60228754f7e413ab:0x360da76daaf000b2&hl=ja",
   "region": "inba"
+ },
+ {
+  "name": "横濱家系ラーメン たくみ家 牛久店",
+  "rating": 3.7,
+  "reviews": 435,
+  "lat": 35.9949655,
+  "lng": 140.1410452,
+  "genre": "ラーメン",
+  "address": "猪子町８５９−３",
+  "placeId": "0x602273ccc0e0bb1f:0xfce2ec016991a636",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602273ccc0e0bb1f:0xfce2ec016991a636&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "ふなとり",
@@ -13222,6 +14722,18 @@
   "region": "tosou"
  },
  {
+  "name": "横濱家系たくみ家 桜土浦ｲﾝﾀｰ店",
+  "rating": 3.7,
+  "reviews": 378,
+  "lat": 36.0607162,
+  "lng": 140.1658212,
+  "genre": "ラーメン",
+  "address": "中村西根２５８",
+  "placeId": "0x602272b6851de9a1:0x86c05796d81fb771",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602272b6851de9a1:0x86c05796d81fb771&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "千葉らぁ麺",
   "rating": 3.7,
   "reviews": 375,
@@ -13280,6 +14792,18 @@
   "placeId": "0x60228a62c93afff3:0xde4cac08cd786d3d",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60228a62c93afff3:0xde4cac08cd786d3d&hl=ja",
   "region": "tosou"
+ },
+ {
+  "name": "ラーメン本舗 つくばみらい",
+  "rating": 3.7,
+  "reviews": 351,
+  "lat": 35.9991364,
+  "lng": 140.0400632,
+  "genre": "ラーメン",
+  "address": "紫峰ヶ丘１丁目１７−３",
+  "placeId": "0x6022753f9a71fdfb:0x5f9f88f54957334c",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022753f9a71fdfb:0x5f9f88f54957334c&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "麺屋空海 スーク海浜幕張店",
@@ -13366,6 +14890,30 @@
   "region": "toukatsu"
  },
  {
+  "name": "麺屋 虎と雷",
+  "rating": 3.7,
+  "reviews": 303,
+  "lat": 35.9696925,
+  "lng": 139.8402707,
+  "genre": "ラーメン",
+  "address": "岩名１７４８−６",
+  "placeId": "0x6018bd075c093bdb:0xc2bfc8c2212a7f9e",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018bd075c093bdb:0xc2bfc8c2212a7f9e&hl=ja",
+  "region": "toukatsu"
+ },
+ {
+  "name": "二代目 麺屋こうじ",
+  "rating": 3.7,
+  "reviews": 303,
+  "lat": 35.9492476,
+  "lng": 139.8774476,
+  "genre": "ラーメン",
+  "address": "中根６−９",
+  "placeId": "0x601899712bab75af:0xb0c7629349d5041",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x601899712bab75af:0xb0c7629349d5041&hl=ja",
+  "region": "toukatsu"
+ },
+ {
   "name": "横浜家系ラーメン 町田商店 柏沼南町店",
   "rating": 3.7,
   "reviews": 289,
@@ -13404,7 +14952,7 @@
  {
   "name": "麺屋花形",
   "rating": 3.7,
-  "reviews": 280,
+  "reviews": 281,
   "lat": 35.8441763,
   "lng": 139.9775743,
   "genre": "ラーメン",
@@ -13508,6 +15056,18 @@
   "placeId": "0x601874f4565dd447:0x2486cf5ea1fe786",
   "mapsUrl": "https://www.google.com/maps?ftid=0x601874f4565dd447:0x2486cf5ea1fe786&hl=ja",
   "region": "boso"
+ },
+ {
+  "name": "しまやらーめん",
+  "rating": 3.7,
+  "reviews": 244,
+  "lat": 35.991028,
+  "lng": 140.241664,
+  "genre": "ラーメン",
+  "address": "吉原２６７６−６",
+  "placeId": "0x60226ee6c47d443f:0x75f050073530522d",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226ee6c47d443f:0x75f050073530522d&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "真鯛らーめん麺魚 船橋店",
@@ -13776,7 +15336,7 @@
  {
   "name": "兎に角 柏店",
   "rating": 3.7,
-  "reviews": 155,
+  "reviews": 156,
   "lat": 35.8618852,
   "lng": 139.9734257,
   "genre": "ラーメン",
@@ -13906,6 +15466,18 @@
   "region": "boso"
  },
  {
+  "name": "ラーメン・餃子 敏亭",
+  "rating": 3.7,
+  "reviews": 87,
+  "lat": 36.0383577,
+  "lng": 140.1631819,
+  "genre": "ラーメン",
+  "address": "中村南４丁目１２−５",
+  "placeId": "0x6022737c51ef0b3d:0xe637eb1af40898aa",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022737c51ef0b3d:0xe637eb1af40898aa&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "太陽食堂",
   "rating": 3.7,
   "reviews": 86,
@@ -13978,6 +15550,30 @@
   "region": "boso"
  },
  {
+  "name": "それいけ!たかちゃんラーメン 守谷店",
+  "rating": 3.7,
+  "reviews": 78,
+  "lat": 35.9239777,
+  "lng": 140.000861,
+  "genre": "ラーメン",
+  "address": "美園４丁目1−１５ 美園ビル 1F",
+  "placeId": "0x60189d8ee34efcf1:0xbe2dbebd29fde617",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d8ee34efcf1:0xbe2dbebd29fde617&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "新ちゃんラーメン",
+  "rating": 3.7,
+  "reviews": 77,
+  "lat": 36.0906651,
+  "lng": 140.2100779,
+  "genre": "ラーメン",
+  "address": "真鍋新町１２−１７",
+  "placeId": "0x602212cf230fc225:0x76c9f745c6631352",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602212cf230fc225:0x76c9f745c6631352&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "百寿ラーメン",
   "rating": 3.7,
   "reviews": 70,
@@ -14000,6 +15596,18 @@
   "placeId": "0x602281806b5ecd99:0x9be0de495201bec7",
   "mapsUrl": "https://www.google.com/maps?ftid=0x602281806b5ecd99:0x9be0de495201bec7&hl=ja",
   "region": "toukatsu"
+ },
+ {
+  "name": "ラーメン 5W",
+  "rating": 3.7,
+  "reviews": 68,
+  "lat": 35.9641131,
+  "lng": 140.1555313,
+  "genre": "ラーメン",
+  "address": "神谷５丁目１−２４ ワカバハイツ",
+  "placeId": "0x602271395af5bc37:0x418825c38e4e2bdf",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602271395af5bc37:0x418825c38e4e2bdf&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "もちもちの木 モラージュ柏店",
@@ -14026,18 +15634,6 @@
   "region": "boso"
  },
  {
-  "name": "出前家系ラーメン 吉祥寺 武蔵家 柏店",
-  "rating": 3.7,
-  "reviews": 58,
-  "lat": 35.8505431,
-  "lng": 139.971249,
-  "genre": "宅配/出前",
-  "address": "緑ケ丘２３−１１",
-  "placeId": "0x60189d005a332027:0xd55227555d695c02",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d005a332027:0xd55227555d695c02&hl=ja",
-  "region": "toukatsu"
- },
- {
   "name": "麺ぽーかろぅ",
   "rating": 3.7,
   "reviews": 58,
@@ -14048,6 +15644,18 @@
   "placeId": "0x60189d067d9512e9:0x2d0535c49827baf1",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189d067d9512e9:0x2d0535c49827baf1&hl=ja",
   "region": "toukatsu"
+ },
+ {
+  "name": "ラーメン&BAR 本陣",
+  "rating": 3.7,
+  "reviews": 58,
+  "lat": 35.8965379,
+  "lng": 140.4977735,
+  "genre": "ラーメン",
+  "address": "北３丁目１２−２ 芙蓉館 2番館",
+  "placeId": "0x602258744e074c39:0x4b1aeec98ba8c8e6",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602258744e074c39:0x4b1aeec98ba8c8e6&hl=ja",
+  "region": "tosou"
  },
  {
   "name": "らぁめん ゑびすや",
@@ -14100,7 +15708,7 @@
  {
   "name": "みそのめん王",
   "rating": 3.6,
-  "reviews": 1713,
+  "reviews": 1714,
   "lat": 35.8975104,
   "lng": 139.9554632,
   "genre": "ラーメン",
@@ -14144,6 +15752,18 @@
   "placeId": "0x60189ad54542f995:0xc76ba96f8dda573",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189ad54542f995:0xc76ba96f8dda573&hl=ja",
   "region": "toukatsu"
+ },
+ {
+  "name": "にんたまラーメン 角崎店",
+  "rating": 3.6,
+  "reviews": 1149,
+  "lat": 35.9081193,
+  "lng": 140.2854284,
+  "genre": "ラーメン",
+  "address": "角崎１６４９−７",
+  "placeId": "0x602266bf7056a885:0xf7a408e274b464be",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602266bf7056a885:0xf7a408e274b464be&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "にんたまラーメン千葉ニュータウン店",
@@ -14220,7 +15840,7 @@
  {
   "name": "麺屋小鉄 八千代店",
   "rating": 3.6,
-  "reviews": 956,
+  "reviews": 958,
   "lat": 35.7448061,
   "lng": 140.1216355,
   "genre": "ラーメン",
@@ -14276,18 +15896,6 @@
   "placeId": "0x601886e345b22513:0xc992cafd469e410d",
   "mapsUrl": "https://www.google.com/maps?ftid=0x601886e345b22513:0xc992cafd469e410d&hl=ja",
   "region": "tokyo"
- },
- {
-  "name": "THE・ラーメン",
-  "rating": 3.6,
-  "reviews": 751,
-  "lat": 35.8809942,
-  "lng": 139.9828024,
-  "genre": "レストラン",
-  "address": "松ケ崎４３１−１",
-  "placeId": "0x60189d92e42931db:0x916e1acf1835ae8d",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d92e42931db:0x916e1acf1835ae8d&hl=ja",
-  "region": "toukatsu"
  },
  {
   "name": "東京豚骨拉麺 ばんから 柏豊四季店",
@@ -14422,6 +16030,18 @@
   "region": "toukatsu"
  },
  {
+  "name": "マルヤ商店",
+  "rating": 3.6,
+  "reviews": 612,
+  "lat": 36.1125771,
+  "lng": 140.194272,
+  "genre": "ラーメン",
+  "address": "並木５丁目４０４６",
+  "placeId": "0x602212886d4ac1eb:0xdac0862a13fb0438",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602212886d4ac1eb:0xdac0862a13fb0438&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "手打らーめん珍來 牛久店",
   "rating": 3.6,
   "reviews": 599,
@@ -14434,9 +16054,21 @@
   "region": "boso"
  },
  {
+  "name": "いっちゃん亭",
+  "rating": 3.6,
+  "reviews": 587,
+  "lat": 35.9431657,
+  "lng": 140.0604802,
+  "genre": "ラーメン",
+  "address": "山王新田１４２８−１８",
+  "placeId": "0x602276878549e5d1:0xd56e9d6d1eea476f",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602276878549e5d1:0xd56e9d6d1eea476f&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "らーめん大 我孫子店",
   "rating": 3.6,
-  "reviews": 584,
+  "reviews": 585,
   "lat": 35.8660498,
   "lng": 140.0131958,
   "genre": "ラーメン",
@@ -14472,7 +16104,7 @@
  {
   "name": "麺屋翔稀",
   "rating": 3.6,
-  "reviews": 534,
+  "reviews": 535,
   "lat": 35.8969097,
   "lng": 139.9664937,
   "genre": "ラーメン",
@@ -14518,6 +16150,18 @@
   "region": "keiyo"
  },
  {
+  "name": "こだわりらーめん ゆきむら亭 龍ヶ崎店",
+  "rating": 3.6,
+  "reviews": 526,
+  "lat": 35.912215,
+  "lng": 140.1756743,
+  "genre": "ラーメン",
+  "address": "馴柴町６９３−３",
+  "placeId": "0x60227ab1b50f5c49:0xcfee1e4f135f5ee4",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227ab1b50f5c49:0xcfee1e4f135f5ee4&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "幸楽苑 印西店",
   "rating": 3.6,
   "reviews": 522,
@@ -14554,6 +16198,18 @@
   "region": "inba"
  },
  {
+  "name": "手打ラーメン 珍来 牛久柏田店",
+  "rating": 3.6,
+  "reviews": 508,
+  "lat": 35.9917088,
+  "lng": 140.1574638,
+  "genre": "中華麺",
+  "address": "上柏田２丁目６−６",
+  "placeId": "0x60227226d2df961b:0x592123e510c4885b",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227226d2df961b:0x592123e510c4885b&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "らーめん五衛門茂原店",
   "rating": 3.6,
   "reviews": 490,
@@ -14566,6 +16222,18 @@
   "region": "boso"
  },
  {
+  "name": "味噌のジョー牛久店",
+  "rating": 3.6,
+  "reviews": 479,
+  "lat": 35.9863809,
+  "lng": 140.148377,
+  "genre": "ラーメン",
+  "address": "栄町６丁目４８−２",
+  "placeId": "0x60227310f8f417db:0x3d1e50426dd37d48",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227310f8f417db:0x3d1e50426dd37d48&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "ラーメンばんだい 我孫子店",
   "rating": 3.6,
   "reviews": 478,
@@ -14575,6 +16243,18 @@
   "address": "我孫子新田２２−２７",
   "placeId": "0x60189d454599e8d5:0xa5c915e8b00c207f",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60189d454599e8d5:0xa5c915e8b00c207f&hl=ja",
+  "region": "toukatsu"
+ },
+ {
+  "name": "麺屋 勝天",
+  "rating": 3.6,
+  "reviews": 476,
+  "lat": 35.8766438,
+  "lng": 140.0154823,
+  "genre": "ラーメン",
+  "address": "並木５丁目１０−６",
+  "placeId": "0x60189d2bf5fcd295:0x258cd146267d64d1",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d2bf5fcd295:0x258cd146267d64d1&hl=ja",
   "region": "toukatsu"
  },
  {
@@ -14684,6 +16364,18 @@
   "placeId": "0x60187dbefe37d2d9:0xce77bab7a47d0810",
   "mapsUrl": "https://www.google.com/maps?ftid=0x60187dbefe37d2d9:0xce77bab7a47d0810&hl=ja",
   "region": "keiyo"
+ },
+ {
+  "name": "幸楽苑 牛久店",
+  "rating": 3.6,
+  "reviews": 420,
+  "lat": 35.9816868,
+  "lng": 140.1447696,
+  "genre": "ラーメン",
+  "address": "中央１丁目２２−１",
+  "placeId": "0x602271b25a7735af:0x7faad0d6ffe61619",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602271b25a7735af:0x7faad0d6ffe61619&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "麺や 璃宮",
@@ -14938,18 +16630,6 @@
   "region": "chiba"
  },
  {
-  "name": "ラーメン 柚",
-  "rating": 3.6,
-  "reviews": 312,
-  "lat": 35.85434,
-  "lng": 139.943098,
-  "genre": "ラーメン",
-  "address": "豊四季",
-  "placeId": "0x60189d0cc8a8fa65:0xe969ea174bac0d77",
-  "mapsUrl": "https://www.google.com/maps?ftid=0x60189d0cc8a8fa65:0xe969ea174bac0d77&hl=ja",
-  "region": "toukatsu"
- },
- {
   "name": "舎鈴 南柏店",
   "rating": 3.6,
   "reviews": 312,
@@ -15046,6 +16726,18 @@
   "region": "chiba"
  },
  {
+  "name": "こだわりらーめんゆきむら亭 土浦店",
+  "rating": 3.6,
+  "reviews": 243,
+  "lat": 36.0647607,
+  "lng": 140.1824385,
+  "genre": "ラーメン",
+  "address": "永国１０５８−１",
+  "placeId": "0x602272a83a557d17:0xcadfc8f44c0136de",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602272a83a557d17:0xcadfc8f44c0136de&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "家系ラーメン王道家直伝との丸家 富里店",
   "rating": 3.6,
   "reviews": 235,
@@ -15116,6 +16808,18 @@
   "placeId": "0x6022e60af3e216bb:0xfffdb82253f37bdd",
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022e60af3e216bb:0xfffdb82253f37bdd&hl=ja",
   "region": "tosou"
+ },
+ {
+  "name": "どさん子ラーメン 江戸崎店",
+  "rating": 3.6,
+  "reviews": 204,
+  "lat": 35.9299604,
+  "lng": 140.3546189,
+  "genre": "ラーメン",
+  "address": "町田１９６",
+  "placeId": "0x60225df0ca09b757:0x798e2c31f1b4d221",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60225df0ca09b757:0x798e2c31f1b4d221&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "地どりラーメン",
@@ -15190,6 +16894,18 @@
   "region": "tokyo"
  },
  {
+  "name": "いきいきラーメン食堂",
+  "rating": 3.6,
+  "reviews": 173,
+  "lat": 35.9584037,
+  "lng": 139.9871122,
+  "genre": "ラーメン",
+  "address": "百合ケ丘１丁目２０２４−８６",
+  "placeId": "0x60189fd558dd2075:0xcfbab6d8bfda2383",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60189fd558dd2075:0xcfbab6d8bfda2383&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "豊受食堂",
   "rating": 3.6,
   "reviews": 159,
@@ -15212,6 +16928,18 @@
   "placeId": "0x6022ea90797a3581:0x3c71b2bc4f4590c2",
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022ea90797a3581:0x3c71b2bc4f4590c2&hl=ja",
   "region": "tosou"
+ },
+ {
+  "name": "特級鶏蕎麦 龍介 土浦学園通り店",
+  "rating": 3.6,
+  "reviews": 156,
+  "lat": 36.085216,
+  "lng": 140.1705101,
+  "genre": "ラーメン",
+  "address": "粕毛１０９−１",
+  "placeId": "0x60220d0071a368ad:0x8049063b96eb8ab0",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60220d0071a368ad:0x8049063b96eb8ab0&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "田所商店 タンタンメン部 WBG店",
@@ -15284,6 +17012,18 @@
   "placeId": "0x602319001de1fd7f:0x9629dfe3c41a58d6",
   "mapsUrl": "https://www.google.com/maps?ftid=0x602319001de1fd7f:0x9629dfe3c41a58d6&hl=ja",
   "region": "tosou"
+ },
+ {
+  "name": "ラーメン にのみや",
+  "rating": 3.6,
+  "reviews": 146,
+  "lat": 36.051807,
+  "lng": 140.2160003,
+  "genre": "ラーメン",
+  "address": "阿見６０３−１",
+  "placeId": "0x60226d06456693c5:0xb1c2b5713262d6ca",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d06456693c5:0xb1c2b5713262d6ca&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "横浜家系ラーメン 町田商店 千葉山王店",
@@ -15406,6 +17146,30 @@
   "region": "boso"
  },
  {
+  "name": "京都北白川ラーメン魁力屋 ジョイフル本田千葉ニュータウン店",
+  "rating": 3.6,
+  "reviews": 94,
+  "lat": 35.807208,
+  "lng": 140.1561338,
+  "genre": "ラーメン",
+  "address": "牧の原２丁目",
+  "placeId": "0x60227d0060d587b5:0xd936ad419938ef0a",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60227d0060d587b5:0xd936ad419938ef0a&hl=ja",
+  "region": "inba"
+ },
+ {
+  "name": "赤いやね",
+  "rating": 3.6,
+  "reviews": 94,
+  "lat": 35.7160918,
+  "lng": 140.0852471,
+  "genre": "ラーメン",
+  "address": "高津６６１−３",
+  "placeId": "0x602280c3fa0a5bcb:0xe19041e1de2ff934",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602280c3fa0a5bcb:0xe19041e1de2ff934&hl=ja",
+  "region": "chiba"
+ },
+ {
   "name": "らーめん わたなべ",
   "rating": 3.6,
   "reviews": 93,
@@ -15440,6 +17204,18 @@
   "placeId": "0x6018831a14f43b63:0xdbda7bc4dd0832d1",
   "mapsUrl": "https://www.google.com/maps?ftid=0x6018831a14f43b63:0xdbda7bc4dd0832d1&hl=ja",
   "region": "toukatsu"
+ },
+ {
+  "name": "活龍大衆麺処 真壁屋 土浦駅西口店",
+  "rating": 3.6,
+  "reviews": 85,
+  "lat": 36.0788192,
+  "lng": 140.203691,
+  "genre": "ラーメン",
+  "address": "大和町９−１",
+  "placeId": "0x60226d0053512311:0xb93ad7c7a8f68a65",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d0053512311:0xb93ad7c7a8f68a65&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "麺酒場まがり 南行徳店",
@@ -15922,6 +17698,18 @@
   "region": "boso"
  },
  {
+  "name": "横濱家系ラーメン たくみ家 阿見店",
+  "rating": 3.5,
+  "reviews": 459,
+  "lat": 36.0564326,
+  "lng": 140.2150259,
+  "genre": "ラーメン",
+  "address": "大岩田１２６９−３",
+  "placeId": "0x60226d05690ac45b:0x3ccd222564e65520",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226d05690ac45b:0x3ccd222564e65520&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "ラーメンショップ 大神保店",
   "rating": 3.5,
   "reviews": 455,
@@ -16018,6 +17806,42 @@
   "region": "inba"
  },
  {
+  "name": "ゆきむら亭 荒川沖店",
+  "rating": 3.5,
+  "reviews": 393,
+  "lat": 36.018589,
+  "lng": 140.164969,
+  "genre": "ラーメン",
+  "address": "荒川本郷２３５−８",
+  "placeId": "0x6022726866ca7e8d:0xa04cdf5852e46222",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022726866ca7e8d:0xa04cdf5852e46222&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "京都北白川ラーメン魁力屋 土浦店",
+  "rating": 3.5,
+  "reviews": 391,
+  "lat": 36.0862883,
+  "lng": 140.2121795,
+  "genre": "ラーメン",
+  "address": "湖北１丁目１−４",
+  "placeId": "0x6022132438fef10d:0x2ff323fb7bf29304",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022132438fef10d:0x2ff323fb7bf29304&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
+  "name": "ゆきむら亭 藤代店",
+  "rating": 3.5,
+  "reviews": 385,
+  "lat": 35.919649,
+  "lng": 140.1093692,
+  "genre": "ラーメン",
+  "address": "藤代９６８−１",
+  "placeId": "0x602270cf33d1b8e7:0x3b9bdc3864ee4e79",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602270cf33d1b8e7:0x3b9bdc3864ee4e79&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "二代目らーめん処 まるは 旬",
   "rating": 3.5,
   "reviews": 368,
@@ -16054,6 +17878,42 @@
   "region": "keiyo"
  },
  {
+  "name": "三田製麺所 セブンパークアリオ柏店",
+  "rating": 3.5,
+  "reviews": 360,
+  "lat": 35.8328026,
+  "lng": 140.0131284,
+  "genre": "ラーメン",
+  "address": "大島田１丁目６−１ ３７５０ セブンパークアリオ柏 ３階 店舗番号",
+  "placeId": "0x6018829ba5ea84d1:0x4dd084bbd262dd62",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6018829ba5ea84d1:0x4dd084bbd262dd62&hl=ja",
+  "region": "toukatsu"
+ },
+ {
+  "name": "ラーメンガキ大将 佐原店",
+  "rating": 3.5,
+  "reviews": 354,
+  "lat": 35.9003406,
+  "lng": 140.4926377,
+  "genre": "ラーメン",
+  "address": "佐原イ４２１２−２ 2",
+  "placeId": "0x6022587555afb65d:0x3f6c70b423cf68bf",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x6022587555afb65d:0x3f6c70b423cf68bf&hl=ja",
+  "region": "tosou"
+ },
+ {
+  "name": "茨城豚そば 特龍 本店",
+  "rating": 3.5,
+  "reviews": 347,
+  "lat": 36.0517509,
+  "lng": 140.2156238,
+  "genre": "ラーメン",
+  "address": "阿見６００",
+  "placeId": "0x60226da9e7ee3e7d:0xa2c53f477856c01a",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x60226da9e7ee3e7d:0xa2c53f477856c01a&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "イチラク 成田店",
   "rating": 3.5,
   "reviews": 345,
@@ -16064,6 +17924,18 @@
   "placeId": "0x6022f7876e996599:0x4829df4affa8cbae",
   "mapsUrl": "https://www.google.com/maps?ftid=0x6022f7876e996599:0x4829df4affa8cbae&hl=ja",
   "region": "tosou"
+ },
+ {
+  "name": "二代目らーめん源之丞",
+  "rating": 3.5,
+  "reviews": 343,
+  "lat": 35.9239638,
+  "lng": 140.4783352,
+  "genre": "ラーメン",
+  "address": "西代７０１−１",
+  "placeId": "0x602259ad4c4dd3a3:0x65c055af5e27708a",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602259ad4c4dd3a3:0x65c055af5e27708a&hl=ja",
+  "region": "ibaraki_south"
  },
  {
   "name": "ゆきむら亭 つくば西店",
@@ -16270,6 +18142,18 @@
   "region": "chiba"
  },
  {
+  "name": "ゆきむら亭 木田余店",
+  "rating": 3.5,
+  "reviews": 214,
+  "lat": 36.1068905,
+  "lng": 140.216755,
+  "genre": "ラーメン",
+  "address": "木田余４５９０−１",
+  "placeId": "0x602212e6ff540001:0xfa2d8a9005106d8e",
+  "mapsUrl": "https://www.google.com/maps?ftid=0x602212e6ff540001:0xfa2d8a9005106d8e&hl=ja",
+  "region": "ibaraki_south"
+ },
+ {
   "name": "大古洞",
   "rating": 3.5,
   "reviews": 203,
@@ -16464,7 +18348,7 @@
  {
   "name": "ラーメンすずき",
   "rating": 3.5,
-  "reviews": 110,
+  "reviews": 111,
   "lat": 35.7624701,
   "lng": 140.226933,
   "genre": "ラーメン",

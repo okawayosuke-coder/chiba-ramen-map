@@ -31,9 +31,10 @@ export interface Filters {
 
 /** エリア区分（緯度経度から判定）。千葉県＋隣接の江東区・江戸川区 */
 export const REGIONS: { key: string; label: string }[] = [
-  { key: "all", label: "全域（千葉＋江東・江戸川＋つくば）" },
+  { key: "all", label: "全域（千葉＋江東江戸川＋茨城県南）" },
   { key: "tokyo", label: "江東区・江戸川区（東京）" },
   { key: "tsukuba", label: "つくば市（茨城）" },
+  { key: "ibaraki_south", label: "茨城県南（土浦・牛久・守谷・取手 ほか）" },
   { key: "toukatsu", label: "東葛飾（松戸・柏・流山・野田・我孫子・鎌ケ谷）" },
   { key: "keiyo", label: "葛南（市川・船橋・習志野・浦安・八千代）" },
   { key: "chiba", label: "千葉市・市原" },

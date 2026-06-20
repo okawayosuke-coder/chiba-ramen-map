@@ -19,18 +19,33 @@ for (const name of ["江東区", "江戸川区"]) {
   out[name] = f.geometry;
 }
 
-// つくば市（茨城）。市は複数フィーチャに分かれることがあるので統合
 const ib = await (await fetch(IBARAKI)).json();
-const tkbPolys = [];
-for (const f of ib.features) {
-  if ((f.properties.N03_004 || "") !== "つくば市") continue;
-  const g = f.geometry;
-  if (g.type === "Polygon") tkbPolys.push(g.coordinates);
-  else if (g.type === "MultiPolygon") tkbPolys.push(...g.coordinates);
-}
-if (!tkbPolys.length) throw new Error("つくば市 not found");
-out["つくば市"] = { type: "MultiPolygon", coordinates: tkbPolys };
-console.log("つくば市 polygons", tkbPolys.length);
+const collect = (names) => {
+  const polys = [];
+  const found = new Set();
+  for (const f of ib.features) {
+    const nm = f.properties.N03_004 || "";
+    if (!names.includes(nm)) continue;
+    found.add(nm);
+    const g = f.geometry;
+    if (g.type === "Polygon") polys.push(g.coordinates);
+    else if (g.type === "MultiPolygon") polys.push(...g.coordinates);
+  }
+  const missing = names.filter((n) => !found.has(n));
+  if (missing.length) console.log("⚠ 見つからない市町村:", missing.join(", "));
+  return polys;
+};
+
+// つくば市（既存・独立region）
+out["つくば市"] = { type: "MultiPolygon", coordinates: collect(["つくば市"]) };
+
+// 茨城県南（千葉〜つくばの間：土浦・牛久・守谷・取手 ほか）
+const SOUTH = [
+  "取手市", "守谷市", "つくばみらい市", "常総市", "龍ケ崎市", "牛久市",
+  "阿見町", "土浦市", "利根町", "河内町", "美浦村", "稲敷市",
+];
+out["茨城県南"] = { type: "MultiPolygon", coordinates: collect(SOUTH) };
+console.log("つくば polys", out["つくば市"].coordinates.length, "/ 県南 polys", out["茨城県南"].coordinates.length);
 
 // 千葉県は全市区町村のポリゴンを1つのMultiPolygonに統合（詳細な海岸線で誤除外を防ぐ）
 const cb = await (await fetch(CHIBA)).json();

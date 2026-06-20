@@ -1,5 +1,5 @@
-// つくば市（茨城）周辺のラーメン店をGoogleマップから収集し raw_all.json に追記マージ。
-// 収集後は scripts/refine.py を実行して src/data/shops.json を再生成すること。
+// 茨城県南（土浦・牛久・守谷・取手・龍ケ崎・つくばみらい・常総・阿見・利根・河内・美浦・稲敷）を
+// Googleマップから収集し raw_all.json に追記マージ。収集後 scripts/refine.py を実行すること。
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -8,12 +8,13 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, "raw_all.json");
 
-// つくば市は広域（旧6町村合併）。中心を複数置いてカバー
 const AREAS = [
-  [36.083, 140.076, 13, "つくば駅・研究学園・竹園"],
-  [36.02, 140.105, 13, "谷田部・茎崎・みどりの"],
-  [36.155, 140.1, 12, "筑波・北条・大穂・豊里"],
-  [36.1, 140.155, 13, "桜・東部"],
+  [35.905, 140.0, 12, "取手・守谷"],
+  [35.985, 139.985, 12, "つくばみらい・常総・守谷北"],
+  [35.92, 140.16, 12, "龍ケ崎・牛久"],
+  [36.05, 140.2, 12, "土浦・阿見"],
+  [35.9, 140.29, 11, "利根町・河内・稲敷（利根川沿い）"],
+  [36.0, 140.33, 12, "美浦・稲敷北（霞ヶ浦南）"],
 ];
 
 const SCRAPE = async () => {

@@ -113,6 +113,8 @@ def main():
             region = "tokyo"
         elif in_named(lat, lng, "つくば市"):
             region = "tsukuba"
+        elif in_named(lat, lng, "茨城県南"):
+            region = "ibaraki_south"
         elif in_named(lat, lng, "千葉県"):
             region = chiba_region(lat, lng)
         else:

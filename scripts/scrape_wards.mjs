@@ -110,8 +110,11 @@ async function main() {
       let added = 0;
       if (res && res.shops)
         for (const s of res.shops) {
-          if (!acc.has(s.pid)) added++;
-          acc.set(s.pid, s);
+          // 既存pidは保持（手動修正の上書きを防ぐ）
+          if (!acc.has(s.pid)) {
+            acc.set(s.pid, s);
+            added++;
+          }
         }
       console.log(
         `[${i + 1}/${AREAS.length}] ${label}: +${added} (raw ${
