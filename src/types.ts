@@ -30,29 +30,46 @@ export interface Filters {
   sort: SortKey;
 }
 
-/** ジャンル（Googleのカテゴリは大半「ラーメン」で系統が不明なため、店名から推定する）。
- *  kw は店名に対する部分一致キーワード（小文字化して比較）。 */
-export const GENRE_DEFS: { key: string; label: string; kw: string[] }[] = [
-  { key: "iekei", label: "家系", kw: ["家系", "壱角家", "町田商店", "武蔵家", "吉村家", "杉田家", "魂心家", "王道家"] },
-  { key: "chuka", label: "中華そば", kw: ["中華そば", "中華蕎麦"] },
-  { key: "tsukemen", label: "つけ麺", kw: ["つけ麺", "つけめん", "付け麺"] },
-  { key: "jiro", label: "二郎系", kw: ["二郎", "ジロー", "豚ラーメン", "ラーメン荘", "歴史を刻め"] },
-  { key: "miso", label: "味噌", kw: ["味噌", "みそ"] },
-  { key: "tonkotsu", label: "豚骨", kw: ["豚骨", "とんこつ", "トンコツ"] },
-  { key: "tantan", label: "担々麺", kw: ["担々", "担担", "坦々", "タンタン"] },
-  { key: "tori", label: "鶏白湯・鶏", kw: ["鶏白湯", "鶏そば", "鶏ラーメン", "水炊き"] },
-  { key: "mazesoba", label: "まぜそば・油そば", kw: ["まぜそば", "混ぜそば", "油そば", "あぶらそば", "台湾まぜ", "汁なし"] },
-  { key: "shoyu", label: "醤油", kw: ["醤油", "正油"] },
-  { key: "gyokai", label: "魚介・濃厚", kw: ["魚介", "濃厚"] },
-  { key: "shio", label: "塩", kw: ["塩ラーメン", "塩そば", "塩中華"] },
+// 家系の「○○家」屋号パターン（吉村家/杉田家/武蔵家…）。語末が「家」で終わる店名を拾う。
+const IEKEI_RE = /[^\s　・]家(?:$|\s|　|店|本店|・)/;
+// 「家」を含むが家系ではない店（山岡家=豚骨醤油、麺家/らーめん家=屋号、磯家=磯ラーメン 等）を除外
+const IEKEI_EXCLUDE = /(山岡家|麺家|らーめん家|ラーメン家|磯家|うさぎ家|神道家)/;
+
+/** ジャンル（Googleのカテゴリは大半「ラーメン」で系統が不明なため、店名から判定する）。
+ *  kw=店名への部分一致キーワード（小文字比較）、test=追加の判定関数。
+ *  注意: スープのベース（醤油・塩など）は店名にほぼ出ないため対象にしていない（名前では判定不能）。
+ *  系統名が名前に出ない店は分類されない（＝チップは“店名にその語がある店”の絞り込み）。 */
+export const GENRE_DEFS: {
+  key: string;
+  label: string;
+  kw: string[];
+  test?: (name: string) => boolean;
+}[] = [
+  {
+    key: "iekei",
+    label: "家系",
+    kw: ["家系", "横浜ラーメン", "壱角家", "町田商店"],
+    test: (n) => IEKEI_RE.test(n) && !IEKEI_EXCLUDE.test(n),
+  },
+  { key: "chuka", label: "中華そば", kw: ["中華そば", "中華蕎麦", "支那そば", "支那蕎麦"] },
+  { key: "tonkotsu", label: "豚骨", kw: ["豚骨", "とんこつ", "トンコツ", "博多", "長浜", "豚そば", "山岡家"] },
+  { key: "miso", label: "味噌", kw: ["味噌", "みそ", "ミソ", "札幌"] },
+  { key: "tsukemen", label: "つけ麺", kw: ["つけ麺", "つけめん", "付け麺", "tsukemen", "つけそば", "つけ蕎麦"] },
+  { key: "niboshi", label: "煮干し", kw: ["煮干", "にぼし", "ニボシ"] },
+  { key: "tori", label: "鶏白湯・鶏", kw: ["鶏白湯", "鶏そば", "鶏ラーメン", "鶏中華", "鳥そば", "とり白湯"] },
+  { key: "jiro", label: "二郎系", kw: ["二郎", "ラーメン荘", "歴史を刻め", "夢を語れ", "豚山", "マシマシ", "ジロリアン", "野郎ラーメン"] },
+  { key: "tantan", label: "担々麺", kw: ["担々", "担担", "坦々", "坦坦", "タンタン", "たんたん"] },
+  { key: "mazesoba", label: "まぜそば・油そば", kw: ["まぜそば", "混ぜそば", "油そば", "あぶらそば", "台湾まぜ", "汁なし", "和え麺", "あえ麺", "まぜ麺"] },
 ];
 
 /** 店名から該当するジャンルキーの配列を返す（複数該当あり得る） */
 export function genreTags(name: string): string[] {
   const s = (name || "").toLowerCase();
-  return GENRE_DEFS.filter((g) => g.kw.some((k) => s.includes(k.toLowerCase()))).map(
-    (g) => g.key
-  );
+  return GENRE_DEFS.filter(
+    (g) =>
+      g.kw.some((k) => s.includes(k.toLowerCase())) ||
+      (g.test ? g.test(name) : false)
+  ).map((g) => g.key);
 }
 
 /** エリア区分（緯度経度から判定）。千葉県＋隣接の江東区・江戸川区 */

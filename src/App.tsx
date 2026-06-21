@@ -403,7 +403,7 @@ export default function App() {
               </div>
 
               <div className="field">
-                <label>ジャンル（店名から推定）</label>
+                <label>ジャンル（店名に系統名がある店）</label>
                 <div className="chips-row">
                   {GENRE_DEFS.map((g) => (
                     <button
