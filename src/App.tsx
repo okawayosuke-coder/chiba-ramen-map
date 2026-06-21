@@ -58,6 +58,7 @@ export default function App() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [follow, setFollow] = useState(false);
   const [paneHidden, setPaneHidden] = useState(false);
+  const [showPoi, setShowPoi] = useState(false);
   // 運転モードは毎回OFFで起動（永続化しない＝常に通常モードで起動）
   const [driving, setDriving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -272,6 +273,24 @@ export default function App() {
               🚗
             </span>
             <span>運転</span>
+          </button>
+          <button
+            className={`tool-btn${showPoi ? " on" : ""}`}
+            aria-pressed={showPoi}
+            onClick={() => {
+              const n = !showPoi;
+              setShowPoi(n);
+              setToast(
+                n
+                  ? "周辺のコンビニ・GSを表示（地図を拡大すると出ます）"
+                  : "コンビニ・GS表示をOFFにしました"
+              );
+            }}
+          >
+            <span className="ic" aria-hidden="true">
+              🏪
+            </span>
+            <span>コンビニ</span>
           </button>
           <button
             className="tool-btn"
@@ -500,6 +519,7 @@ export default function App() {
           focus={focus}
           follow={follow}
           paneHidden={paneHidden}
+          showPoi={showPoi}
           theme={theme.resolved}
           userPos={geo.pos}
           isFav={isFav}

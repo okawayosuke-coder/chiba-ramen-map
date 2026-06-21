@@ -12,6 +12,7 @@ import L from "leaflet";
 import type { Shop } from "../types";
 import { fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
+import { fetchPois, type BBox } from "../poi";
 
 function rawTierColor(rating: number): string {
   if (rating >= 4.3) return "#d6336c";
@@ -48,6 +49,17 @@ const userIcon = L.divIcon({
   iconSize: [22, 22],
   iconAnchor: [11, 11],
 });
+
+/** デバッグ時のみ地図インスタンスを window に露出（?debug=1） */
+function DebugExpose() {
+  const map = useMap();
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("debug") === "1") {
+      (window as unknown as { __map?: unknown }).__map = map;
+    }
+  }, [map]);
+  return null;
+}
 
 function FocusController({ focus }: { focus: Shop | null }) {
   const map = useMap();
@@ -384,12 +396,105 @@ function ResizeOnChange({ dep }: { dep: unknown }) {
   return null;
 }
 
+/** コンビニ/ガソリンスタンドを表示範囲ぶん表示（ラーメンピンとは別レイヤー）。
+ *  z14未満は非表示、bboxキャッシュ＋最小間隔でOverpassへの過剰アクセスを抑制。
+ *  走行モードでも moveend ごとに呼ばれるが、キャッシュ内・間隔内は即returnで通信しない。 */
+function PoiLayer({ show }: { show: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!show) return;
+    const MINZOOM = 14;
+    const MIN_INTERVAL = 4000; // 同一APIへの最小間隔(ms)
+    const MAX = 500; // 1回の最大表示数
+
+    const group = L.layerGroup().addTo(map);
+    const hint = L.DomUtil.create("div", "poi-hint");
+    hint.textContent = "🏪 ズームすると周辺のコンビニ・GSを表示";
+    hint.style.display = "none";
+    map.getContainer().appendChild(hint);
+
+    const convIcon = L.divIcon({
+      className: "",
+      html: `<div class="poi poi--conv">🏪</div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+    const fuelIcon = L.divIcon({
+      className: "",
+      html: `<div class="poi poi--fuel">⛽</div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+
+    let cached: BBox | null = null;
+    let lastReqAt = 0;
+    let aborted = false;
+
+    const expand = (b: BBox, f: number): BBox => {
+      const dy = (b.n - b.s) * f;
+      const dx = (b.e - b.w) * f;
+      return { s: b.s - dy, w: b.w - dx, n: b.n + dy, e: b.e + dx };
+    };
+    const inside = (o: BBox, i: BBox) =>
+      i.s >= o.s && i.w >= o.w && i.n <= o.n && i.e <= o.e;
+
+    const refresh = async () => {
+      if (map.getZoom() < MINZOOM) {
+        group.clearLayers();
+        cached = null;
+        hint.style.display = "";
+        return;
+      }
+      hint.style.display = "none";
+      const bd = map.getBounds();
+      const view: BBox = {
+        s: bd.getSouth(),
+        w: bd.getWest(),
+        n: bd.getNorth(),
+        e: bd.getEast(),
+      };
+      if (cached && inside(cached, view)) return; // 既取得範囲内→通信しない
+      const now = performance.now();
+      if (now - lastReqAt < MIN_INTERVAL) return; // 過剰アクセス抑制
+      lastReqAt = now;
+      const area = expand(view, 0.4); // 余白付きで取得し再取得頻度を下げる
+      try {
+        const pois = await fetchPois(area);
+        if (aborted) return;
+        cached = area;
+        group.clearLayers();
+        pois.slice(0, MAX).forEach((p) => {
+          L.marker([p.lat, p.lng], {
+            icon: p.kind === "conv" ? convIcon : fuelIcon,
+            keyboard: false,
+          })
+            .bindTooltip(p.label, { direction: "top", offset: [0, -10] })
+            .addTo(group);
+        });
+      } catch {
+        /* レート制限等は黙ってスキップ（次のmoveendで再試行） */
+      }
+    };
+
+    map.on("moveend zoomend", refresh);
+    refresh();
+    return () => {
+      aborted = true;
+      map.off("moveend zoomend", refresh);
+      group.remove();
+      hint.remove();
+    };
+  }, [show, map]);
+  return null;
+}
+
 interface Props {
   shops: Shop[];
   focus: Shop | null;
   theme: "light" | "dark";
   follow: boolean;
   paneHidden: boolean;
+  showPoi: boolean;
   userPos: Pt | null;
   isFav: (s: Shop) => boolean;
   onToggleFav: (s: Shop) => void;
@@ -404,6 +509,7 @@ function RamenMap({
   theme,
   follow,
   paneHidden,
+  showPoi,
   userPos,
   isFav,
   onToggleFav,
@@ -441,6 +547,8 @@ function RamenMap({
       <ElevationProbe />
       <FollowController active={follow} />
       <ResizeOnChange dep={paneHidden} />
+      <PoiLayer show={showPoi} />
+      <DebugExpose />
 
       {userPos && !follow && (
         <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />
