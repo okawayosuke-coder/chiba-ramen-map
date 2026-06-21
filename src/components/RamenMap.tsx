@@ -104,8 +104,16 @@ function ElevationProbe() {
     const box = L.DomUtil.create("div", "elev-box");
     box.style.display = "none";
     map.getContainer().appendChild(box);
-    let timer: number | undefined;
+    let timer: number | undefined; // 標高取得のデバウンス
+    let hideTimer: number | undefined; // 表示から一定時間で自動消去（タッチはmouseoutが無いため）
     let reqId = 0;
+
+    const hide = () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(hideTimer);
+      box.style.display = "none";
+      box.textContent = "";
+    };
 
     const place = (px: number, py: number) => {
       const sz = map.getSize();
@@ -137,19 +145,21 @@ function ElevationProbe() {
         if (id === reqId)
           box.textContent = t ? `標高 ${t}` : "標高 取得不可";
       }, 280);
-    };
-    const onOut = () => {
-      window.clearTimeout(timer);
-      box.style.display = "none";
-      box.textContent = "";
+      // 表示から5秒で自動消去（タッチではmouseoutが発火せず消せないため）。操作中は更新で延長
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(hide, 5000);
     };
 
     map.on("mousemove", onMove);
-    map.on("mouseout", onOut);
+    map.on("mouseout", hide);
+    // タッチでのパン/ズーム開始時も消す（位置がずれた標高を残さない）
+    map.on("dragstart zoomstart", hide);
     return () => {
       map.off("mousemove", onMove);
-      map.off("mouseout", onOut);
+      map.off("mouseout", hide);
+      map.off("dragstart zoomstart", hide);
       window.clearTimeout(timer);
+      window.clearTimeout(hideTimer);
       box.remove();
     };
   }, [map]);
