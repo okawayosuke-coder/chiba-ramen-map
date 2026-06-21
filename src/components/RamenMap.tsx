@@ -447,7 +447,7 @@ function TrackLayer({ show }: { show: boolean }) {
   useEffect(() => {
     if (!show) return;
     const group = L.layerGroup().addTo(map);
-    const SPACING = 24; // 画面上の最小間隔(px)
+    const SPACING = 20; // 画面上の最小間隔(px)
     const iconCache = new Map<number, L.DivIcon>();
     const iconFor = (deg: number): L.DivIcon => {
       const k = (Math.round(deg / 10) * 10) % 360; // 10°刻みでキャッシュ
@@ -455,9 +455,9 @@ function TrackLayer({ show }: { show: boolean }) {
       if (!ic) {
         ic = L.divIcon({
           className: "",
-          html: `<svg width="16" height="16" viewBox="0 0 16 16" class="trk-tri" style="transform:rotate(${k}deg)"><path d="M8 1.5 L13.5 14 L8 11 L2.5 14 Z" fill="#e8590c" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
+          html: `<svg width="13" height="13" viewBox="0 0 16 16" class="trk-tri" style="transform:rotate(${k}deg)"><path d="M8 1.5 L13.5 14 L8 11 L2.5 14 Z" fill="#e8590c" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+          iconSize: [13, 13],
+          iconAnchor: [6.5, 6.5],
         });
         iconCache.set(k, ic);
       }
