@@ -10,8 +10,9 @@ export interface TrackPoint {
 }
 
 const KEY = "crm_track";
-const MAX = 10000; // 上限点数
+const MAX = 20000; // 上限点数（約20m間隔で約400km分）
 const MIN_M = 20; // 記録間隔(m)
+const ROUND = 1e6; // 座標を6桁(約0.1m)に丸めて保存（容量節約・実害なし）
 
 let points: TrackPoint[] = load();
 const listeners = new Set<() => void>();
@@ -26,15 +27,27 @@ function load(): TrackPoint[] {
     return [];
   }
 }
-function save() {
+function flush() {
   window.clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(() => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(points));
-    } catch {
-      /* 容量超過は無視 */
-    }
-  }, 1500);
+  saveTimer = undefined;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(points));
+  } catch {
+    /* 容量超過は無視 */
+  }
+}
+// スロットル: 連続追加でもリセットせず、最初の追加から約2秒ごとに必ず書き込む
+// （デバウンスだと走り続ける間に一度も保存されないため）
+function save() {
+  if (saveTimer != null) return;
+  saveTimer = window.setTimeout(flush, 2000);
+}
+// 離脱・バックグラウンド化の直前に取りこぼしを確実に保存
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flush();
+  });
 }
 function emit() {
   listeners.forEach((l) => l());
@@ -48,7 +61,11 @@ export function addTrackPoint(lat: number, lng: number, t: number) {
     haversineKm({ lat: last.lat, lng: last.lng }, { lat, lng }) * 1000 < MIN_M
   )
     return;
-  points.push({ lat, lng, t });
+  points.push({
+    lat: Math.round(lat * ROUND) / ROUND,
+    lng: Math.round(lng * ROUND) / ROUND,
+    t,
+  });
   if (points.length > MAX) points = points.slice(points.length - MAX);
   save();
   emit();
@@ -60,6 +77,8 @@ export function getTrackPoints(): TrackPoint[] {
 
 export function clearTrack() {
   points = [];
+  window.clearTimeout(saveTimer);
+  saveTimer = undefined;
   try {
     localStorage.removeItem(KEY);
   } catch {
