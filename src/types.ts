@@ -26,7 +26,33 @@ export interface Filters {
   minRating: number;
   minReviews: number;
   region: string; // "all" or a region key
+  genres: string[]; // 選択中のジャンルキー（空=絞り込まない）
   sort: SortKey;
+}
+
+/** ジャンル（Googleのカテゴリは大半「ラーメン」で系統が不明なため、店名から推定する）。
+ *  kw は店名に対する部分一致キーワード（小文字化して比較）。 */
+export const GENRE_DEFS: { key: string; label: string; kw: string[] }[] = [
+  { key: "iekei", label: "家系", kw: ["家系", "壱角家", "町田商店", "武蔵家", "吉村家", "杉田家", "魂心家", "王道家"] },
+  { key: "chuka", label: "中華そば", kw: ["中華そば", "中華蕎麦"] },
+  { key: "tsukemen", label: "つけ麺", kw: ["つけ麺", "つけめん", "付け麺"] },
+  { key: "jiro", label: "二郎系", kw: ["二郎", "ジロー", "豚ラーメン", "ラーメン荘", "歴史を刻め"] },
+  { key: "miso", label: "味噌", kw: ["味噌", "みそ"] },
+  { key: "tonkotsu", label: "豚骨", kw: ["豚骨", "とんこつ", "トンコツ"] },
+  { key: "tantan", label: "担々麺", kw: ["担々", "担担", "坦々", "タンタン"] },
+  { key: "tori", label: "鶏白湯・鶏", kw: ["鶏白湯", "鶏そば", "鶏ラーメン", "水炊き"] },
+  { key: "mazesoba", label: "まぜそば・油そば", kw: ["まぜそば", "混ぜそば", "油そば", "あぶらそば", "台湾まぜ", "汁なし"] },
+  { key: "shoyu", label: "醤油", kw: ["醤油", "正油"] },
+  { key: "gyokai", label: "魚介・濃厚", kw: ["魚介", "濃厚"] },
+  { key: "shio", label: "塩", kw: ["塩ラーメン", "塩そば", "塩中華"] },
+];
+
+/** 店名から該当するジャンルキーの配列を返す（複数該当あり得る） */
+export function genreTags(name: string): string[] {
+  const s = (name || "").toLowerCase();
+  return GENRE_DEFS.filter((g) => g.kw.some((k) => s.includes(k.toLowerCase()))).map(
+    (g) => g.key
+  );
 }
 
 /** エリア区分（緯度経度から判定）。千葉県＋隣接の江東区・江戸川区 */

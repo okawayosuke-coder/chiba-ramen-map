@@ -1,0 +1,102 @@
+<title>千葉ラーメンMAP 追加機能の提案</title>
+<style>
+  :root{--g:#2f9e44;--o:#e8590c;--r:#c92a2a;--ink:#22251f;--mut:#6b7280;--line:#e6e0d6;--bg:#faf8f4;--card:#fff;--accent:#c92a2a;}
+  *{box-sizing:border-box}
+  body{margin:0}
+  .wrap{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;color:var(--ink);background:var(--bg);max-width:1080px;margin:0 auto;padding:22px 18px 56px;line-height:1.6}
+  h1{font-size:24px;margin:0 0 2px}
+  .sub{color:var(--mut);font-size:13.5px;margin:0 0 18px}
+  h2{font-size:17px;margin:26px 0 10px;padding-left:10px;border-left:5px solid var(--accent)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .card h3{margin:0 0 5px;font-size:15px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .card p{margin:0;font-size:13px;color:#3f433b}
+  .badge{font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;color:#fff;white-space:nowrap}
+  .S{background:var(--g)} .M{background:var(--o)} .L{background:var(--r)}
+  .tag{font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;background:#eef1ee;color:#475}
+  .tag.warn{background:#fff3bf;color:#8a6d00}
+  .tag.hot{background:#ffe3e3;color:#b02020}
+  .note{font-size:12px;color:var(--mut);margin-top:6px}
+  .top{background:#fff;border:2px solid var(--accent);border-radius:14px;padding:14px 18px;margin:6px 0 8px}
+  .top ol{margin:6px 0 0;padding-left:20px}
+  .top li{margin:4px 0;font-size:14px}
+  .legend{font-size:12px;color:var(--mut);margin:8px 0 0;display:flex;gap:14px;flex-wrap:wrap}
+  .x{background:#fbeaea;border:1px solid #f0c5c5;border-radius:12px;padding:12px 16px;margin-top:8px}
+  .x h3{margin:0 0 6px;font-size:14px;color:#b02020}
+  .x li{font-size:13px;margin:3px 0}
+  footer{margin-top:24px;font-size:12px;color:var(--mut)}
+</style>
+<div class="wrap">
+  <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
+  <p class="sub">現状（検索・絞り込み・お気に入り・カーナビ起動・走行モード・現在地住所/標高・コンビニ/GS表示・ダーク・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b></p>
+
+  <div class="top">
+    <b>⭐ おすすめ優先（コスパ順）</b>
+    <ol>
+      <li><b>駐車場・EV充電・トイレのPOI追加</b> — コンビニ/GSと同じ仕組みで即追加。ドライブで一番効く <span class="badge S">S</span></li>
+      <li><b>ジャンル絞り込み（家系/二郎系/つけ麺/味噌…）</b> — 探す体験が大きく向上 <span class="badge M">M</span></li>
+      <li><b>訪問済みチェック＋制覇マップ</b> — 常用＆楽しい。リピート利用を促す <span class="badge M">M</span></li>
+      <li><b>PWA更新通知</b> — 新版を検知して「更新」表示（今は気づきにくい） <span class="badge S">S</span></li>
+      <li><b>オフライン地図の事前DL</b> — 通信量を抜本削減（以前の保留案件） <span class="badge L">L</span></li>
+    </ol>
+  </div>
+
+  <h2>① ドライブ・ナビ強化</h2>
+  <div class="grid">
+    <div class="card"><h3>駐車場/EV/トイレ POI <span class="badge S">S</span> <span class="tag">実績ある方式</span></h3><p>Overpassで <code>amenity=parking / charging_station / toilets / 道の駅</code> を表示。コンビニ/GSと同じレイヤー方式で追加。</p></div>
+    <div class="card"><h3>目的地セット＆残り距離 <span class="badge M">M</span></h3><p>アプリ内で目的地ピンを置くと、走行モードで残り直線距離・方位・目安時間を表示。外部ナビに頼らず軽量。</p></div>
+    <div class="card"><h3>ルート沿いの高評価店ハイライト <span class="badge M">M</span> <span class="tag warn">制約あり</span></h3><p>現在地→目的地の経路“近く”の店を強調。<span class="note">正確な道なりルートは外部API＝地図外表示の規約懸念。直線バッファでの簡易抽出なら自前で可。</span></p></div>
+    <div class="card"><h3>走行軌跡ログ <span class="badge M">M</span></h3><p>GPSトラックを記録し、後で軌跡確認・GPX書き出し。「どこを走ったか」の振り返り。</p></div>
+    <div class="card"><h3>休憩リマインド <span class="badge S">S</span></h3><p>走行モードで連続運転○分を超えたら休憩を提案（コンビニ表示と連携可）。</p></div>
+  </div>
+
+  <h2>② 探す・絞り込む</h2>
+  <div class="grid">
+    <div class="card"><h3>ジャンル絞り込み <span class="badge M">M</span> <span class="tag hot">効果大</span></h3><p>家系・二郎系・つけ麺・味噌・濃厚魚介・あっさり等。店名/既存ジャンルから自動分類してチップ追加。</p></div>
+    <div class="card"><h3>「今営業中」フィルタ <span class="badge M">M</span> <span class="tag warn">データ制約</span></h3><p>OSMの営業時間がある店のみ判定。<span class="note">ラーメン店は欠損が多く部分的。あくまで“分かる範囲”表示。</span></p></div>
+    <div class="card"><h3>総合スコア順 <span class="badge S">S</span></h3><p>評価×口コミ数のベイズ平均で“ハズレにくい順”。少件数の高評価に振り回されない並べ替え。</p></div>
+    <div class="card"><h3>あいまい検索 <span class="badge S">S</span></h3><p>ひらがな/カタカナ/英字の表記ゆれを吸収（例「らーめん」「ラーメン」「ramen」）。</p></div>
+    <div class="card"><h3>条件プリセット <span class="badge S">S</span></h3><p>よく使う条件をワンタップ保存（例「家系×4.0+×近い順」）。</p></div>
+  </div>
+
+  <h2>③ 記録・マイページ</h2>
+  <div class="grid">
+    <div class="card"><h3>訪問済み＋自己評価＋メモ <span class="badge M">M</span> <span class="tag hot">常用</span></h3><p>「行った」「また行きたい」チェック、自分の★、ひとことメモ。お気に入りとは別管理。</p></div>
+    <div class="card"><h3>訪問ログ（履歴） <span class="badge M">M</span></h3><p>日付つきで記録。マイ・ラーメン日記に。</p></div>
+    <div class="card"><h3>制覇マップ <span class="badge M">M</span> <span class="tag">楽しい</span></h3><p>市区町村ごとの訪問率を色分け、統計（訪問数・平均評価）。コレクション欲を刺激。</p></div>
+    <div class="card"><h3>バックアップ拡張 <span class="badge S">S</span></h3><p>お気に入りに加え、訪問記録もJSONで入出力（機種変更に強く）。</p></div>
+  </div>
+
+  <h2>④ 地図・表示</h2>
+  <div class="grid">
+    <div class="card"><h3>地図ラベル拡大オプション <span class="badge S">S</span> <span class="tag">比較済み</span></h3><p>GSI標準/淡色への切替で地名を大きく（以前お見せした比較）。設定でON/OFF。</p></div>
+    <div class="card"><h3>クラスタ強調 <span class="badge S">S</span></h3><p>高評価が密集するエリアのクラスタを色/サイズで目立たせる。</p></div>
+    <div class="card"><h3>凡例の任意表示 <span class="badge S">S</span></h3><p>外したピン凡例を“設定でON”に。スケールと両立。</p></div>
+    <div class="card"><h3>UI/フォントサイズ設定 <span class="badge S">S</span></h3><p>運転中の視認性に合わせて全体の文字サイズを調整。</p></div>
+  </div>
+
+  <h2>⑤ オフライン・基盤</h2>
+  <div class="grid">
+    <div class="card"><h3>ルート/エリア事前DL <span class="badge L">L</span> <span class="tag hot">通信大幅減</span></h3><p>WiFiで地図を先に保存→走行中ほぼ通信ゼロ。<span class="note">GSIタイル化が前提（OSM公式は一括DL規約NG）。以前の保留案件。</span></p></div>
+    <div class="card"><h3>POIキャッシュ <span class="badge M">M</span></h3><p>コンビニ/GS等を事前取得・キャッシュし、走行中の取得を削減。</p></div>
+    <div class="card"><h3>PWA更新通知 <span class="badge S">S</span> <span class="tag">品質</span></h3><p>新バージョン検知で「更新する」ボタン表示（今は自動だが気づきにくい）。</p></div>
+    <div class="card"><h3>ストレージ管理 <span class="badge S">S</span></h3><p>端末のキャッシュ使用量を表示・クリア。</p></div>
+  </div>
+
+  <h2>⑥ 共有</h2>
+  <div class="grid">
+    <div class="card"><h3>リスト/はしごプランの共有リンク <span class="badge M">M</span></h3><p>お気に入りや巡回プランをURLにエンコードして共有（サーバ不要）。</p></div>
+    <div class="card"><h3>店カード画像生成 <span class="badge M">M</span></h3><p>店情報＋地図のカード画像を生成しSNS共有。</p></div>
+  </div>
+
+  <div class="x">
+    <h3>⚠ できない/非推奨（正直に）</h3>
+    <ul>
+      <li><b>食べログの点数・口コミの転載</b> — 規約違反・著作権。不可。</li>
+      <li><b>Googleの店舗写真・口コミを地図上に表示</b> — Google Maps Platform規約で地図外表示は不可。</li>
+      <li><b>公式ロゴの使用</b> — 商標。※POISは色＋文字で回避済み。</li>
+    </ul>
+  </div>
+
+  <footer>千葉ラーメンMAP / 提案メモ。実装は1件ずつ、復旧ポイント（gitタグ）を取りつつ進められます。</footer>
+</div>

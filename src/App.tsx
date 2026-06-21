@@ -5,12 +5,15 @@ import NavPicker from "./components/NavPicker";
 import Settings from "./components/Settings";
 import {
   DEFAULT_RATING,
+  GENRE_DEFS,
+  genreTags,
   MIN_REVIEWS,
   RATING_FLOOR,
   REGIONS,
   type Filters,
   type Shop,
 } from "./types";
+import UpdatePrompt from "./UpdatePrompt";
 import {
   fmtDistance,
   haversineKm,
@@ -47,8 +50,14 @@ const DEFAULTS: Filters = {
   minRating: DEFAULT_RATING,
   minReviews: MIN_REVIEWS,
   region: "all",
+  genres: [],
   sort: "rating",
 };
+
+// 各店のジャンル（店名から推定）を一度だけ計算
+const SHOP_GENRES = new Map<Shop, string[]>(
+  ALL_SHOPS.map((s) => [s, genreTags(s.name)])
+);
 
 export default function App() {
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
@@ -113,6 +122,11 @@ export default function App() {
       if (s.rating < filters.minRating) return false;
       if (s.reviews < filters.minReviews) return false;
       if (filters.region !== "all" && s.region !== filters.region) return false;
+      if (
+        filters.genres.length &&
+        !filters.genres.some((g) => SHOP_GENRES.get(s)!.includes(g))
+      )
+        return false;
       if (favOnly && !favs.has(shopKey(s))) return false;
       if (q && !(s.name.includes(q) || s.address.includes(q))) return false;
       return true;
@@ -129,6 +143,36 @@ export default function App() {
   }, [filters, favOnly, favs, geo.pos]);
 
   const shops = useMemo(() => view.map((v) => v.s), [view]);
+
+  // ジャンル別の件数（ジャンル以外の絞り込みを反映＝チップに今の該当数を表示）
+  const genreCounts = useMemo(() => {
+    const q = filters.query.trim();
+    const c: Record<string, number> = {};
+    for (const s of ALL_SHOPS) {
+      if (s.rating < filters.minRating) continue;
+      if (s.reviews < filters.minReviews) continue;
+      if (filters.region !== "all" && s.region !== filters.region) continue;
+      if (favOnly && !favs.has(shopKey(s))) continue;
+      if (q && !(s.name.includes(q) || s.address.includes(q))) continue;
+      for (const g of SHOP_GENRES.get(s)!) c[g] = (c[g] || 0) + 1;
+    }
+    return c;
+  }, [
+    filters.query,
+    filters.minRating,
+    filters.minReviews,
+    filters.region,
+    favOnly,
+    favs,
+  ]);
+
+  const toggleGenre = (key: string) =>
+    set(
+      "genres",
+      filters.genres.includes(key)
+        ? filters.genres.filter((g) => g !== key)
+        : [...filters.genres, key]
+    );
 
   const select = useCallback((s: Shop) => {
     setFocus(s);
@@ -200,6 +244,7 @@ export default function App() {
     filters.region !== "all" ||
     filters.minRating !== DEFAULT_RATING ||
     filters.minReviews !== MIN_REVIEWS ||
+    filters.genres.length > 0 ||
     favOnly;
 
   const geoNotice =
@@ -355,6 +400,24 @@ export default function App() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="field">
+                <label>ジャンル（店名から推定）</label>
+                <div className="chips-row">
+                  {GENRE_DEFS.map((g) => (
+                    <button
+                      key={g.key}
+                      className={`chip chip--sm${
+                        filters.genres.includes(g.key) ? " chip--on" : ""
+                      }`}
+                      disabled={!genreCounts[g.key]}
+                      onClick={() => toggleGenre(g.key)}
+                    >
+                      {g.label}（{genreCounts[g.key] || 0}）
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="filters__row">
@@ -580,6 +643,8 @@ export default function App() {
           {toast}
         </div>
       )}
+
+      <UpdatePrompt />
     </div>
   );
 }
