@@ -828,6 +828,27 @@ body {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
 
+/* ===== 走行モード: 右上に現在地の住所（番地を除く）をリアルタイム表示 ===== */
+.addr-box {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 600;
+  pointer-events: none;
+  max-width: min(62%, 460px);
+  background: rgba(20, 22, 26, 0.82);
+  color: #fff;
+  border-radius: 10px;
+  padding: 8px 13px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: right;
+  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
 /* ===== マウス位置の横に標高表示（位置はJSで設定） ===== */
 .elev-box {
   position: absolute;

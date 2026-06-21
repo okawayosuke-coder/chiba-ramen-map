@@ -11,6 +11,7 @@ import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Shop } from "../types";
 import { fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
+import { reverseAddressNoBanchi } from "../geocode";
 
 function rawTierColor(rating: number): string {
   if (rating >= 4.3) return "#d6336c";
@@ -187,6 +188,11 @@ function FollowController({ active }: { active: boolean }) {
     box.textContent = "🧭 走行モード（測位中…）";
     map.getContainer().appendChild(box);
 
+    // 右上: 現在地の住所（番地を除く）をリアルタイム表示
+    const addrBox = L.DomUtil.create("div", "addr-box");
+    addrBox.textContent = "📍 現在地 測位中…";
+    map.getContainer().appendChild(addrBox);
+
     let first = true;
     // 自車の向き:
     //  - 走行中はGPSの進行方位(travel course)を表示（端末向き/画面回転に依存せず正確）
@@ -199,6 +205,8 @@ function FollowController({ active }: { active: boolean }) {
     let currentRot = 0;
     let lastElevPt: Pt | null = null; // 標高を取得した最後の地点
     let elevReqId = 0;
+    let lastAddrPt: Pt | null = null; // 住所を取得した最後の地点
+    let addrReqId = 0;
 
     const norm = (d: number) => ((d % 360) + 360) % 360;
     const angDiff = (a: number, b: number) => (((a - b + 540) % 360) - 180); // a-b を[-180,180)
@@ -241,6 +249,15 @@ function FollowController({ active }: { active: boolean }) {
         fetchElevation(latitude, longitude).then((t) => {
           if (id === elevReqId)
             marker.setTooltipContent(t ? `標高 ${t}` : "標高 -");
+        });
+      }
+      // 住所(番地除く)も移動に追従して更新（約40mごと＝走行中ほぼリアルタイム）
+      if (!lastAddrPt || haversineKm(lastAddrPt, here) > 0.04) {
+        lastAddrPt = here;
+        const aid = ++addrReqId;
+        reverseAddressNoBanchi(latitude, longitude).then((a) => {
+          if (aid === addrReqId)
+            addrBox.textContent = a ? `📍 ${a}` : "📍 現在地 取得できません";
         });
       }
       const sp = speed != null && !Number.isNaN(speed) ? speed : null;
@@ -324,6 +341,7 @@ function FollowController({ active }: { active: boolean }) {
       navigator.geolocation.clearWatch(watchId);
       marker.remove();
       box.remove();
+      addrBox.remove();
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener(
         "deviceorientationabsolute",
