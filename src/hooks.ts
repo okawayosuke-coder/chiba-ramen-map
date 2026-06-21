@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isFarFromArea, type Pt } from "./nav";
+import { haversineKm, isFarFromArea, type Pt } from "./nav";
 
 /** Escキーで閉じる（モーダル用） */
 export function useEscape(onClose: () => void) {
@@ -48,36 +48,75 @@ export function useGeolocation() {
   return { pos, status, request };
 }
 
-/** 移動検知: 有効中にGPSで監視し、「停止→確かな走り出し」を検知したら onMove を呼ぶ。
- * 誤発火対策:
- *  - 起動直後（最初のフィックス＋約4秒）は判定しない（測位の安定待ち）
- *  - 判定にはGPS提供の速度(coords.speed)のみを使用。変位から速度を推定すると
- *    低精度測位の位置ジャンプで誤検知するため使わない（速度が無い時は何もしない＝安全側）
- *  - 「停止状態」から速度しきい値超えが連続2回続いて初めて発火（一過性のノイズを無視） */
+/** 移動検知: 有効中に高精度GPSで監視し、「停止→確かな走り出し」を検知したら onMove を呼ぶ。
+ *  速度判定: GPS提供の coords.speed を優先。iOSは測位が低精度だと speed=null を返すため
+ *  高精度(enableHighAccuracy)で取得し、それでも null の時だけ高精度フィックスの変位から推定
+ *  （dt>=2秒＋精度<=30mに限定して位置ジャンプ由来の誤検知を抑制）。
+ *  誤発火対策: 最初の1フィックス＋約4秒は判定しない／停止状態から>3.3m/s(約12km/h)が連続2回で発火。
+ *  `?debug=1` で速度・状態を画面に表示（実機での原因切り分け用）。 */
 export function useMovementDetector(enabled: boolean, onMove: () => void) {
   const onMoveRef = useRef(onMove);
   onMoveRef.current = onMove;
   useEffect(() => {
     if (!enabled) return;
     if (!("geolocation" in navigator) || !window.isSecureContext) return;
+
+    const DEBUG =
+      new URLSearchParams(window.location.search).get("debug") === "1";
+    let dbg: HTMLDivElement | null = null;
+    if (DEBUG) {
+      dbg = document.createElement("div");
+      dbg.style.cssText =
+        "position:fixed;left:8px;top:8px;z-index:99999;background:rgba(0,0,0,.78);color:#fff;font:700 12px/1.4 monospace;padding:6px 10px;border-radius:8px;pointer-events:none;white-space:pre";
+      dbg.textContent = "🔎 移動検知: 測位待ち…";
+      document.body.appendChild(dbg);
+    }
+
     const startedAt = performance.now();
     let firstFixSeen = false;
     let wasStopped = true;
     let movingStreak = 0;
+    let prev: { lat: number; lng: number; t: number } | null = null;
+
     const id = navigator.geolocation.watchPosition(
       (p) => {
-        // 起動直後は測位が暴れやすい。最初の1フィックスと最初の約4秒は判定しない
+        const cur = {
+          lat: p.coords.latitude,
+          lng: p.coords.longitude,
+          t: p.timestamp,
+        };
+        const acc = p.coords.accuracy;
+        // 速度: GPS提供値を優先、無ければ高精度時のみ変位から推定（dt>=2秒・精度<=30m）
+        let sp =
+          p.coords.speed != null && !Number.isNaN(p.coords.speed)
+            ? p.coords.speed
+            : null;
+        let src = sp == null ? "-" : "gps";
+        if (sp == null && prev) {
+          const dt = (cur.t - prev.t) / 1000;
+          if (dt >= 2 && (acc == null || acc <= 30)) {
+            sp = (haversineKm(prev, cur) * 1000) / dt;
+            src = "calc";
+          }
+        }
+        prev = cur;
+
+        const grace = performance.now() - startedAt < 4000;
+        if (dbg) {
+          const kmh = sp == null ? "—" : (sp * 3.6).toFixed(0);
+          dbg.textContent = `🔎 検知中 ${kmh}km/h (${src})\n精度±${
+            acc == null ? "?" : Math.round(acc)
+          }m / 連続${movingStreak} / 停止${wasStopped ? "✓" : "×"}${
+            grace ? "\n起動安定待ち…" : ""
+          }`;
+        }
+
         if (!firstFixSeen) {
           firstFixSeen = true;
           return;
         }
-        if (performance.now() - startedAt < 4000) return;
-
-        const sp =
-          p.coords.speed != null && !Number.isNaN(p.coords.speed)
-            ? p.coords.speed
-            : null;
-        if (sp == null) return; // 速度が取れない時は判定しない（誤検知回避）
+        if (grace) return;
+        if (sp == null) return;
 
         if (sp < 1.0) {
           wasStopped = true;
@@ -88,6 +127,7 @@ export function useMovementDetector(enabled: boolean, onMove: () => void) {
           if (wasStopped && movingStreak >= 2) {
             wasStopped = false;
             movingStreak = 0;
+            if (dbg) dbg.textContent = "🔎 走り出し検知 → 走行モードへ";
             onMoveRef.current();
           }
         } else {
@@ -95,9 +135,14 @@ export function useMovementDetector(enabled: boolean, onMove: () => void) {
           movingStreak = 0;
         }
       },
-      () => {},
-      { enableHighAccuracy: false, maximumAge: 2000, timeout: 30000 }
+      () => {
+        if (dbg) dbg.textContent = "🔎 位置情報を取得できません（許可を確認）";
+      },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 30000 }
     );
-    return () => navigator.geolocation.clearWatch(id);
+    return () => {
+      navigator.geolocation.clearWatch(id);
+      dbg?.remove();
+    };
   }, [enabled]);
 }
