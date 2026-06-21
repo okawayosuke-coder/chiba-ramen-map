@@ -835,12 +835,12 @@ body {
   right: 10px;
   z-index: 600;
   pointer-events: none;
-  max-width: min(62%, 460px);
+  max-width: min(70%, 520px);
   background: rgba(20, 22, 26, 0.82);
   color: #fff;
   border-radius: 10px;
-  padding: 8px 13px;
-  font-size: 15px;
+  padding: 9px 15px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.35;
   text-align: right;
