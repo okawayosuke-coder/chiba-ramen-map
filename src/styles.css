@@ -828,6 +828,26 @@ body {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
 
+/* ===== ズーム(+/-)ボタンを大きく（タッチで押しやすく。標準/走行モード共通） ===== */
+.leaflet-control-zoom a,
+.leaflet-touch .leaflet-control-zoom a {
+  width: 46px;
+  height: 46px;
+  line-height: 46px;
+  font-size: 28px;
+  font-weight: 700;
+}
+.leaflet-touch .leaflet-control-zoom {
+  border: none;
+  border-radius: 12px;
+}
+.leaflet-control-zoom a:first-child {
+  border-radius: 12px 12px 0 0;
+}
+.leaflet-control-zoom a:last-child {
+  border-radius: 0 0 12px 12px;
+}
+
 /* ===== コンビニ/GS の POI マーカー（背景色＝ブランド色, 文字＝識別子はインライン指定） ===== */
 .poi {
   width: 26px;
