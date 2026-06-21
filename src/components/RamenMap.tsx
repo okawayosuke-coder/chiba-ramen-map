@@ -188,9 +188,9 @@ function FollowController({ active }: { active: boolean }) {
 
     const icon = L.divIcon({
       className: "",
-      html: `<div class="car"><svg class="car-arrow" width="48" height="48" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/><path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div>`,
-      iconSize: [48, 48],
-      iconAnchor: [24, 24],
+      html: `<div class="car"><svg class="car-arrow" width="60" height="60" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/><path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div>`,
+      iconSize: [60, 60],
+      iconAnchor: [30, 30],
     });
     const marker = L.marker(map.getCenter(), {
       icon,
@@ -202,7 +202,7 @@ function FollowController({ active }: { active: boolean }) {
     marker.bindTooltip("標高 …", {
       permanent: true,
       direction: "right",
-      offset: [20, 0],
+      offset: [26, 0],
       className: "car-elev",
     });
 
