@@ -840,7 +840,7 @@ body {
   display: block;
 }
 .speedo-needle {
-  transition: transform 0.3s ease;
+  transition: transform 0.05s linear;
 }
 .speedo-status {
   text-align: center;

@@ -236,7 +236,7 @@ function FollowController({
       if (v % 40 === 0) {
         const lx = (CX + 25 * Math.cos(a)).toFixed(1);
         const ly = (CY + 25 * Math.sin(a) + 3).toFixed(1);
-        ticks += `<text x="${lx}" y="${ly}" font-size="8" fill="#aeb6c0" text-anchor="middle">${v}</text>`;
+        ticks += `<text x="${lx}" y="${ly}" font-size="11.5" font-weight="700" fill="#cdd3da" text-anchor="middle">${v}</text>`;
       }
     }
     box.innerHTML =
@@ -245,20 +245,27 @@ function FollowController({
       ticks +
       `<g class="speedo-needle" transform="rotate(${ang(0)} ${CX} ${CY})"><line x1="${CX}" y1="${CY}" x2="${CX}" y2="16" stroke="#ff6b35" stroke-width="2.6" stroke-linecap="round"/></g>` +
       `<circle cx="${CX}" cy="${CY}" r="3.6" fill="#ff6b35"/>` +
-      `<text class="speedo-num" x="${CX}" y="83" font-size="22" font-weight="800" fill="#fff" text-anchor="middle">0</text>` +
-      `<text x="${CX}" y="93" font-size="7.5" fill="#aeb6c0" text-anchor="middle">km/h</text>` +
+      `<text class="speedo-num" x="${CX}" y="80" font-size="30" font-weight="800" fill="#fff" text-anchor="middle">0</text>` +
+      `<text x="${CX}" y="92" font-size="8" fill="#aeb6c0" text-anchor="middle">km/h</text>` +
       `</svg><div class="speedo-status">測位中…</div>`;
     map.getContainer().appendChild(box);
     const needleEl = box.querySelector(".speedo-needle");
     const numEl = box.querySelector(".speedo-num");
     const statusEl = box.querySelector(".speedo-status");
+    let targetKmh = 0;
+    let dispKmh = 0;
+    const speedoAnim = window.setInterval(() => {
+      dispKmh += (targetKmh - dispKmh) * 0.18;
+      if (Math.abs(targetKmh - dispKmh) < 0.15) dispKmh = targetKmh;
+      needleEl?.setAttribute("transform", `rotate(${ang(dispKmh)} ${CX} ${CY})`);
+      if (numEl) numEl.textContent = String(Math.round(dispKmh));
+    }, 50);
     const updateSpeedo = (
       kmh: number | null,
       moving: boolean,
       accuracy: number | null
     ) => {
-      needleEl?.setAttribute("transform", `rotate(${ang(kmh ?? 0)} ${CX} ${CY})`);
-      if (numEl) numEl.textContent = kmh == null ? "--" : String(kmh);
+      targetKmh = kmh ?? 0;
       if (statusEl)
         statusEl.textContent =
           (moving ? "走行中" : "停車") +
@@ -449,6 +456,7 @@ function FollowController({
 
     return () => {
       navigator.geolocation.clearWatch(watchId);
+      window.clearInterval(speedoAnim);
       marker.remove();
       box.remove();
       addrBox.remove();
