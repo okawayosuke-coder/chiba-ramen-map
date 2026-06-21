@@ -604,7 +604,6 @@ export default function App() {
           showTrack={showTrack}
           dest={dest}
           onSetDest={onSetDest}
-          theme={theme.resolved}
           userPos={geo.pos}
           isFav={isFav}
           onToggleFav={toggle}

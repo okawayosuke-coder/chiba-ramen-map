@@ -691,7 +691,6 @@ function PoiLayer({ show }: { show: boolean }) {
 interface Props {
   shops: Shop[];
   focus: Shop | null;
-  theme: "light" | "dark";
   follow: boolean;
   paneHidden: boolean;
   showPoi: boolean;
@@ -709,7 +708,6 @@ interface Props {
 function RamenMap({
   shops,
   focus,
-  theme,
   follow,
   paneHidden,
   showPoi,
@@ -740,22 +738,17 @@ function RamenMap({
     };
   }, []);
 
-  const tile =
-    theme === "dark"
-      ? {
-          url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        }
-      : {
-          url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        };
+  // 夜間も詳細なOSMタイルを使い、ダークはCSSフィルタ(タイルのみ)で表現。
+  // → 道路・地名などの情報量を保ったまま暗くでき、暗さも調整できる（黒すぎ防止）。
+  const tile = {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  };
 
   return (
     <MapContainer className="map" center={[35.55, 140.18]} zoom={10} scrollWheelZoom>
-      <TileLayer key={theme} attribution={tile.attribution} url={tile.url} maxZoom={19} />
+      <TileLayer attribution={tile.attribution} url={tile.url} maxZoom={19} />
       <FocusController focus={focus} />
       <UserFocus pos={userPos} />
       <ElevationProbe />

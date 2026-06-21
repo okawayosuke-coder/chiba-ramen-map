@@ -958,6 +958,13 @@ body {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
 
+/* 夜間モード: 詳細なOSMタイルにフィルタをかけてダーク化（タイルのみ。ピン/軌跡は対象外）。
+   反転＋色相回転で道路・地名を保ったまま暗くし、明るさを上げて黒すぎないように */
+[data-theme="dark"] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(1.05) contrast(0.85)
+    saturate(0.85);
+}
+
 /* 走行軌跡の三角ポイント（進行方向を向く） */
 .trk-tri {
   display: block;
