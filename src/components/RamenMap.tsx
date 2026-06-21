@@ -512,6 +512,27 @@ function TrackLayer({ show }: { show: boolean }) {
   return null;
 }
 
+/** ?demo=track のとき、起動時に軌跡へ地図をフィット（動作確認用） */
+function DemoFit() {
+  const map = useMap();
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("demo") !== "track")
+      return;
+    const pts = getTrackPoints();
+    if (pts.length < 2) return;
+    const lats = pts.map((p) => p.lat);
+    const lngs = pts.map((p) => p.lng);
+    map.fitBounds(
+      [
+        [Math.min(...lats), Math.min(...lngs)],
+        [Math.max(...lats), Math.max(...lngs)],
+      ],
+      { padding: [40, 40] }
+    );
+  }, [map]);
+  return null;
+}
+
 /** 目的地マーカー（🎯）。imperative でクラスタ再描画を避ける */
 function DestMarker({ dest }: { dest: Pt | null }) {
   const map = useMap();
@@ -716,6 +737,7 @@ function RamenMap({
       <ResizeOnChange dep={paneHidden} />
       <PoiLayer show={showPoi} />
       <TrackLayer show={showTrack} />
+      <DemoFit />
       <DestMarker dest={dest ? { lat: dest.lat, lng: dest.lng } : null} />
       <DebugExpose />
 

@@ -126,6 +126,48 @@ export function downloadTrackGPX() {
   URL.revokeObjectURL(url);
 }
 
+/** 動作確認用デモ軌跡（江東区を周回する約8km）。?demo=track で投入 */
+function makeDemoTrack(): TrackPoint[] {
+  const wp: [number, number][] = [
+    [35.6722, 139.806], [35.6712, 139.812], [35.6706, 139.8175],
+    [35.67, 139.8255], [35.6735, 139.8298], [35.6788, 139.83],
+    [35.6802, 139.8232], [35.6792, 139.815], [35.6758, 139.8095],
+    [35.6726, 139.8068],
+  ];
+  const out: TrackPoint[] = [];
+  let t = Date.now() - 15 * 60000;
+  for (let i = 0; i < wp.length - 1; i++) {
+    const a = wp[i],
+      b = wp[i + 1];
+    const dLat = b[0] - a[0],
+      dLng = b[1] - a[1];
+    const segM = Math.hypot(
+      dLat * 111000,
+      dLng * 111000 * Math.cos((a[0] * Math.PI) / 180)
+    );
+    const n = Math.max(1, Math.round(segM / 20));
+    for (let k = 0; k < n; k++) {
+      const f = k / n;
+      out.push({
+        lat: Math.round((a[0] + dLat * f) * ROUND) / ROUND,
+        lng: Math.round((a[1] + dLng * f) * ROUND) / ROUND,
+        t,
+      });
+      t += 2200;
+    }
+  }
+  return out;
+}
+// ?demo=track で、軌跡が空の時だけデモを投入（動作確認用）
+if (
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("demo") === "track" &&
+  points.length === 0
+) {
+  points = makeDemoTrack();
+  save();
+}
+
 // 検証用: ?debug=1 のときだけ、軌跡を差し替えられるフックを公開（動作確認のデモ投入用）
 if (
   typeof window !== "undefined" &&
