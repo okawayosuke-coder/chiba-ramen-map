@@ -36,8 +36,11 @@ import {
 } from "./storage";
 import { useGeolocation, useMovementDetector } from "./hooks";
 import shopsData from "./data/shops.json";
+import genreOverridesData from "./data/genre-overrides.json";
 
 const ALL_SHOPS = shopsData as Shop[];
+// Web調査でジャンルを判定した店（placeId→ジャンルキー）。店名判定とマージする
+const GENRE_OVERRIDES = genreOverridesData as Record<string, string>;
 
 // スキーム起動(Yahoo等)は起動可否を検知できないため文言を中立に
 const navToast = (app: NavApp, name: string) =>
@@ -54,9 +57,14 @@ const DEFAULTS: Filters = {
   sort: "rating",
 };
 
-// 各店のジャンル（店名から推定）を一度だけ計算
+// 各店のジャンルを一度だけ計算（店名判定 ∪ Web調査による上書き）
 const SHOP_GENRES = new Map<Shop, string[]>(
-  ALL_SHOPS.map((s) => [s, genreTags(s.name)])
+  ALL_SHOPS.map((s) => {
+    const tags = new Set(genreTags(s.name));
+    const ov = s.placeId ? GENRE_OVERRIDES[s.placeId] : undefined;
+    if (ov) tags.add(ov);
+    return [s, [...tags]];
+  })
 );
 
 export default function App() {
@@ -403,7 +411,7 @@ export default function App() {
               </div>
 
               <div className="field">
-                <label>ジャンル（店名に系統名がある店）</label>
+                <label>ジャンル（店名＋有名店は調査で判定）</label>
                 <div className="chips-row">
                   {GENRE_DEFS.map((g) => (
                     <button
