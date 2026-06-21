@@ -220,9 +220,50 @@ function FollowController({
       className: "car-elev",
     });
 
+    // 左下: 車のスピードメーター風（円形ダイヤル＋針＋デジタル数字）
     const box = L.DomUtil.create("div", "follow-box");
-    box.textContent = "🧭 走行モード（測位中…）";
+    const CX = 50, CY = 52, MAXKMH = 120;
+    const ang = (kmh: number) =>
+      -120 + (Math.min(Math.max(kmh, 0), MAXKMH) / MAXKMH) * 240;
+    let ticks = "";
+    for (let v = 0; v <= 120; v += 20) {
+      const a = ((ang(v) - 90) * Math.PI) / 180;
+      const x1 = (CX + 33 * Math.cos(a)).toFixed(1);
+      const y1 = (CY + 33 * Math.sin(a)).toFixed(1);
+      const x2 = (CX + 40 * Math.cos(a)).toFixed(1);
+      const y2 = (CY + 40 * Math.sin(a)).toFixed(1);
+      ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#8a929c" stroke-width="1.3"/>`;
+      if (v % 40 === 0) {
+        const lx = (CX + 25 * Math.cos(a)).toFixed(1);
+        const ly = (CY + 25 * Math.sin(a) + 3).toFixed(1);
+        ticks += `<text x="${lx}" y="${ly}" font-size="8" fill="#aeb6c0" text-anchor="middle">${v}</text>`;
+      }
+    }
+    box.innerHTML =
+      `<svg class="speedo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">` +
+      `<circle cx="${CX}" cy="${CY}" r="40" fill="rgba(255,255,255,0.04)" stroke="#3a424c" stroke-width="2"/>` +
+      ticks +
+      `<g class="speedo-needle" transform="rotate(${ang(0)} ${CX} ${CY})"><line x1="${CX}" y1="${CY}" x2="${CX}" y2="16" stroke="#ff6b35" stroke-width="2.6" stroke-linecap="round"/></g>` +
+      `<circle cx="${CX}" cy="${CY}" r="3.6" fill="#ff6b35"/>` +
+      `<text class="speedo-num" x="${CX}" y="83" font-size="22" font-weight="800" fill="#fff" text-anchor="middle">0</text>` +
+      `<text x="${CX}" y="93" font-size="7.5" fill="#aeb6c0" text-anchor="middle">km/h</text>` +
+      `</svg><div class="speedo-status">測位中…</div>`;
     map.getContainer().appendChild(box);
+    const needleEl = box.querySelector(".speedo-needle");
+    const numEl = box.querySelector(".speedo-num");
+    const statusEl = box.querySelector(".speedo-status");
+    const updateSpeedo = (
+      kmh: number | null,
+      moving: boolean,
+      accuracy: number | null
+    ) => {
+      needleEl?.setAttribute("transform", `rotate(${ang(kmh ?? 0)} ${CX} ${CY})`);
+      if (numEl) numEl.textContent = kmh == null ? "--" : String(kmh);
+      if (statusEl)
+        statusEl.textContent =
+          (moving ? "走行中" : "停車") +
+          (accuracy ? ` ・ ±${Math.round(accuracy)}m` : "");
+    };
 
     // 右上: 現在地の住所（番地を除く）をリアルタイム表示
     const addrBox = L.DomUtil.create("div", "addr-box");
@@ -354,10 +395,7 @@ function FollowController({
       const kmh = sp != null ? Math.round(sp * 3.6) : null;
       // 5km/h以上で「走行中」、それ未満（0含む）は「停車」
       const moving = kmh != null && kmh >= 5;
-      box.textContent =
-        (moving ? "🧭 走行中" : "🅿️ 停車") +
-        (kmh != null ? ` ・ ${kmh} km/h` : "") +
-        (accuracy ? ` ・ ±${Math.round(accuracy)}m` : "");
+      updateSpeedo(kmh, moving, accuracy);
     };
     const onErr = () => {
       box.textContent = "🧭 位置情報を取得できません（許可を確認）";
