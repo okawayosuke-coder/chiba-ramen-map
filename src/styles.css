@@ -828,22 +828,25 @@ body {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
 
-/* ===== コンビニ/GS の POI マーカー ===== */
+/* ===== コンビニ/GS の POI マーカー（背景色＝ブランド色, 文字＝識別子はインライン指定） ===== */
 .poi {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  background: #fff;
-  border: 1.5px solid #2f9e44; /* コンビニ=緑 */
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  font-weight: 800;
+  line-height: 1;
+  font-family: Helvetica, Arial, sans-serif;
+}
+.poi--conv {
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-}
+} /* コンビニ＝丸 */
 .poi--fuel {
-  border-color: #e8590c; /* GS=橙 */
-}
+  border-radius: 7px;
+} /* ガソリンスタンド＝角丸四角 */
 .poi-hint {
   position: absolute;
   left: 50%;

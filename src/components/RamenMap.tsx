@@ -12,7 +12,7 @@ import L from "leaflet";
 import type { Shop } from "../types";
 import { fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
-import { fetchPois, type BBox } from "../poi";
+import { fetchPois, poiBrandStyle, type BBox } from "../poi";
 
 function rawTierColor(rating: number): string {
   if (rating >= 4.3) return "#d6336c";
@@ -413,18 +413,25 @@ function PoiLayer({ show }: { show: boolean }) {
     hint.style.display = "none";
     map.getContainer().appendChild(hint);
 
-    const convIcon = L.divIcon({
-      className: "",
-      html: `<div class="poi poi--conv">🏪</div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    });
-    const fuelIcon = L.divIcon({
-      className: "",
-      html: `<div class="poi poi--fuel">⛽</div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    });
+    // ブランド別アイコン（色＋識別文字）。同一スタイルは使い回す
+    const iconCache = new Map<string, L.DivIcon>();
+    const iconFor = (kind: "conv" | "fuel", label: string): L.DivIcon => {
+      const st = poiBrandStyle(kind, label);
+      const key = `${kind}|${st.bg}|${st.t}`;
+      let ic = iconCache.get(key);
+      if (!ic) {
+        const shape = kind === "conv" ? "poi--conv" : "poi--fuel";
+        const fs = st.emoji ? "14px" : st.t.length >= 2 ? "9.5px" : "12.5px";
+        ic = L.divIcon({
+          className: "",
+          html: `<div class="poi ${shape}" style="background:${st.bg};color:${st.fg};font-size:${fs}">${st.t}</div>`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+        iconCache.set(key, ic);
+      }
+      return ic;
+    };
 
     let cached: BBox | null = null;
     let lastReqAt = 0;
@@ -465,10 +472,10 @@ function PoiLayer({ show }: { show: boolean }) {
         group.clearLayers();
         pois.slice(0, MAX).forEach((p) => {
           L.marker([p.lat, p.lng], {
-            icon: p.kind === "conv" ? convIcon : fuelIcon,
+            icon: iconFor(p.kind, p.label),
             keyboard: false,
           })
-            .bindTooltip(p.label, { direction: "top", offset: [0, -10] })
+            .bindTooltip(p.label, { direction: "top", offset: [0, -12] })
             .addTo(group);
         });
       } catch {
