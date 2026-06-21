@@ -890,6 +890,19 @@ body {
   cursor: pointer;
 }
 
+/* ===== 地図スケール（右下）を太字＋高コントラストで見やすく ===== */
+.leaflet-control-scale-line {
+  font-weight: 800;
+  font-size: 12.5px;
+  color: #1a1a1a;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid #444;
+  border-top: none;
+  line-height: 1.4;
+  padding: 1px 7px;
+  text-shadow: 0 1px 0 #fff;
+}
+
 /* ===== ズーム(+/-)ボタンを大きく（タッチで押しやすく。標準/走行モード共通） ===== */
 .leaflet-control-zoom a,
 .leaflet-touch .leaflet-control-zoom a {
