@@ -469,6 +469,13 @@ function PoiLayer({ show }: { show: boolean }) {
         const pois = await fetchPois(area);
         if (aborted) return;
         cached = area;
+        if (
+          new URLSearchParams(window.location.search).get("debug") === "1"
+        ) {
+          (window as unknown as { __poiDebug?: unknown }).__poiDebug = pois.map(
+            (p) => ({ label: p.label, kind: p.kind, st: poiBrandStyle(p.kind, p.label) })
+          );
+        }
         group.clearLayers();
         pois.slice(0, MAX).forEach((p) => {
           L.marker([p.lat, p.lng], {
