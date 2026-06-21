@@ -292,8 +292,10 @@ function FollowController({ active }: { active: boolean }) {
         return;
       }
       const kmh = sp != null ? Math.round(sp * 3.6) : null;
+      // 5km/h以上で「走行中」、それ未満（0含む）は「停車」
+      const moving = kmh != null && kmh >= 5;
       box.textContent =
-        "🧭 走行中" +
+        (moving ? "🧭 走行中" : "🅿️ 停車") +
         (kmh != null ? ` ・ ${kmh} km/h` : "") +
         (accuracy ? ` ・ ±${Math.round(accuracy)}m` : "");
     };
@@ -504,26 +506,23 @@ function RamenMap({
         })}
       </MarkerClusterGroup>
 
-      <Legend />
+      <ScaleBar />
     </MapContainer>
   );
 }
 
 export default memo(RamenMap);
 
-function Legend() {
+/** 右下に地図スケール（メートル法）を表示 */
+function ScaleBar() {
   const map = useMap();
   useEffect(() => {
-    const ctrl = new L.Control({ position: "bottomright" });
-    ctrl.onAdd = () => {
-      const div = L.DomUtil.create("div", "legend");
-      div.innerHTML = `
-        <div style="font-weight:700;margin-bottom:2px">ピンの数字＝Google評価</div>
-        <div><i style="background:#d6336c"></i>★4.3以上</div>
-        <div><i style="background:#e8590c"></i>★4.1〜4.2</div>
-        <div><i style="background:#1c7ed6"></i>★3.9〜4.0</div>`;
-      return div;
-    };
+    const ctrl = L.control.scale({
+      position: "bottomright",
+      imperial: false,
+      metric: true,
+      maxWidth: 130,
+    });
     ctrl.addTo(map);
     return () => {
       ctrl.remove();
