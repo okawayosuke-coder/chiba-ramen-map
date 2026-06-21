@@ -958,6 +958,12 @@ body {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
 
+/* 走行軌跡の三角ポイント（進行方向を向く） */
+.trk-tri {
+  display: block;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+}
+
 /* ===== 目的地（セット時） ===== */
 .dest-box {
   position: absolute;

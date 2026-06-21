@@ -440,23 +440,73 @@ function ResizeOnChange({ dep }: { dep: unknown }) {
   return null;
 }
 
-/** 走行軌跡をポリラインで描画（imperative。trackストアを購読し走行中も再描画なしで伸びる） */
+/** 走行軌跡を「進行方向を示す三角の点」で描画（imperative）。
+ *  性能対策: 表示範囲内のみ・画面上で約24px間隔に間引き。ズーム/パン/軌跡更新で再構築。 */
 function TrackLayer({ show }: { show: boolean }) {
   const map = useMap();
   useEffect(() => {
     if (!show) return;
-    const toLatLng = () =>
-      getTrackPoints().map((p) => [p.lat, p.lng] as [number, number]);
-    const line = L.polyline(toLatLng(), {
-      color: "#e8590c",
-      weight: 4,
-      opacity: 0.75,
-      interactive: false,
-    }).addTo(map);
-    const unsub = subscribeTrack(() => line.setLatLngs(toLatLng()));
+    const group = L.layerGroup().addTo(map);
+    const SPACING = 24; // 画面上の最小間隔(px)
+    const iconCache = new Map<number, L.DivIcon>();
+    const iconFor = (deg: number): L.DivIcon => {
+      const k = (Math.round(deg / 10) * 10) % 360; // 10°刻みでキャッシュ
+      let ic = iconCache.get(k);
+      if (!ic) {
+        ic = L.divIcon({
+          className: "",
+          html: `<svg width="16" height="16" viewBox="0 0 16 16" class="trk-tri" style="transform:rotate(${k}deg)"><path d="M8 1.5 L13.5 14 L8 11 L2.5 14 Z" fill="#e8590c" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+        iconCache.set(k, ic);
+      }
+      return ic;
+    };
+    let timer: number | undefined;
+    const rebuild = () => {
+      group.clearLayers();
+      const pts = getTrackPoints();
+      const n = pts.length;
+      if (n === 0) return;
+      const b = map.getBounds().pad(0.15);
+      const s = b.getSouth(),
+        no = b.getNorth(),
+        w = b.getWest(),
+        e = b.getEast();
+      let lastX = 0,
+        lastY = 0,
+        has = false;
+      for (let i = 0; i < n; i++) {
+        const p = pts[i];
+        if (p.lat < s || p.lat > no || p.lng < w || p.lng > e) continue;
+        const px = map.latLngToContainerPoint([p.lat, p.lng]);
+        if (has && Math.hypot(px.x - lastX, px.y - lastY) < SPACING) continue;
+        lastX = px.x;
+        lastY = px.y;
+        has = true;
+        let deg = 0;
+        if (i + 1 < n) deg = bearingDeg(p, pts[i + 1]);
+        else if (i > 0) deg = bearingDeg(pts[i - 1], p);
+        L.marker([p.lat, p.lng], {
+          icon: iconFor(deg),
+          interactive: false,
+          keyboard: false,
+        }).addTo(group);
+      }
+    };
+    const onView = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(rebuild, 60); // 連続するmoveendをまとめる
+    };
+    map.on("moveend zoomend", onView);
+    const unsub = subscribeTrack(onView);
+    rebuild();
     return () => {
+      map.off("moveend zoomend", onView);
       unsub();
-      line.remove();
+      window.clearTimeout(timer);
+      group.remove();
     };
   }, [show, map]);
   return null;
