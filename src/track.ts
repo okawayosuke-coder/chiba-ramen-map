@@ -125,3 +125,19 @@ export function downloadTrackGPX() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// 検証用: ?debug=1 のときだけ、軌跡を差し替えられるフックを公開（動作確認のデモ投入用）
+if (
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("debug") === "1"
+) {
+  (window as unknown as { __track?: unknown }).__track = {
+    set(pts: TrackPoint[]) {
+      points = pts.slice(-MAX);
+      flush();
+      emit();
+    },
+    clear: clearTrack,
+    get: getTrackPoints,
+  };
+}
