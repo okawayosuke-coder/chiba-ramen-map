@@ -134,6 +134,8 @@ function makeDemoTrack(): TrackPoint[] {
     [35.6802, 139.8232], [35.6792, 139.815], [35.6758, 139.8095],
     [35.6726, 139.8068],
   ];
+  // 区間ごとに速度を変えて全色（赤/黄/緑/青）が見えるデモにする(km/h)
+  const legKmh = [6, 24, 45, 70, 8, 35, 58, 20, 62];
   const out: TrackPoint[] = [];
   let t = Date.now() - 15 * 60000;
   for (let i = 0; i < wp.length - 1; i++) {
@@ -146,6 +148,8 @@ function makeDemoTrack(): TrackPoint[] {
       dLng * 111000 * Math.cos((a[0] * Math.PI) / 180)
     );
     const n = Math.max(1, Math.round(segM / 20));
+    const stepKm = segM / 1000 / n;
+    const dtMs = (stepKm / (legKmh[i] || 30)) * 3600000; // 速度に応じた時間刻み
     for (let k = 0; k < n; k++) {
       const f = k / n;
       out.push({
@@ -153,7 +157,7 @@ function makeDemoTrack(): TrackPoint[] {
         lng: Math.round((a[1] + dLng * f) * ROUND) / ROUND,
         t,
       });
-      t += 2200;
+      t += dtMs;
     }
   }
   return out;

@@ -13,7 +13,12 @@ import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
 import { fetchPois, poiBrandStyle, type BBox } from "../poi";
-import { addTrackPoint, getTrackPoints, subscribeTrack } from "../track";
+import {
+  addTrackPoint,
+  getTrackPoints,
+  subscribeTrack,
+  type TrackPoint,
+} from "../track";
 
 type DestRef = { lat: number; lng: number; name: string } | null;
 
@@ -448,20 +453,41 @@ function TrackLayer({ show }: { show: boolean }) {
     if (!show) return;
     const group = L.layerGroup().addTo(map);
     const SPACING = 20; // 画面上の最小間隔(px)
-    const iconCache = new Map<number, L.DivIcon>();
-    const iconFor = (deg: number): L.DivIcon => {
+    // 速度別の色: 渋滞/停止=赤, 〜30=黄, 〜50=緑, それ以上=青
+    const colorForKmh = (kmh: number | null): string =>
+      kmh == null
+        ? "#868e96"
+        : kmh < 10
+        ? "#e03131"
+        : kmh < 30
+        ? "#f5b800"
+        : kmh < 50
+        ? "#2f9e44"
+        : "#1c7ed6";
+    const iconCache = new Map<string, L.DivIcon>();
+    const iconFor = (deg: number, color: string): L.DivIcon => {
       const k = (Math.round(deg / 10) * 10) % 360; // 10°刻みでキャッシュ
-      let ic = iconCache.get(k);
+      const key = color + k;
+      let ic = iconCache.get(key);
       if (!ic) {
         ic = L.divIcon({
           className: "",
-          html: `<svg width="13" height="13" viewBox="0 0 16 16" class="trk-tri" style="transform:rotate(${k}deg)"><path d="M8 1.5 L13.5 14 L8 11 L2.5 14 Z" fill="#e8590c" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+          html: `<svg width="13" height="13" viewBox="0 0 16 16" class="trk-tri" style="transform:rotate(${k}deg)"><path d="M8 1.5 L13.5 14 L8 11 L2.5 14 Z" fill="${color}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
           iconSize: [13, 13],
           iconAnchor: [6.5, 6.5],
         });
-        iconCache.set(k, ic);
+        iconCache.set(key, ic);
       }
       return ic;
+    };
+    // 区間距離÷時間差から速度(km/h)を算出（GPS速度を保存していない軌跡でも色分け可能）
+    const speedKmh = (i: number, pts: TrackPoint[], n: number): number | null => {
+      const a = pts[i];
+      const b = i + 1 < n ? pts[i + 1] : i > 0 ? pts[i - 1] : null;
+      if (!b) return null;
+      const dtH = Math.abs(b.t - a.t) / 3600000;
+      if (dtH <= 0) return null;
+      return haversineKm(a, b) / dtH;
     };
     let timer: number | undefined;
     const rebuild = () => {
@@ -489,7 +515,7 @@ function TrackLayer({ show }: { show: boolean }) {
         if (i + 1 < n) deg = bearingDeg(p, pts[i + 1]);
         else if (i > 0) deg = bearingDeg(pts[i - 1], p);
         L.marker([p.lat, p.lng], {
-          icon: iconFor(deg),
+          icon: iconFor(deg, colorForKmh(speedKmh(i, pts, n))),
           interactive: false,
           keyboard: false,
         }).addTo(group);
