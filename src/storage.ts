@@ -7,7 +7,6 @@ const K = {
   navApp: "crm_navapp",
   safety: "crm_safety_ack",
   theme: "crm_theme", // "light" | "dark" | "auto"
-  driving: "crm_driving",
 };
 
 /** 並び順が変わっても壊れない安定キー（placeId優先、無ければ座標丸め） */
@@ -59,18 +58,6 @@ export function useFavorites() {
   }, []);
 
   return { favs, toggle, isFav, importKeys };
-}
-
-/** 運転モードの永続化（PWA再起動でも維持） */
-export function useDriving(): [boolean, (v: boolean) => void] {
-  const [driving, setDrivingState] = useState<boolean>(() =>
-    read<boolean>(K.driving, false)
-  );
-  const set = useCallback((v: boolean) => {
-    setDrivingState(v);
-    write(K.driving, v);
-  }, []);
-  return [driving, set];
 }
 
 export function useNavApp(): [NavApp | null, (a: NavApp) => void] {

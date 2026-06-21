@@ -26,7 +26,6 @@ import {
 } from "./nav";
 import {
   shopKey,
-  useDriving,
   useFavorites,
   useNavApp,
   useSafetyAck,
@@ -59,7 +58,8 @@ export default function App() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [follow, setFollow] = useState(false);
   const [paneHidden, setPaneHidden] = useState(false);
-  const [driving, setDriving] = useDriving();
+  // 運転モードは毎回OFFで起動（永続化しない＝常に通常モードで起動）
+  const [driving, setDriving] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Shop | null>(null);
   const [pickerFor, setPickerFor] = useState<Shop | null>(null);

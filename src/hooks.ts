@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { haversineKm, isFarFromArea, type Pt } from "./nav";
+import { isFarFromArea, type Pt } from "./nav";
 
 /** Escキーで閉じる（モーダル用） */
 export function useEscape(onClose: () => void) {
@@ -48,47 +48,55 @@ export function useGeolocation() {
   return { pos, status, request };
 }
 
-/** 移動検知: 有効中に低精度GPSで監視し、「停止→走り出し(約12km/h超)」を検知したら onMove を呼ぶ */
+/** 移動検知: 有効中にGPSで監視し、「停止→確かな走り出し」を検知したら onMove を呼ぶ。
+ * 誤発火対策:
+ *  - 起動直後（最初のフィックス＋約4秒）は判定しない（測位の安定待ち）
+ *  - 判定にはGPS提供の速度(coords.speed)のみを使用。変位から速度を推定すると
+ *    低精度測位の位置ジャンプで誤検知するため使わない（速度が無い時は何もしない＝安全側）
+ *  - 「停止状態」から速度しきい値超えが連続2回続いて初めて発火（一過性のノイズを無視） */
 export function useMovementDetector(enabled: boolean, onMove: () => void) {
   const onMoveRef = useRef(onMove);
   onMoveRef.current = onMove;
   useEffect(() => {
     if (!enabled) return;
     if (!("geolocation" in navigator) || !window.isSecureContext) return;
+    const startedAt = performance.now();
+    let firstFixSeen = false;
     let wasStopped = true;
-    let prev: { lat: number; lng: number; t: number } | null = null;
+    let movingStreak = 0;
     const id = navigator.geolocation.watchPosition(
       (p) => {
-        let sp =
+        // 起動直後は測位が暴れやすい。最初の1フィックスと最初の約4秒は判定しない
+        if (!firstFixSeen) {
+          firstFixSeen = true;
+          return;
+        }
+        if (performance.now() - startedAt < 4000) return;
+
+        const sp =
           p.coords.speed != null && !Number.isNaN(p.coords.speed)
             ? p.coords.speed
             : null;
-        const cur = {
-          lat: p.coords.latitude,
-          lng: p.coords.longitude,
-          t: p.timestamp,
-        };
-        if (sp == null && prev) {
-          const dt = (cur.t - prev.t) / 1000;
-          if (dt > 0)
-            sp =
-              (haversineKm(
-                { lat: prev.lat, lng: prev.lng },
-                { lat: cur.lat, lng: cur.lng }
-              ) *
-                1000) /
-              dt;
-        }
-        prev = cur;
-        if (sp == null) return;
-        if (sp < 0.8) wasStopped = true;
-        else if (sp > 3.3 && wasStopped) {
-          wasStopped = false;
-          onMoveRef.current();
+        if (sp == null) return; // 速度が取れない時は判定しない（誤検知回避）
+
+        if (sp < 1.0) {
+          wasStopped = true;
+          movingStreak = 0;
+        } else if (sp > 3.3) {
+          // 約12km/h超。停止状態から連続2回続いたら走り出しと判定
+          movingStreak += 1;
+          if (wasStopped && movingStreak >= 2) {
+            wasStopped = false;
+            movingStreak = 0;
+            onMoveRef.current();
+          }
+        } else {
+          // 徐行・GPS揺れの中間速度ではストリークを進めない
+          movingStreak = 0;
         }
       },
       () => {},
-      { enableHighAccuracy: false, maximumAge: 5000, timeout: 30000 }
+      { enableHighAccuracy: false, maximumAge: 2000, timeout: 30000 }
     );
     return () => navigator.geolocation.clearWatch(id);
   }, [enabled]);
