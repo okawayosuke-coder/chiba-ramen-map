@@ -118,6 +118,18 @@ export function requestOrientationPermission() {
   }
 }
 
+/** a から b への方位（真北0°・時計回り、0〜360） */
+export function bearingDeg(a: Pt, b: Pt): number {
+  const la1 = (a.lat * Math.PI) / 180;
+  const la2 = (b.lat * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const y = Math.sin(dLng) * Math.cos(la2);
+  const x =
+    Math.cos(la1) * Math.sin(la2) -
+    Math.sin(la1) * Math.cos(la2) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
 export function haversineKm(a: Pt, b: Pt): number {
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;

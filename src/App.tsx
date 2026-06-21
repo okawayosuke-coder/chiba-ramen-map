@@ -32,6 +32,7 @@ import {
   useFavorites,
   useNavApp,
   useSafetyAck,
+  useShowTrack,
   useTheme,
 } from "./storage";
 import { useGeolocation, useMovementDetector } from "./hooks";
@@ -76,6 +77,8 @@ export default function App() {
   const [follow, setFollow] = useState(false);
   const [paneHidden, setPaneHidden] = useState(false);
   const [showPoi, setShowPoi] = useState(true); // コンビニ・GSは既定でON
+  const [dest, setDest] = useState<Shop | null>(null); // 目的地
+  const [showTrack, setShowTrack] = useShowTrack();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Shop | null>(null);
   const [pickerFor, setPickerFor] = useState<Shop | null>(null);
@@ -215,6 +218,12 @@ export default function App() {
     if (r === "copied") setToast("ナビリンクをコピーしました");
     else if (r === "failed") setToast("共有できませんでした");
     // "shared" / "cancelled" は通知不要
+  }, []);
+
+  const onSetDest = useCallback((shop: Shop) => {
+    setDest(shop);
+    setSheetOpen(false);
+    setToast(`目的地に設定: ${shop.name}（走行モードで残り距離を表示）`);
   }, []);
 
   const distanceTo = useCallback(
@@ -378,6 +387,15 @@ export default function App() {
             </button>
           </div>
 
+          {dest && (
+            <div className="dest-chip">
+              <span>🎯 目的地: {dest.name}</span>
+              <button onClick={() => setDest(null)} aria-label="目的地を解除">
+                ✕
+              </button>
+            </div>
+          )}
+
           {filtersOpen && (
             <>
               <div className="field">
@@ -538,6 +556,14 @@ export default function App() {
                 <button className="act" onClick={() => doShare(s)} title="共有">
                   共有
                 </button>
+                <button
+                  className={`act act--icon${dest === s ? " on" : ""}`}
+                  onClick={() => onSetDest(s)}
+                  aria-label="目的地に設定"
+                  title="目的地に設定"
+                >
+                  🎯
+                </button>
                 <a
                   className="act act--link act--icon"
                   href={s.reviewsUrl ?? s.mapsUrl}
@@ -575,6 +601,9 @@ export default function App() {
           follow={follow}
           paneHidden={paneHidden}
           showPoi={showPoi}
+          showTrack={showTrack}
+          dest={dest}
+          onSetDest={onSetDest}
           theme={theme.resolved}
           userPos={geo.pos}
           isFav={isFav}
@@ -619,6 +648,8 @@ export default function App() {
           setNavApp={setNavApp}
           themePref={theme.pref}
           setThemePref={theme.setPref}
+          showTrack={showTrack}
+          setShowTrack={setShowTrack}
           favs={favs}
           importKeys={importKeys}
           onResetSafety={() => {

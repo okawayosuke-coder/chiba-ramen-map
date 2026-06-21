@@ -7,6 +7,7 @@ const K = {
   navApp: "crm_navapp",
   safety: "crm_safety_ack",
   theme: "crm_theme", // "light" | "dark" | "auto"
+  showTrack: "crm_showtrack",
 };
 
 /** 並び順が変わっても壊れない安定キー（placeId優先、無ければ座標丸め） */
@@ -78,6 +79,16 @@ export function useSafetyAck(): [boolean, (v: boolean) => void] {
     write(K.safety, v);
   }, []);
   return [ack, set];
+}
+
+/** 走行軌跡を地図に表示するか（既定ON） */
+export function useShowTrack(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => read<boolean>(K.showTrack, true));
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    write(K.showTrack, v);
+  }, []);
+  return [on, set];
 }
 
 export type ThemePref = "light" | "dark" | "auto";

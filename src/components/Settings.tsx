@@ -1,6 +1,7 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { NAV_APP_META, navAppsForPlatform, type NavApp } from "../nav";
 import { exportFavorites, type ThemePref } from "../storage";
+import { clearTrack, downloadTrackGPX, trackStats } from "../track";
 import { useEscape } from "../hooks";
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
   setNavApp: (a: NavApp) => void;
   themePref: ThemePref;
   setThemePref: (p: ThemePref) => void;
+  showTrack: boolean;
+  setShowTrack: (v: boolean) => void;
   favs: Set<string>;
   importKeys: (keys: string[]) => void;
   onResetSafety: () => void;
@@ -19,6 +22,8 @@ export default function Settings({
   setNavApp,
   themePref,
   setThemePref,
+  showTrack,
+  setShowTrack,
   favs,
   importKeys,
   onResetSafety,
@@ -26,6 +31,7 @@ export default function Settings({
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const apps = navAppsForPlatform();
+  const [stats, setStats] = useState(() => trackStats());
   useEscape(onClose);
 
   const onImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,6 +91,42 @@ export default function Settings({
               </button>
             ))}
           </div>
+        </section>
+
+        <section className="set-sec">
+          <h3>走行軌跡</h3>
+          <div className="set-row">
+            <button
+              className={`chip${showTrack ? " chip--on" : ""}`}
+              onClick={() => setShowTrack(!showTrack)}
+            >
+              地図に表示 {showTrack ? "ON" : "OFF"}
+            </button>
+            <button
+              className="chip"
+              onClick={() => downloadTrackGPX()}
+              disabled={stats.count === 0}
+            >
+              GPXで書き出し
+            </button>
+            <button
+              className="chip"
+              onClick={() => {
+                if (confirm("走行軌跡を消去しますか？")) {
+                  clearTrack();
+                  setStats(trackStats());
+                }
+              }}
+              disabled={stats.count === 0}
+            >
+              消去
+            </button>
+          </div>
+          <p className="modal__small">
+            走行モード中に自動で記録（端末内のみ保存）。
+            記録 {stats.count.toLocaleString()}点 ・ 約{stats.km.toFixed(1)}km
+            {stats.durMin > 0 ? ` ・ 約${stats.durMin}分` : ""}
+          </p>
         </section>
 
         <section className="set-sec">

@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -10,9 +10,12 @@ import {
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Shop } from "../types";
-import { fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
+import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
 import { fetchPois, poiBrandStyle, type BBox } from "../poi";
+import { addTrackPoint, getTrackPoints, subscribeTrack } from "../track";
+
+type DestRef = { lat: number; lng: number; name: string } | null;
 
 function rawTierColor(rating: number): string {
   if (rating >= 4.3) return "#d6336c";
@@ -180,7 +183,13 @@ function ElevationProbe() {
 
 /** 走行モード: watchPositionで自車を追従（DOM直接操作・再描画なし）。
  * 自車矢印=進行方向に回転 / 地図が追従 / 速度表示 / 画面常時点灯 */
-function FollowController({ active }: { active: boolean }) {
+function FollowController({
+  active,
+  destRef,
+}: {
+  active: boolean;
+  destRef: React.MutableRefObject<DestRef>;
+}) {
   const map = useMap();
   useEffect(() => {
     if (!active) return;
@@ -214,6 +223,14 @@ function FollowController({ active }: { active: boolean }) {
     const addrBox = L.DomUtil.create("div", "addr-box");
     addrBox.textContent = "📍 現在地 測位中…";
     map.getContainer().appendChild(addrBox);
+
+    // 左上(ズーム下): 目的地までの残り距離・方位（目的地セット時のみ表示）
+    const destBox = L.DomUtil.create("div", "dest-box");
+    destBox.style.display = "none";
+    destBox.innerHTML =
+      `<svg class="dest-arrow" width="20" height="20" viewBox="0 0 24 24"><path d="M12 2 L19 20 L12 15 L5 20 Z" fill="#2f9e44" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>` +
+      `<span class="dest-txt"></span>`;
+    map.getContainer().appendChild(destBox);
 
     let first = true;
     // 自車の向き:
@@ -263,6 +280,8 @@ function FollowController({ active }: { active: boolean }) {
     const onFix = (p: GeolocationPosition) => {
       const { latitude, longitude, heading, speed, accuracy } = p.coords;
       marker.setLatLng([latitude, longitude]);
+      // 走行軌跡を記録（約20mごと。track側で間引き・永続化）
+      addTrackPoint(latitude, longitude, p.timestamp);
       // 標高: 約40m以上動いたら取得し直してツールチップ更新（過剰リクエスト抑制）
       const here = { lat: latitude, lng: longitude };
       if (!lastElevPt || haversineKm(lastElevPt, here) > 0.04) {
@@ -293,6 +312,30 @@ function FollowController({ active }: { active: boolean }) {
         }
       }
       applyRotation();
+      // 目的地が設定されていれば残り距離・方位（自車向きに対する相対方位）を更新
+      const dst = destRef.current;
+      if (dst) {
+        destBox.style.display = "";
+        const dkm = haversineKm(here, { lat: dst.lat, lng: dst.lng });
+        const txt = destBox.querySelector(".dest-txt") as HTMLElement | null;
+        const arr = destBox.querySelector(".dest-arrow") as HTMLElement | null;
+        if (dkm < 0.06) {
+          if (txt) txt.textContent = `まもなく到着: ${dst.name}`;
+          if (arr) arr.style.visibility = "hidden";
+        } else {
+          if (txt)
+            txt.textContent = `${dst.name}　残り ${fmtDistance(dkm)}・約${roughMinutes(dkm)}分`;
+          if (arr) {
+            arr.style.visibility = "";
+            const rel = norm(
+              bearingDeg(here, { lat: dst.lat, lng: dst.lng }) - currentRot
+            );
+            arr.style.transform = `rotate(${rel}deg)`;
+          }
+        }
+      } else {
+        destBox.style.display = "none";
+      }
       if (first) {
         map.setView([latitude, longitude], 16, { animate: true });
         first = false;
@@ -366,6 +409,7 @@ function FollowController({ active }: { active: boolean }) {
       marker.remove();
       box.remove();
       addrBox.remove();
+      destBox.remove();
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener(
         "deviceorientationabsolute",
@@ -393,6 +437,51 @@ function ResizeOnChange({ dep }: { dep: unknown }) {
     );
     return () => ids.forEach((id) => window.clearTimeout(id));
   }, [dep, map]);
+  return null;
+}
+
+/** 走行軌跡をポリラインで描画（imperative。trackストアを購読し走行中も再描画なしで伸びる） */
+function TrackLayer({ show }: { show: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!show) return;
+    const toLatLng = () =>
+      getTrackPoints().map((p) => [p.lat, p.lng] as [number, number]);
+    const line = L.polyline(toLatLng(), {
+      color: "#e8590c",
+      weight: 4,
+      opacity: 0.75,
+      interactive: false,
+    }).addTo(map);
+    const unsub = subscribeTrack(() => line.setLatLngs(toLatLng()));
+    return () => {
+      unsub();
+      line.remove();
+    };
+  }, [show, map]);
+  return null;
+}
+
+/** 目的地マーカー（🎯）。imperative でクラスタ再描画を避ける */
+function DestMarker({ dest }: { dest: Pt | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!dest) return;
+    const icon = L.divIcon({
+      className: "",
+      html: `<div class="dest-pin">🎯</div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 30],
+    });
+    const m = L.marker([dest.lat, dest.lng], {
+      icon,
+      interactive: false,
+      zIndexOffset: 900,
+    }).addTo(map);
+    return () => {
+      m.remove();
+    };
+  }, [dest, map]);
   return null;
 }
 
@@ -509,6 +598,9 @@ interface Props {
   follow: boolean;
   paneHidden: boolean;
   showPoi: boolean;
+  showTrack: boolean;
+  dest: Shop | null;
+  onSetDest: (s: Shop) => void;
   userPos: Pt | null;
   isFav: (s: Shop) => boolean;
   onToggleFav: (s: Shop) => void;
@@ -524,6 +616,9 @@ function RamenMap({
   follow,
   paneHidden,
   showPoi,
+  showTrack,
+  dest,
+  onSetDest,
   userPos,
   isFav,
   onToggleFav,
@@ -531,6 +626,14 @@ function RamenMap({
   onShare,
   distanceTo,
 }: Props) {
+  // 目的地は走行中の高頻度更新で読むため ref で渡す（FollowControllerを再subscribeさせない）
+  const destRef = useRef<DestRef>(null);
+  useEffect(() => {
+    destRef.current = dest
+      ? { lat: dest.lat, lng: dest.lng, name: dest.name }
+      : null;
+  }, [dest]);
+
   const icons = useMemo(() => {
     const cache = new Map<string, L.DivIcon>();
     return (rating: number) => {
@@ -559,9 +662,11 @@ function RamenMap({
       <FocusController focus={focus} />
       <UserFocus pos={userPos} />
       <ElevationProbe />
-      <FollowController active={follow} />
+      <FollowController active={follow} destRef={destRef} />
       <ResizeOnChange dep={paneHidden} />
       <PoiLayer show={showPoi} />
+      <TrackLayer show={showTrack} />
+      <DestMarker dest={dest ? { lat: dest.lat, lng: dest.lng } : null} />
       <DebugExpose />
 
       {userPos && !follow && (
@@ -612,6 +717,9 @@ function RamenMap({
                     </button>
                     <button className="act" onClick={() => onShare(s)}>
                       共有
+                    </button>
+                    <button className="act" onClick={() => onSetDest(s)}>
+                      🎯 目的地
                     </button>
                   </div>
                   <a
