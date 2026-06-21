@@ -870,18 +870,23 @@ body {
   color: #fff;
   border: none;
   border-radius: 8px;
-  padding: 9px 18px;
-  font-size: 14px;
+  padding: 10px 22px;
+  min-height: 44px;
+  font-size: 15px;
   font-weight: 800;
   cursor: pointer;
+}
+.update-bar__go:disabled {
+  opacity: 0.7;
 }
 .update-bar__later {
   background: transparent;
   color: #cbd5e1;
   border: 1px solid #44484e;
   border-radius: 8px;
-  padding: 9px 14px;
-  font-size: 14px;
+  padding: 10px 16px;
+  min-height: 44px;
+  font-size: 15px;
   cursor: pointer;
 }
 

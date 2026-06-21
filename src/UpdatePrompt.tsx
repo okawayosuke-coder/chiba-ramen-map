@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 /** 新バージョン検知時に「更新」を促すバー。registerType:'prompt' と併用。
- *  更新ボタンで skipWaiting → リロードして最新版に切り替わる。 */
+ *  更新ボタンは skipWaiting を試みつつ、待機SWが無い等で自動リロードが起きない場合の
+ *  保険として明示的にリロードする（autoUpdate→prompt 移行時の取りこぼし対策）。 */
 export default function UpdatePrompt() {
+  const [updating, setUpdating] = useState(false);
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
@@ -15,14 +18,31 @@ export default function UpdatePrompt() {
 
   if (!needRefresh) return null;
 
+  const onUpdate = () => {
+    setUpdating(true);
+    // skipWaiting → controllerchange で自動リロード（プラグイン側）
+    Promise.resolve(updateServiceWorker(true)).catch(() => {});
+    // 待機SWが無く自動リロードが来ない場合の保険（移行時など）
+    window.setTimeout(() => window.location.reload(), 1500);
+  };
+
   return (
     <div className="update-bar" role="alert">
       <span className="update-bar__msg">🍜 新しいバージョンがあります</span>
       <div className="update-bar__btns">
-        <button className="update-bar__go" onClick={() => updateServiceWorker(true)}>
-          更新
+        <button
+          type="button"
+          className="update-bar__go"
+          onClick={onUpdate}
+          disabled={updating}
+        >
+          {updating ? "更新中…" : "更新"}
         </button>
-        <button className="update-bar__later" onClick={() => setNeedRefresh(false)}>
+        <button
+          type="button"
+          className="update-bar__later"
+          onClick={() => setNeedRefresh(false)}
+        >
           あとで
         </button>
       </div>
