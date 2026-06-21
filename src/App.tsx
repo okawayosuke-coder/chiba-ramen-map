@@ -75,9 +75,7 @@ export default function App() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [follow, setFollow] = useState(false);
   const [paneHidden, setPaneHidden] = useState(false);
-  const [showPoi, setShowPoi] = useState(false);
-  // 運転モードは毎回OFFで起動（永続化しない＝常に通常モードで起動）
-  const [driving, setDriving] = useState(false);
+  const [showPoi, setShowPoi] = useState(true); // コンビニ・GSは既定でON
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Shop | null>(null);
   const [pickerFor, setPickerFor] = useState<Shop | null>(null);
@@ -202,14 +200,14 @@ export default function App() {
 
   const startNav = useCallback(
     (shop: Shop) => {
-      // 未同意、または運転モード中（＝車内）は毎回「停車中ですか」を再確認
-      if (!safetyAck || driving) {
+      // 未同意なら「停車中ですか」を再確認
+      if (!safetyAck) {
         setPendingNav(shop);
         return;
       }
       proceedNav(shop);
     },
-    [safetyAck, driving, proceedNav]
+    [safetyAck, proceedNav]
   );
 
   const doShare = useCallback(async (shop: Shop) => {
@@ -267,11 +265,7 @@ export default function App() {
       : null;
 
   return (
-    <div
-      className={`app${driving ? " driving" : ""}${
-        paneHidden ? " pane-hidden" : ""
-      }`}
-    >
+    <div className={`app${paneHidden ? " pane-hidden" : ""}`}>
       <aside className={`sidebar${sheetOpen ? " open" : ""}`}>
         <button
           className="sheet-toggle"
@@ -316,16 +310,6 @@ export default function App() {
               🧭
             </span>
             <span>走行</span>
-          </button>
-          <button
-            className={`tool-btn${driving ? " on" : ""}`}
-            aria-pressed={driving}
-            onClick={() => setDriving(!driving)}
-          >
-            <span className="ic" aria-hidden="true">
-              🚗
-            </span>
-            <span>運転</span>
           </button>
           <button
             className={`tool-btn${showPoi ? " on" : ""}`}
