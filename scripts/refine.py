@@ -4,10 +4,12 @@
 - 各店に region（tokyo / 千葉サブエリア）を付与
 - mapsUrl は検証済みの ftid 形式（正確な店舗ページ＋口コミ着地）"""
 import json, os
+from datetime import datetime, timezone, timedelta
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(HERE, "raw_all.json")
 OUT = os.path.join(HERE, "..", "src", "data", "shops.json")
+META = os.path.join(HERE, "..", "src", "data", "meta.json")
 BOUND = os.path.join(HERE, "boundaries.json")
 
 GENRE_OK = ["ラーメン", "らーめん", "らぁめん", "ラー麺", "拉麺", "つけ麺", "つけめん", "中華そば", "麺"]
@@ -138,6 +140,13 @@ def main():
 
     kept.sort(key=lambda x: (-x["rating"], -x["reviews"]))
     json.dump(kept, open(OUT, "w"), ensure_ascii=False, indent=1)
+
+    # データ鮮度: 収集(=このスクリプト実行)時点のJST日付を meta.json に記録。
+    # フロントが「データ最終更新日」として表示する。
+    today_jst = datetime.now(timezone(timedelta(hours=9))).date().isoformat()
+    json.dump({"updatedAt": today_jst, "count": len(kept)},
+              open(META, "w"), ensure_ascii=False, indent=1)
+    print(f"meta.json 更新: updatedAt={today_jst}, count={len(kept)}")
 
     from collections import Counter
     rc = Counter(s["region"] for s in kept)

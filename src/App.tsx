@@ -45,10 +45,17 @@ import {
 } from "./search";
 import shopsData from "./data/shops.json";
 import genreOverridesData from "./data/genre-overrides.json";
+import metaData from "./data/meta.json";
 
 const ALL_SHOPS = shopsData as Shop[];
 // Web調査でジャンルを判定した店（placeId→ジャンルキー）。店名判定とマージする
 const GENRE_OVERRIDES = genreOverridesData as Record<string, string>;
+
+// データ最終更新日（refine.py が収集時のJST日付を meta.json に書き込む）
+const DATA_UPDATED = (() => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((metaData as { updatedAt?: string }).updatedAt ?? "");
+  return m ? `${m[1]}年${+m[2]}月${+m[3]}日` : null;
+})();
 
 // スキーム起動(Yahoo等)は起動可否を検知できないため文言を中立に
 const navToast = (app: NavApp, name: string) =>
@@ -525,6 +532,12 @@ export default function App() {
             </a>
           )}
         </div>
+
+        {DATA_UPDATED && (
+          <p className="data-updated">
+            データ最終更新: {DATA_UPDATED}（Google マップ情報・閉店の場合あり）
+          </p>
+        )}
 
         {favOnly && shops.length >= 2 && (
           <button className="hashigo-btn" onClick={hashigo}>
