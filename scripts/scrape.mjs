@@ -148,43 +148,13 @@ async function main() {
     join(__dirname, "raw_all.json"),
     JSON.stringify(raw, null, 1)
   );
-
-  // フィルタ: Google評価3.9以上・口コミ50件以上、座標あり
-  const filtered = raw
-    .filter(
-      (s) =>
-        s.lat != null &&
-        s.lng != null &&
-        s.r != null &&
-        s.c != null &&
-        s.r >= 3.9 &&
-        s.c >= 50
-    )
-    .map((s) => {
-      // ftid形式: feature ID で正確な店舗ページを開く（口コミ読込済みで着地。検証済み）
-      const url = s.pid
-        ? `https://www.google.com/maps?ftid=${s.pid}&hl=ja`
-        : `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
-      return {
-        name: s.n,
-        rating: s.r,
-        reviews: s.c,
-        lat: s.lat,
-        lng: s.lng,
-        genre: s.g || "ラーメン",
-        address: s.a || "",
-        placeId: s.pid,
-        mapsUrl: url,
-      };
-    })
-    .sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
-
-  writeFileSync(
-    join(__dirname, "..", "src", "data", "shops.json"),
-    JSON.stringify(filtered, null, 1)
-  );
+  // shops.json はここでは書かない。生成は refine.py が唯一の責任を持つ。
+  // ここで直書きすると region が欠落し、かつ既存 shops.json の reviewsUrl を消すため、
+  // 続く refine.py の reviewsUrl 引き継ぎ（placeId基準）が壊れる。
   console.log(
-    `\n収集完了: 生${raw.length}件 → 条件適合 ${filtered.length}件 を src/data/shops.json に書き出し`
+    `\n収集完了: raw_all.json に 生${raw.length}件 を書き出し（shops.jsonは未生成）。\n` +
+      `次に他地域を追記（node scripts/scrape_wards.mjs / scrape_tsukuba.mjs / scrape_ibaraki_south.mjs）し、\n` +
+      `最後に python3 scripts/refine.py で src/data/shops.json を再生成してください。`
   );
 }
 
