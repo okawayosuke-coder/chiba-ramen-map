@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { NAV_APP_META, navAppsForPlatform, type NavApp } from "../nav";
-import { exportFavorites, type ThemePref } from "../storage";
+import { exportFavorites, type PoiKindsUpdater, type ThemePref } from "../storage";
+import { POI_KINDS, POI_KIND_META, type PoiKind } from "../poi";
 import { clearTrack, downloadTrackGPX, trackStats } from "../track";
 import { useEscape } from "../hooks";
 
@@ -11,6 +12,10 @@ interface Props {
   setThemePref: (p: ThemePref) => void;
   showTrack: boolean;
   setShowTrack: (v: boolean) => void;
+  showPoi: boolean;
+  setShowPoi: (v: boolean) => void;
+  poiKinds: PoiKind[];
+  setPoiKinds: (k: PoiKindsUpdater) => void;
   favs: Set<string>;
   importKeys: (keys: string[]) => void;
   onResetSafety: () => void;
@@ -24,6 +29,10 @@ export default function Settings({
   setThemePref,
   showTrack,
   setShowTrack,
+  showPoi,
+  setShowPoi,
+  poiKinds,
+  setPoiKinds,
   favs,
   importKeys,
   onResetSafety,
@@ -49,6 +58,15 @@ export default function Settings({
       }
     };
     reader.readAsText(f);
+  };
+
+  // 種類のON/OFF。新たにONにした時、全体表示がOFFなら自動でONにする（種類だけ選んでも出ないのを防ぐ）
+  const togglePoiKind = (k: PoiKind) => {
+    const turningOn = !poiKinds.includes(k);
+    setPoiKinds((prev) =>
+      prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]
+    );
+    if (turningOn && !showPoi) setShowPoi(true);
   };
 
   return (
@@ -97,6 +115,26 @@ export default function Settings({
               </button>
             ))}
           </div>
+        </section>
+
+        <section className="set-sec">
+          <h3>周辺POIの表示</h3>
+          <div className="set-row">
+            {POI_KINDS.map((k) => (
+              <button
+                key={k}
+                className={`chip${poiKinds.includes(k) ? " chip--on" : ""}`}
+                onClick={() => togglePoiKind(k)}
+              >
+                {POI_KIND_META[k].emoji} {POI_KIND_META[k].label}
+              </button>
+            ))}
+          </div>
+          <p className="modal__small">
+            地図を拡大（ズーム14以上）すると表示範囲の施設を表示します。
+            ツールバーの🏪でまとめてON/OFF{showPoi ? "" : "（現在OFF）"}。
+            駐車場/EV/トイレは件数が多いため必要な時だけONを推奨。
+          </p>
         </section>
 
         <section className="set-sec">

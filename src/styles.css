@@ -954,6 +954,15 @@ body {
 .poi--fuel {
   border-radius: 7px;
 } /* ガソリンスタンド＝角丸四角 */
+.poi--parking {
+  border-radius: 7px;
+} /* 駐車場＝角丸四角（青P） */
+.poi--ev {
+  border-radius: 50%;
+} /* EV充電＝丸（緑⚡） */
+.poi--toilet {
+  border-radius: 7px;
+} /* トイレ＝角丸四角（🚻） */
 .poi-hint {
   position: absolute;
   left: 50%;

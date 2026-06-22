@@ -12,7 +12,7 @@ import L from "leaflet";
 import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
-import { fetchPois, poiBrandStyle, type BBox } from "../poi";
+import { fetchPois, poiBrandStyle, type BBox, type Poi, type PoiKind } from "../poi";
 import {
   addTrackPoint,
   getTrackPoints,
@@ -628,31 +628,44 @@ function DestMarker({ dest }: { dest: Pt | null }) {
   return null;
 }
 
-/** コンビニ/ガソリンスタンドを表示範囲ぶん表示（ラーメンピンとは別レイヤー）。
+// 種類→マーカー形状クラス（色は poiBrandStyle のインライン指定）
+const POI_SHAPE: Record<PoiKind, string> = {
+  conv: "poi--conv",
+  fuel: "poi--fuel",
+  parking: "poi--parking",
+  ev: "poi--ev",
+  toilet: "poi--toilet",
+};
+
+/** 周辺POI（コンビニ/GS/駐車場/EV充電/トイレ）を表示範囲ぶん表示（ラーメンピンとは別レイヤー）。
+ *  kinds で表示種類を切替え（空なら何も取得・表示しない）。
  *  z14未満は非表示、bboxキャッシュ＋最小間隔でOverpassへの過剰アクセスを抑制。
  *  走行モードでも moveend ごとに呼ばれるが、キャッシュ内・間隔内は即returnで通信しない。 */
-function PoiLayer({ show }: { show: boolean }) {
+function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
   const map = useMap();
+  // 配列の同一性に依存せず、種類の集合が変わった時だけ effect を貼り直す
+  const kindsKey = useMemo(() => [...kinds].sort().join(","), [kinds]);
   useEffect(() => {
-    if (!show) return;
+    const active = (kindsKey ? kindsKey.split(",") : []) as PoiKind[];
+    if (active.length === 0) return;
     const MINZOOM = 14;
     const MIN_INTERVAL = 4000; // 同一APIへの最小間隔(ms)
-    const MAX = 500; // 1回の最大表示数
+    const MAX = 600; // 1回の最大表示数
 
     const group = L.layerGroup().addTo(map);
     const hint = L.DomUtil.create("div", "poi-hint");
-    hint.textContent = "🏪 ズームすると周辺のコンビニ・GSを表示";
+    hint.textContent = "🏪 ズームすると周辺の施設を表示";
     hint.style.display = "none";
     map.getContainer().appendChild(hint);
 
     // ブランド別アイコン（色＋識別文字）。同一スタイルは使い回す
     const iconCache = new Map<string, L.DivIcon>();
-    const iconFor = (kind: "conv" | "fuel", label: string): L.DivIcon => {
+    const iconFor = (kind: PoiKind, label: string): L.DivIcon => {
       const st = poiBrandStyle(kind, label);
       const key = `${kind}|${st.bg}|${st.t}`;
       let ic = iconCache.get(key);
       if (!ic) {
-        const shape = kind === "conv" ? "poi--conv" : "poi--fuel";
+        const shape = POI_SHAPE[kind];
         const fs = st.emoji ? "14px" : st.t.length >= 2 ? "9.5px" : "12.5px";
         ic = L.divIcon({
           className: "",
@@ -698,7 +711,7 @@ function PoiLayer({ show }: { show: boolean }) {
       lastReqAt = now;
       const area = expand(view, 0.4); // 余白付きで取得し再取得頻度を下げる
       try {
-        const pois = await fetchPois(area);
+        const pois = await fetchPois(area, active);
         if (aborted) return;
         cached = area;
         if (
@@ -708,8 +721,29 @@ function PoiLayer({ show }: { show: boolean }) {
             (p) => ({ label: p.label, kind: p.kind, st: poiBrandStyle(p.kind, p.label) })
           );
         }
+        // 表示上限。種類が偏っても（例: 駐車場が極端に多い）どの種類も出るよう、
+        // 種類別バケットからラウンドロビンで上限まで選ぶ。
+        const buckets = new Map<PoiKind, Poi[]>();
+        for (const p of pois) {
+          const arr = buckets.get(p.kind);
+          if (arr) arr.push(p);
+          else buckets.set(p.kind, [p]);
+        }
+        const lists = [...buckets.values()];
+        const picked: Poi[] = [];
+        for (let i = 0; picked.length < MAX; i++) {
+          let added = false;
+          for (const list of lists) {
+            if (i < list.length) {
+              picked.push(list[i]);
+              added = true;
+              if (picked.length >= MAX) break;
+            }
+          }
+          if (!added) break; // 全バケット出し切った
+        }
         group.clearLayers();
-        pois.slice(0, MAX).forEach((p) => {
+        picked.forEach((p) => {
           L.marker([p.lat, p.lng], {
             icon: iconFor(p.kind, p.label),
             keyboard: false,
@@ -730,7 +764,7 @@ function PoiLayer({ show }: { show: boolean }) {
       group.remove();
       hint.remove();
     };
-  }, [show, map]);
+  }, [kindsKey, map]);
   return null;
 }
 
@@ -739,7 +773,7 @@ interface Props {
   focus: Shop | null;
   follow: boolean;
   paneHidden: boolean;
-  showPoi: boolean;
+  poiKinds: PoiKind[];
   showTrack: boolean;
   dest: Shop | null;
   onSetDest: (s: Shop) => void;
@@ -756,7 +790,7 @@ function RamenMap({
   focus,
   follow,
   paneHidden,
-  showPoi,
+  poiKinds,
   showTrack,
   dest,
   onSetDest,
@@ -800,7 +834,7 @@ function RamenMap({
       <ElevationProbe />
       <FollowController active={follow} destRef={destRef} />
       <ResizeOnChange dep={paneHidden} />
-      <PoiLayer show={showPoi} />
+      <PoiLayer kinds={poiKinds} />
       <TrackLayer show={showTrack} />
       <DemoFit />
       <DestMarker dest={dest ? { lat: dest.lat, lng: dest.lng } : null} />

@@ -31,6 +31,7 @@ import {
   shopKey,
   useFavorites,
   useNavApp,
+  usePoiKinds,
   useSafetyAck,
   useShowTrack,
   useTheme,
@@ -76,7 +77,8 @@ export default function App() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [follow, setFollow] = useState(false);
   const [paneHidden, setPaneHidden] = useState(false);
-  const [showPoi, setShowPoi] = useState(true); // コンビニ・GSは既定でON
+  const [showPoi, setShowPoi] = useState(true); // 周辺POIレイヤーの全体ON/OFF（既定ON）
+  const [poiKinds, setPoiKinds] = usePoiKinds(); // 表示する種類（既定: コンビニ・GS）
   const [dest, setDest] = useState<Shop | null>(null); // 目的地
   const [showTrack, setShowTrack] = useShowTrack();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -89,6 +91,12 @@ export default function App() {
   const [safetyAck, setSafetyAck] = useSafetyAck();
   const geo = useGeolocation();
   const theme = useTheme(geo.pos);
+
+  // 全体OFFなら空＝何も取得・表示しない。ONなら選択中の種類を表示
+  const activePoiKinds = useMemo(
+    () => (showPoi ? poiKinds : []),
+    [showPoi, poiKinds]
+  );
 
   // 自動走行（常時オン）: 走行モードOFFの間は移動を監視し、走り出しで自動ON
   useMovementDetector(
@@ -333,15 +341,15 @@ export default function App() {
               setShowPoi(n);
               setToast(
                 n
-                  ? "周辺のコンビニ・GSを表示（地図を拡大すると出ます）"
-                  : "コンビニ・GS表示をOFFにしました"
+                  ? "周辺の施設を表示（地図を拡大すると出ます・種類は設定で選択）"
+                  : "周辺施設の表示をOFFにしました"
               );
             }}
           >
             <span className="ic" aria-hidden="true">
               🏪
             </span>
-            <span>コンビニ</span>
+            <span>周辺</span>
           </button>
           <button
             className="tool-btn"
@@ -605,7 +613,7 @@ export default function App() {
           focus={focus}
           follow={follow}
           paneHidden={paneHidden}
-          showPoi={showPoi}
+          poiKinds={activePoiKinds}
           showTrack={showTrack}
           dest={dest}
           onSetDest={onSetDest}
@@ -654,6 +662,10 @@ export default function App() {
           setThemePref={theme.setPref}
           showTrack={showTrack}
           setShowTrack={setShowTrack}
+          showPoi={showPoi}
+          setShowPoi={setShowPoi}
+          poiKinds={poiKinds}
+          setPoiKinds={setPoiKinds}
           favs={favs}
           importKeys={importKeys}
           onResetSafety={() => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Shop } from "./types";
 import type { NavApp, Pt } from "./nav";
 import { sunTheme } from "./sun";
+import { POI_KINDS, type PoiKind } from "./poi";
 
 const K = {
   favs: "crm_favs",
@@ -9,6 +10,7 @@ const K = {
   safety: "crm_safety_ack",
   theme: "crm_theme", // "light" | "dark" | "auto"
   showTrack: "crm_showtrack",
+  poiKinds: "crm_poikinds", // 表示する周辺POIの種類
 };
 
 /** 並び順が変わっても壊れない安定キー（placeId優先、無ければ座標丸め） */
@@ -90,6 +92,31 @@ export function useShowTrack(): [boolean, (v: boolean) => void] {
     write(K.showTrack, v);
   }, []);
   return [on, set];
+}
+
+export type PoiKindsUpdater = PoiKind[] | ((prev: PoiKind[]) => PoiKind[]);
+
+/** 表示する周辺POIの種類（既定: コンビニ・GSのみ。駐車場/EV/トイレは任意でON）。
+ *  不正値や未知の種類は除去し、表示順を POI_KINDS に揃える。
+ *  setter は更新関数も受け付ける（連続トグルでの取りこぼし防止）。 */
+export function usePoiKinds(): [PoiKind[], (k: PoiKindsUpdater) => void] {
+  const [kinds, setKinds] = useState<PoiKind[]>(() => {
+    const raw = read<unknown[]>(K.poiKinds, ["conv", "fuel"]);
+    const valid = (Array.isArray(raw) ? raw : []).filter(
+      (k): k is PoiKind => typeof k === "string" && (POI_KINDS as string[]).includes(k)
+    );
+    return POI_KINDS.filter((k) => valid.includes(k));
+  });
+  useEffect(() => {
+    write(K.poiKinds, kinds);
+  }, [kinds]);
+  const set = useCallback((next: PoiKindsUpdater) => {
+    setKinds((prev) => {
+      const resolved = typeof next === "function" ? next(prev) : next;
+      return POI_KINDS.filter((k) => resolved.includes(k));
+    });
+  }, []);
+  return [kinds, set];
 }
 
 export type ThemePref = "light" | "dark" | "auto" | "sun";
