@@ -434,13 +434,24 @@ function FollowController({
         map.setView([latitude, longitude], 16, { animate: true });
         first = false;
       } else if (gpsMoving || haversineKm(map.getCenter(), here) > 0.02) {
-        // カメラはフィックス間隔ぶんかけて滑らかに追従（マーカー補間と同期）。
+        // 前方を広く見せる: 進行方向へ少し先の点を画面中央にし、自車を後方(画面手前)へ寄せる。
+        // 北上のまま、進行方向に応じて自車が中心の手前側に来る（どの向きでも前方が広い）。
+        let target: L.LatLngExpression = [latitude, longitude];
+        const hd = gpsMoving ? gpsHeading : null; // 走行中のGPS進行方位のみ採用
+        if (hd != null) {
+          const z = map.getZoom();
+          const carPt = map.project([latitude, longitude], z);
+          const rad = (hd * Math.PI) / 180;
+          const lead = map.getSize().y * 0.22; // 視野高さの約22%ぶん先を中央に
+          const aheadPt = carPt.add(
+            L.point(Math.sin(rad), -Math.cos(rad)).multiplyBy(lead)
+          );
+          target = map.unproject(aheadPt, z);
+        }
+        // フィックス間隔ぶんかけて滑らかに追従（マーカー補間と同期）。
         // animate:trueなので moveend は1フィックスにつき1回＝POI/軌跡レイヤーの過剰再描画を避ける。
         // 停車中(ほぼ不動)は panTo を打たず、毎秒の moveend と微小ジッタ追従を抑える。
-        map.panTo([latitude, longitude], {
-          animate: true,
-          duration: segDur / 1000,
-        });
+        map.panTo(target, { animate: true, duration: segDur / 1000 });
       }
       if (DEBUG) {
         dbg();
