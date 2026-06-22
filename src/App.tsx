@@ -37,6 +37,12 @@ import {
   useTheme,
 } from "./storage";
 import { useGeolocation, useMovementDetector } from "./hooks";
+import {
+  buildSearchKey,
+  matchesQuery,
+  parseQuery,
+  type SearchKey,
+} from "./search";
 import shopsData from "./data/shops.json";
 import genreOverridesData from "./data/genre-overrides.json";
 
@@ -67,6 +73,11 @@ const SHOP_GENRES = new Map<Shop, string[]>(
     if (ov) tags.add(ov);
     return [s, [...tags]];
   })
+);
+
+// あいまい検索用の正規化キー（店名＋住所）を一度だけ計算
+const SHOP_SEARCH = new Map<Shop, SearchKey>(
+  ALL_SHOPS.map((s) => [s, buildSearchKey(`${s.name} ${s.address}`)])
 );
 
 export default function App() {
@@ -139,7 +150,7 @@ export default function App() {
   }, [toast]);
 
   const view = useMemo(() => {
-    const q = filters.query.trim();
+    const qterms = parseQuery(filters.query);
     const arr = ALL_SHOPS.filter((s) => {
       if (s.rating < filters.minRating) return false;
       if (s.reviews < filters.minReviews) return false;
@@ -150,7 +161,7 @@ export default function App() {
       )
         return false;
       if (favOnly && !favs.has(shopKey(s))) return false;
-      if (q && !(s.name.includes(q) || s.address.includes(q))) return false;
+      if (qterms && !matchesQuery(SHOP_SEARCH.get(s)!, qterms)) return false;
       return true;
     }).map((s) => ({ s, km: geo.pos ? haversineKm(geo.pos, s) : null }));
 
@@ -168,14 +179,14 @@ export default function App() {
 
   // ジャンル別の件数（ジャンル以外の絞り込みを反映＝チップに今の該当数を表示）
   const genreCounts = useMemo(() => {
-    const q = filters.query.trim();
+    const qterms = parseQuery(filters.query);
     const c: Record<string, number> = {};
     for (const s of ALL_SHOPS) {
       if (s.rating < filters.minRating) continue;
       if (s.reviews < filters.minReviews) continue;
       if (filters.region !== "all" && s.region !== filters.region) continue;
       if (favOnly && !favs.has(shopKey(s))) continue;
-      if (q && !(s.name.includes(q) || s.address.includes(q))) continue;
+      if (qterms && !matchesQuery(SHOP_SEARCH.get(s)!, qterms)) continue;
       for (const g of SHOP_GENRES.get(s)!) c[g] = (c[g] || 0) + 1;
     }
     return c;
@@ -376,7 +387,7 @@ export default function App() {
             <label>店名・住所で検索</label>
             <input
               type="text"
-              placeholder="例: 家系、二郎、松戸 …"
+              placeholder="例: ramen / らーめん / 家系 / 松戸 …"
               value={filters.query}
               onChange={(e) => set("query", e.target.value)}
             />

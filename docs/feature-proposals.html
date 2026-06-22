@@ -13,6 +13,9 @@
   .card p{margin:0;font-size:13px;color:#3f433b}
   .badge{font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;color:#fff;white-space:nowrap}
   .S{background:var(--g)} .M{background:var(--o)} .L{background:var(--r)}
+  .badge.done{background:#2b8a3e}
+  .card.done{border-color:#b2d8b8;background:#f3fbf4}
+  .card.done h3{color:#207a32}
   .tag{font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;background:#eef1ee;color:#475}
   .tag.warn{background:#fff3bf;color:#8a6d00}
   .tag.hot{background:#ffe3e3;color:#b02020}
@@ -28,34 +31,34 @@
 </style>
 <div class="wrap">
   <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
-  <p class="sub">現状（検索・絞り込み・お気に入り・カーナビ起動・走行モード・現在地住所/標高・コンビニ/GS表示・ダーク・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b></p>
+  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&残距離・ジャンル絞り込み・周辺POI(コンビニ/GS/駐車場/EV/トイレ)・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-22 時点）</p>
 
   <div class="top">
     <b>⭐ おすすめ優先（コスパ順）</b>
     <ol>
-      <li><b>駐車場・EV充電・トイレのPOI追加</b> — コンビニ/GSと同じ仕組みで即追加。ドライブで一番効く <span class="badge S">S</span></li>
-      <li><b>ジャンル絞り込み（家系/二郎系/つけ麺/味噌…）</b> — 探す体験が大きく向上 <span class="badge M">M</span></li>
+      <li><b>駐車場・EV充電・トイレのPOI追加</b> — コンビニ/GSと同じ仕組みで即追加。ドライブで一番効く <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></li>
+      <li><b>ジャンル絞り込み（家系/二郎系/つけ麺/味噌…）</b> — 探す体験が大きく向上 <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></li>
       <li><b>訪問済みチェック＋制覇マップ</b> — 常用＆楽しい。リピート利用を促す <span class="badge M">M</span></li>
-      <li><b>PWA更新通知</b> — 新版を検知して「更新」表示（今は気づきにくい） <span class="badge S">S</span></li>
+      <li><b>PWA更新通知</b> — 新版を検知して「更新」表示（今は気づきにくい） <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></li>
       <li><b>オフライン地図の事前DL</b> — 通信量を抜本削減（以前の保留案件） <span class="badge L">L</span></li>
     </ol>
   </div>
 
   <h2>① ドライブ・ナビ強化</h2>
   <div class="grid">
-    <div class="card"><h3>駐車場/EV/トイレ POI <span class="badge S">S</span> <span class="tag">実績ある方式</span></h3><p>Overpassで <code>amenity=parking / charging_station / toilets / 道の駅</code> を表示。コンビニ/GSと同じレイヤー方式で追加。</p></div>
-    <div class="card"><h3>目的地セット＆残り距離 <span class="badge M">M</span></h3><p>アプリ内で目的地ピンを置くと、走行モードで残り直線距離・方位・目安時間を表示。外部ナビに頼らず軽量。</p></div>
+    <div class="card done"><h3>駐車場/EV/トイレ POI <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>Overpassで <code>amenity=parking / charging_station / toilets</code> を表示。設定の「周辺POIの表示」で種類を選択（既定はコンビニ/GS）、🏪ボタンで一括ON/OFF。種類別ラウンドロビンで表示上限を配分。<span class="note">※「道の駅」は未対応（必要なら追加可）。</span></p></div>
+    <div class="card done"><h3>目的地セット＆残り距離 <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>店の🎯から目的地を設定すると、走行モードで残り直線距離・方位矢印・到着間近を表示。外部ナビに頼らず軽量。</p></div>
     <div class="card"><h3>ルート沿いの高評価店ハイライト <span class="badge M">M</span> <span class="tag warn">制約あり</span></h3><p>現在地→目的地の経路“近く”の店を強調。<span class="note">正確な道なりルートは外部API＝地図外表示の規約懸念。直線バッファでの簡易抽出なら自前で可。</span></p></div>
-    <div class="card"><h3>走行軌跡ログ <span class="badge M">M</span></h3><p>GPSトラックを記録し、後で軌跡確認・GPX書き出し。「どこを走ったか」の振り返り。</p></div>
+    <div class="card done"><h3>走行軌跡ログ <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>走行中 約20m毎にGPSトラックを記録（端末内・上限約400km）。進行方向の三角＋速度別色で地図表示、設定で表示ON/OFF・GPX書き出し・消去。</p></div>
     <div class="card"><h3>休憩リマインド <span class="badge S">S</span></h3><p>走行モードで連続運転○分を超えたら休憩を提案（コンビニ表示と連携可）。</p></div>
   </div>
 
   <h2>② 探す・絞り込む</h2>
   <div class="grid">
-    <div class="card"><h3>ジャンル絞り込み <span class="badge M">M</span> <span class="tag hot">効果大</span></h3><p>家系・二郎系・つけ麺・味噌・濃厚魚介・あっさり等。店名/既存ジャンルから自動分類してチップ追加。</p></div>
+    <div class="card done"><h3>ジャンル絞り込み <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>家系・二郎系・つけ麺・味噌 等。店名からの自動分類＋Web調査overrides（約150店）でチップ絞り込み。</p></div>
     <div class="card"><h3>「今営業中」フィルタ <span class="badge M">M</span> <span class="tag warn">データ制約</span></h3><p>OSMの営業時間がある店のみ判定。<span class="note">ラーメン店は欠損が多く部分的。あくまで“分かる範囲”表示。</span></p></div>
     <div class="card"><h3>総合スコア順 <span class="badge S">S</span></h3><p>評価×口コミ数のベイズ平均で“ハズレにくい順”。少件数の高評価に振り回されない並べ替え。</p></div>
-    <div class="card"><h3>あいまい検索 <span class="badge S">S</span></h3><p>ひらがな/カタカナ/英字の表記ゆれを吸収（例「らーめん」「ラーメン」「ramen」）。</p></div>
+    <div class="card done"><h3>あいまい検索 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>ひらがな/カタカナ/英字/全半角/大小の表記ゆれを吸収（例「らーめん」「ラーメン」「ramen」が同一ヒット）。ローマ字⇄かなも橋渡し、空白区切りで複数語AND。<span class="note">※漢字は読みデータが無いためローマ字照合外（「二郎」等はジャンル絞り込みで対応）。</span></p></div>
     <div class="card"><h3>条件プリセット <span class="badge S">S</span></h3><p>よく使う条件をワンタップ保存（例「家系×4.0+×近い順」）。</p></div>
   </div>
 
@@ -79,7 +82,7 @@
   <div class="grid">
     <div class="card"><h3>ルート/エリア事前DL <span class="badge L">L</span> <span class="tag hot">通信大幅減</span></h3><p>WiFiで地図を先に保存→走行中ほぼ通信ゼロ。<span class="note">GSIタイル化が前提（OSM公式は一括DL規約NG）。以前の保留案件。</span></p></div>
     <div class="card"><h3>POIキャッシュ <span class="badge M">M</span></h3><p>コンビニ/GS等を事前取得・キャッシュし、走行中の取得を削減。</p></div>
-    <div class="card"><h3>PWA更新通知 <span class="badge S">S</span> <span class="tag">品質</span></h3><p>新バージョン検知で「更新する」ボタン表示（今は自動だが気づきにくい）。</p></div>
+    <div class="card done"><h3>PWA更新通知 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>新バージョン検知で「更新する」ボタンを表示（<code>UpdatePrompt</code>）。</p></div>
     <div class="card"><h3>ストレージ管理 <span class="badge S">S</span></h3><p>端末のキャッシュ使用量を表示・クリア。</p></div>
   </div>
 
