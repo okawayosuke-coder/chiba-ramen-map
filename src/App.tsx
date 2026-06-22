@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RamenMap from "./components/RamenMap";
 import SafetyGate from "./components/SafetyGate";
 import NavPicker from "./components/NavPicker";
@@ -37,6 +37,7 @@ import {
   useTheme,
 } from "./storage";
 import { useGeolocation, useMovementDetector } from "./hooks";
+import { downloadTrackGPX, trackStats } from "./track";
 import {
   buildSearchKey,
   matchesQuery,
@@ -103,6 +104,11 @@ export default function App() {
   const [pendingNav, setPendingNav] = useState<Shop | null>(null);
   const [pickerFor, setPickerFor] = useState<Shop | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // 走行終了後のバックアップ案内 / 端末ストレージの永続化警告
+  const [backupPrompt, setBackupPrompt] = useState<{ km: number } | null>(null);
+  const [persistWarn, setPersistWarn] = useState(false);
+  const prevFollowRef = useRef(false);
+  const followStartCountRef = useRef(0);
 
   const { favs, toggle, isFav, importKeys } = useFavorites();
   const [navApp, setNavApp] = useNavApp();
@@ -115,6 +121,42 @@ export default function App() {
     () => (showPoi ? poiKinds : []),
     [showPoi, poiKinds]
   );
+
+  // 走行モード終了時、その走行で軌跡が増えていれば GPX 保存を案内（iOSは保存データを消すことがあるため）
+  useEffect(() => {
+    if (follow && !prevFollowRef.current) {
+      followStartCountRef.current = trackStats().count;
+    } else if (!follow && prevFollowRef.current) {
+      const st = trackStats();
+      if (st.count - followStartCountRef.current >= 5)
+        setBackupPrompt({ km: st.km });
+    }
+    prevFollowRef.current = follow;
+  }, [follow]);
+
+  // 端末内保存の永続化を要求し、許可されなければ一度だけ警告（消失リスクの周知）
+  useEffect(() => {
+    (async () => {
+      try {
+        const sm = navigator.storage;
+        if (!sm?.persisted) return;
+        await sm.persist?.();
+        const ok = await sm.persisted();
+        if (!ok && !localStorage.getItem("crm_persist_warned"))
+          setPersistWarn(true);
+      } catch {
+        /* noop */
+      }
+    })();
+  }, []);
+  const dismissPersistWarn = () => {
+    try {
+      localStorage.setItem("crm_persist_warned", "1");
+    } catch {
+      /* noop */
+    }
+    setPersistWarn(false);
+  };
 
   // 自動走行（常時オン）: 走行モードOFFの間は移動を監視し、走り出しで自動ON
   useMovementDetector(
@@ -701,6 +743,46 @@ export default function App() {
       {toast && (
         <div className="toast" role="status" aria-live="polite">
           {toast}
+        </div>
+      )}
+
+      {backupPrompt && (
+        <div className="update-bar" role="status">
+          <span className="update-bar__msg">
+            🛰️ 今の走行軌跡（約{backupPrompt.km.toFixed(1)}km）をGPXで保存しますか？
+            <br />
+            端末内のデータはiOS等が自動削除する場合があります
+          </span>
+          <div className="update-bar__btns">
+            <button
+              className="update-bar__go"
+              onClick={() => {
+                downloadTrackGPX();
+                setBackupPrompt(null);
+              }}
+            >
+              GPXで保存
+            </button>
+            <button
+              className="update-bar__later"
+              onClick={() => setBackupPrompt(null)}
+            >
+              後で
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!backupPrompt && persistWarn && (
+        <div className="update-bar" role="status">
+          <span className="update-bar__msg">
+            ⚠️ この端末では保存データが自動削除されることがあります。大事な走行軌跡は設定からGPXで書き出しを。
+          </span>
+          <div className="update-bar__btns">
+            <button className="update-bar__later" onClick={dismissPersistWarn}>
+              了解
+            </button>
+          </div>
         </div>
       )}
 
