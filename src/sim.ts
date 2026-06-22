@@ -9,7 +9,7 @@ const enabled =
   new URLSearchParams(window.location.search).get("sim") === "drive";
 
 if (enabled) {
-  const SPEED_MS = 12; // 約43km/h
+  let speedMs = 12; // 約43km/h（↑/↓で増減）
   const TICK_MS = 1000; // 1秒ごとにフィックス供給
   const TURN_RATE = 35; // 1tickで目標方位へ寄せる角度（90°ターンを約3秒で）
 
@@ -26,7 +26,7 @@ if (enabled) {
     const d = angDiff(target, heading);
     heading = norm(heading + Math.max(-TURN_RATE, Math.min(TURN_RATE, d)));
     // 現在方位へ前進
-    const distM = SPEED_MS * (TICK_MS / 1000);
+    const distM = speedMs * (TICK_MS / 1000);
     const rad = (heading * Math.PI) / 180;
     lat += (distM * Math.cos(rad)) / 111320;
     lng += (distM * Math.sin(rad)) / (111320 * Math.cos((lat * Math.PI) / 180));
@@ -41,7 +41,7 @@ if (enabled) {
         altitude: null,
         altitudeAccuracy: null,
         heading,
-        speed: SPEED_MS,
+        speed: speedMs,
       },
       timestamp: Date.now(),
     } as GeolocationPosition);
@@ -71,25 +71,25 @@ if (enabled) {
     });
   }, TICK_MS);
 
-  // ←/→ で90°ずつ曲がる
+  // ←/→ で90°ずつ曲がる、↑/↓ で±10km/h
   const hint = document.createElement("div");
   const render = () => {
-    hint.textContent = `🧪 走行シミュ  進行 ${Math.round(
-      heading
-    )}°  ←左90° / →右90°（目標 ${Math.round(norm(target))}°）`;
+    hint.textContent = `🧪 走行シミュ  ${Math.round(
+      speedMs * 3.6
+    )}km/h  進行${Math.round(heading)}°  ←/→曲がる ↑/↓加減速`;
   };
   window.addEventListener(
     "keydown",
     (e) => {
-      if (e.key === "ArrowLeft") {
-        target = norm(target - 90);
-        e.preventDefault();
-        render();
-      } else if (e.key === "ArrowRight") {
-        target = norm(target + 90);
-        e.preventDefault();
-        render();
-      }
+      if (e.key === "ArrowLeft") target = norm(target - 90);
+      else if (e.key === "ArrowRight") target = norm(target + 90);
+      else if (e.key === "ArrowUp")
+        speedMs = Math.min(41.7, speedMs + 2.78); // +10km/h（上限約150）
+      else if (e.key === "ArrowDown")
+        speedMs = Math.max(0, speedMs - 2.78); // -10km/h
+      else return;
+      e.preventDefault();
+      render();
     },
     true
   );
@@ -105,6 +105,6 @@ if (enabled) {
 
   // eslint-disable-next-line no-console
   console.log(
-    "🧪 走行シミュレーション ON（?sim=drive）。数秒で自動的に走行モードに入ります。←/→キーで90°ずつ曲がれます。"
+    "🧪 走行シミュレーション ON（?sim=drive）。数秒で走行モードに入ります。←/→＝90°ターン、↑/↓＝±10km/h。"
   );
 }
