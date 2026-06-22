@@ -31,7 +31,7 @@
 </style>
 <div class="wrap">
   <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
-  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&残距離・ジャンル絞り込み・周辺POI(コンビニ/GS/駐車場/EV/トイレ)・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-22 時点）</p>
+  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&残距離・ジャンル絞り込み・周辺POI(コンビニ/GS/駐車場/EV/トイレ)・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-23 / v0.2.0 時点）</p>
 
   <div class="top">
     <b>⭐ おすすめ優先（コスパ順）</b>
@@ -42,6 +42,19 @@
       <li><b>PWA更新通知</b> — 新版を検知して「更新」表示（今は気づきにくい） <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></li>
       <li><b>オフライン地図の事前DL</b> — 通信量を抜本削減（以前の保留案件） <span class="badge L">L</span></li>
     </ol>
+  </div>
+
+  <h2>✅ 最近実装した改善（v0.2.0・提案リスト外を含む）</h2>
+  <div class="grid">
+    <div class="card done"><h3>前方を広く表示（先読み追従） <span class="badge done">✅</span></h3><p>走行中、自車を画面下寄り（約⅓）に置き進行方向の先を広く表示。北上のまま、曲がると先読み方向が回り込む。</p></div>
+    <div class="card done"><h3>自車の滑らか追従（フィックス間補間） <span class="badge done">✅</span></h3><p>GPS更新（約1Hz）の間も毎フレーム補間してカクつかず前進。大ジャンプは即スナップ、停車中は省電力停止。</p></div>
+    <div class="card done"><h3>速度計の拡大＋速度連動カラー <span class="badge done">✅</span></h3><p>左下の速度計を拡大。0→現在速度の進捗アーク＋数値の色が速度で変化（〜40緑 / 〜80橙 / 80km/h以上赤）。</p></div>
+    <div class="card done"><h3>走行軌跡の密度調整 <span class="badge done">✅</span></h3><p>記録間隔を約20m→40mに（密集表示を解消、容量上限は約800km分に拡大）。</p></div>
+    <div class="card done"><h3>走行時の住所表示を改善 <span class="badge done">✅</span></h3><p>現在地住所（番地除く）を画面上部中央に・フォント拡大で視認性UP。</p></div>
+    <div class="card done"><h3>データ最終更新日の表示 <span class="badge done">✅</span></h3><p>いつ時点のデータかを画面に明示（収集時に自動で日付を記録）。</p></div>
+    <div class="card done"><h3>バージョン表示 <span class="badge done">✅</span></h3><p>設定パネルに「バージョン ・ ビルド日時(JST)」。PWA更新の確認に。</p></div>
+    <div class="card done"><h3>データ更新パイプライン整備 <span class="badge done">✅</span></h3><p>手順書 <code>UPDATING.md</code> ＋ 差分レポート <code>diff.py</code>（新規/閉店疑い/評価変動/改名）。再収集→レビュー→公開の運用が可能に。</p></div>
+    <div class="card done"><h3>走行シミュレーション（開発・テスト用） <span class="badge done">✅</span></h3><p><code>?sim=drive</code> で擬似GPS走行。←/→で90°ターン、↑/↓で加減速。実機なしで追従・表示を確認。</p></div>
   </div>
 
   <h2>① ドライブ・ナビ強化</h2>
