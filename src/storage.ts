@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Shop } from "./types";
-import type { NavApp } from "./nav";
+import type { NavApp, Pt } from "./nav";
+import { sunTheme } from "./sun";
 
 const K = {
   favs: "crm_favs",
@@ -91,10 +92,10 @@ export function useShowTrack(): [boolean, (v: boolean) => void] {
   return [on, set];
 }
 
-export type ThemePref = "light" | "dark" | "auto";
+export type ThemePref = "light" | "dark" | "auto" | "sun";
 
-/** テーマ。autoはprefers-color-schemeに追従（自前日照計算はしない） */
-export function useTheme(): {
+/** テーマ。auto=OS設定追従, sun=現在地の日の出/日の入り連動（pos必須・無ければOS設定にフォールバック） */
+export function useTheme(pos?: Pt | null): {
   pref: ThemePref;
   resolved: "light" | "dark";
   setPref: (p: ThemePref) => void;
@@ -105,6 +106,7 @@ export function useTheme(): {
   const [sysDark, setSysDark] = useState<boolean>(
     () => window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false
   );
+  const [, setTick] = useState(0);
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
     if (!mq) return;
@@ -112,8 +114,19 @@ export function useTheme(): {
     mq.addEventListener("change", fn);
     return () => mq.removeEventListener("change", fn);
   }, []);
-  const resolved: "light" | "dark" =
-    pref === "auto" ? (sysDark ? "dark" : "light") : pref;
+  // sunモードは日の出/日の入りをまたぐため数分ごとに再判定
+  useEffect(() => {
+    if (pref !== "sun") return;
+    const id = window.setInterval(() => setTick((t) => t + 1), 3 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [pref]);
+
+  let resolved: "light" | "dark";
+  if (pref === "light" || pref === "dark") resolved = pref;
+  else if (pref === "sun")
+    resolved = pos ? sunTheme(pos, new Date()) : sysDark ? "dark" : "light";
+  else resolved = sysDark ? "dark" : "light"; // auto
+
   useEffect(() => {
     document.documentElement.dataset.theme = resolved;
   }, [resolved]);

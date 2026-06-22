@@ -81,13 +81,19 @@ export default function Settings({
         <section className="set-sec">
           <h3>テーマ</h3>
           <div className="set-row">
-            {(["auto", "light", "dark"] as ThemePref[]).map((p) => (
+            {(["auto", "light", "dark", "sun"] as ThemePref[]).map((p) => (
               <button
                 key={p}
                 className={`chip${themePref === p ? " chip--on" : ""}`}
                 onClick={() => setThemePref(p)}
               >
-                {p === "auto" ? "自動" : p === "light" ? "ライト" : "ダーク"}
+                {p === "auto"
+                  ? "自動"
+                  : p === "light"
+                  ? "ライト"
+                  : p === "dark"
+                  ? "ダーク"
+                  : "🌅 日の入り"}
               </button>
             ))}
           </div>

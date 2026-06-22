@@ -87,8 +87,8 @@ export default function App() {
   const { favs, toggle, isFav, importKeys } = useFavorites();
   const [navApp, setNavApp] = useNavApp();
   const [safetyAck, setSafetyAck] = useSafetyAck();
-  const theme = useTheme();
   const geo = useGeolocation();
+  const theme = useTheme(geo.pos);
 
   // 自動走行（常時オン）: 走行モードOFFの間は移動を監視し、走り出しで自動ON
   useMovementDetector(
@@ -115,6 +115,11 @@ export default function App() {
     window.addEventListener("pointerdown", once, { once: true });
     return () => window.removeEventListener("pointerdown", once);
   }, []);
+
+  // 「日の入りで自動」テーマ選択時、現在地が未取得なら一度だけ取得
+  useEffect(() => {
+    if (theme.pref === "sun" && !geo.pos && geo.status === "idle") geo.request();
+  }, [theme.pref, geo]);
 
   const set = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
