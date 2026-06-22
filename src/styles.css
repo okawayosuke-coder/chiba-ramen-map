@@ -1060,18 +1060,19 @@ body {
 .addr-box {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 600;
   pointer-events: none;
-  max-width: min(70%, 520px);
+  max-width: min(86%, 560px);
   background: rgba(20, 22, 26, 0.82);
   color: #fff;
   border-radius: 10px;
-  padding: 9px 15px;
-  font-size: 18px;
+  padding: 9px 16px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.35;
-  text-align: right;
+  text-align: center;
   box-shadow: 0 2px 9px rgba(0, 0, 0, 0.35);
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
