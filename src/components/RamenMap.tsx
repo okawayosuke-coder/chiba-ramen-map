@@ -465,14 +465,9 @@ function FollowController({
     const onErr = () => {
       box.textContent = "🧭 位置情報を取得できません（許可を確認）";
     };
-    const watchId = navigator.geolocation.watchPosition(onFix, onErr, {
-      enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 20000,
-    });
-
     // フィックス間も自車マークを滑らかに動かす（毎フレーム線形補間）。
     // marker.setLatLng は地図イベントを発火しないので POI/軌跡レイヤーには影響しない。
+    // ※ watchPosition より前に定義する（コールバックが同期的に呼ばれてもTDZにならないように）。
     const animateMarker = () => {
       if (settled) {
         rafId = 0; // 区間到達後はループ自体を停止（停車時の省電力）。次フィックスで再起動
@@ -493,6 +488,12 @@ function FollowController({
       rafId = requestAnimationFrame(animateMarker);
     };
     rafId = requestAnimationFrame(animateMarker);
+
+    const watchId = navigator.geolocation.watchPosition(onFix, onErr, {
+      enableHighAccuracy: true,
+      maximumAge: 1000,
+      timeout: 20000,
+    });
 
     // 端末のコンパス（ジャイロ/方位センサー）の生値。停車時の向きに使う（offsetで較正）
     const onOrient = (e: DeviceOrientationEvent) => {
