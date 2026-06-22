@@ -625,6 +625,12 @@ body {
   color: var(--muted);
   margin-top: 10px;
 }
+.app-version {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+}
 .modal__actions {
   display: flex;
   gap: 10px;

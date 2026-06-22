@@ -5,6 +5,22 @@ import { POI_KINDS, POI_KIND_META, type PoiKind } from "../poi";
 import { clearTrack, downloadTrackGPX, trackStats } from "../track";
 import { useEscape } from "../hooks";
 
+// バージョン表示（vite.config.ts の define で注入。ビルド毎に更新）
+const BUILD_JST = (() => {
+  try {
+    return new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(__BUILD_TIME__));
+  } catch {
+    return __BUILD_TIME__;
+  }
+})();
+
 interface Props {
   navApp: NavApp | null;
   setNavApp: (a: NavApp) => void;
@@ -201,6 +217,10 @@ export default function Settings({
             ナビ起動時の注意を再表示する
           </button>
         </section>
+
+        <p className="app-version">
+          バージョン v{__APP_VERSION__} ・ ビルド {BUILD_JST} JST
+        </p>
 
         <div className="modal__actions">
           <button className="btn-primary" onClick={onClose}>

@@ -1,9 +1,15 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import pkg from "./package.json";
 
 // GitHub Pages はサブパス配信（/chiba-ramen-map/）。dev は / のまま。
 export default defineConfig(({ command }) => ({
+  // バージョン表示用。ビルド毎に更新（package.jsonのバージョン＋ビルド時刻）
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   base: command === "build" ? "/chiba-ramen-map/" : "/",
   plugins: [
     react(),
