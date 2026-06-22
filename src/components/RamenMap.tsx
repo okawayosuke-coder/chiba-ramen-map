@@ -225,6 +225,18 @@ function FollowController({
     const CX = 50, CY = 52, MAXKMH = 120;
     const ang = (kmh: number) =>
       -120 + (Math.min(Math.max(kmh, 0), MAXKMH) / MAXKMH) * 240;
+    // 速度に応じた色（停車=灰 / 〜40緑 / 〜80橙 / 80+赤）と、0→現在速度の進捗アーク
+    const R_ARC = 44;
+    const speedColor = (kmh: number) =>
+      kmh < 1 ? "#868e96" : kmh < 40 ? "#37b24d" : kmh < 80 ? "#f08c00" : "#e03131";
+    const arcPath = (kmh: number) => {
+      const a0 = ((ang(0) - 90) * Math.PI) / 180;
+      const a1 = ((ang(kmh) - 90) * Math.PI) / 180;
+      const p0 = `${(CX + R_ARC * Math.cos(a0)).toFixed(2)} ${(CY + R_ARC * Math.sin(a0)).toFixed(2)}`;
+      const p1 = `${(CX + R_ARC * Math.cos(a1)).toFixed(2)} ${(CY + R_ARC * Math.sin(a1)).toFixed(2)}`;
+      const large = ang(kmh) - ang(0) > 180 ? 1 : 0;
+      return `M ${p0} A ${R_ARC} ${R_ARC} 0 ${large} 1 ${p1}`;
+    };
     let ticks = "";
     for (let v = 0; v <= 120; v += 20) {
       const a = ((ang(v) - 90) * Math.PI) / 180;
@@ -242,6 +254,7 @@ function FollowController({
     box.innerHTML =
       `<svg class="speedo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">` +
       `<circle cx="${CX}" cy="${CY}" r="40" fill="rgba(255,255,255,0.04)" stroke="#3a424c" stroke-width="2"/>` +
+      `<path class="speedo-arc" d="" fill="none" stroke="#37b24d" stroke-width="3.6" stroke-linecap="round"/>` +
       ticks +
       `<g class="speedo-needle" transform="rotate(${ang(0)} ${CX} ${CY})"><line x1="${CX}" y1="${CY}" x2="${CX}" y2="16" stroke="#ff6b35" stroke-width="2.6" stroke-linecap="round"/></g>` +
       `<circle cx="${CX}" cy="${CY}" r="3.6" fill="#ff6b35"/>` +
@@ -251,6 +264,7 @@ function FollowController({
     map.getContainer().appendChild(box);
     const needleEl = box.querySelector(".speedo-needle");
     const numEl = box.querySelector(".speedo-num");
+    const arcEl = box.querySelector(".speedo-arc");
     const statusEl = box.querySelector(".speedo-status");
     let targetKmh = 0;
     let dispKmh = 0;
@@ -258,7 +272,16 @@ function FollowController({
       dispKmh += (targetKmh - dispKmh) * 0.18;
       if (Math.abs(targetKmh - dispKmh) < 0.15) dispKmh = targetKmh;
       needleEl?.setAttribute("transform", `rotate(${ang(dispKmh)} ${CX} ${CY})`);
-      if (numEl) numEl.textContent = String(Math.round(dispKmh));
+      // 速度に応じた視覚変化: 進捗アークの伸び＋色、数値の色
+      const col = speedColor(dispKmh);
+      if (arcEl) {
+        arcEl.setAttribute("d", dispKmh < 0.5 ? "" : arcPath(dispKmh));
+        arcEl.setAttribute("stroke", col);
+      }
+      if (numEl) {
+        numEl.textContent = String(Math.round(dispKmh));
+        numEl.setAttribute("fill", dispKmh < 1 ? "#fff" : col);
+      }
     }, 50);
     const updateSpeedo = (
       kmh: number | null,

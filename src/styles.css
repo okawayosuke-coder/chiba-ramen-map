@@ -840,17 +840,22 @@ body {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 .speedo-svg {
-  width: 108px;
-  height: 108px;
+  width: 130px;
+  height: 130px;
   display: block;
 }
 .speedo-needle {
   transition: transform 0.05s linear;
 }
+/* 速度に応じた色変化をなめらかに */
+.speedo-arc,
+.speedo-num {
+  transition: stroke 0.25s linear, fill 0.25s linear;
+}
 .speedo-status {
   text-align: center;
   color: #cdd3da;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
 }
