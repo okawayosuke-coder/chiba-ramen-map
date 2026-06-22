@@ -316,9 +316,6 @@ export default function App() {
         <div className="sidebar__header">
           <h1>🍜 千葉ラーメンMAP</h1>
           <p>千葉県＋江東区・江戸川区＋茨城県南（つくば・土浦ほか）／カーナビ起動対応</p>
-          <p className="safety-line">
-            ⚠️ 運転中の操作・注視は道交法違反。停車中・同乗者操作でご利用ください。
-          </p>
         </div>
 
         <nav className="toolbar">

@@ -448,15 +448,6 @@ body {
   color: #fff;
   border-color: var(--accent);
 }
-.safety-line {
-  margin: 7px 0 0 !important;
-  font-size: 11px;
-  background: rgba(0, 0, 0, 0.16);
-  padding: 5px 9px;
-  border-radius: 6px;
-  line-height: 1.4;
-}
-
 /* ===== チップ ===== */
 .chips-row {
   display: flex;
