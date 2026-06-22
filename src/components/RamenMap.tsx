@@ -300,6 +300,17 @@ function FollowController({
     let lastAddrPt: Pt | null = null; // 住所を取得した最後の地点
     let addrReqId = 0;
 
+    // 自車位置の補間: GPSフィックス（約1Hz）間を毎フレーム線形補間して滑らかに動かす
+    let haveFix = false;
+    let dispLat = 0, dispLng = 0; // 現在の表示位置
+    let fromLat = 0, fromLng = 0; // 区間始点
+    let toLat = 0, toLng = 0; // 区間終点（最新フィックス）
+    let segStart = 0; // 区間開始(performance.now)
+    let segDur = 1000; // 区間所要(ms)＝直近フィックス間隔で適応
+    let lastFixPerf = 0;
+    let settled = false; // 区間到達後の毎フレーム再描画を止める（停車時の省電力）
+    let rafId = 0;
+
     const norm = (d: number) => ((d % 360) + 360) % 360;
     const angDiff = (a: number, b: number) => (((a - b + 540) % 360) - 180); // a-b を[-180,180)
 
@@ -332,8 +343,38 @@ function FollowController({
 
     const onFix = (p: GeolocationPosition) => {
       const { latitude, longitude, heading, speed, accuracy } = p.coords;
-      marker.setLatLng([latitude, longitude]);
-      // 走行軌跡を記録（約20mごと。track側で間引き・永続化）
+      // 自車位置はフィックスを「区間の終点」に設定し、rAFで補間して滑らかに動かす
+      const nowPerf = performance.now();
+      if (!haveFix) {
+        haveFix = true;
+        dispLat = fromLat = toLat = latitude;
+        dispLng = fromLng = toLng = longitude;
+        segStart = nowPerf;
+        segDur = 1000;
+        marker.setLatLng([latitude, longitude]);
+      } else {
+        // GPSグリッチ等の大ジャンプ(>150m)は補間せず即スナップ
+        const jumpKm = haversineKm(
+          { lat: dispLat, lng: dispLng },
+          { lat: latitude, lng: longitude }
+        );
+        if (jumpKm > 0.15) {
+          dispLat = fromLat = latitude;
+          dispLng = fromLng = longitude;
+          marker.setLatLng([latitude, longitude]); // グリッチは即スナップ（初回と挙動を揃える）
+        } else {
+          fromLat = dispLat;
+          fromLng = dispLng;
+        }
+        toLat = latitude;
+        toLng = longitude;
+        segDur = Math.min(2500, Math.max(400, nowPerf - lastFixPerf));
+        segStart = nowPerf;
+      }
+      lastFixPerf = nowPerf;
+      settled = false;
+      if (!rafId) rafId = requestAnimationFrame(animateMarker); // 停止中なら補間ループを再起動
+      // 走行軌跡を記録（約40mごと。track側で間引き・永続化。実フィックス基準）
       addTrackPoint(latitude, longitude, p.timestamp);
       // 標高: 約40m以上動いたら取得し直してツールチップ更新（過剰リクエスト抑制）
       const here = { lat: latitude, lng: longitude };
@@ -392,8 +433,14 @@ function FollowController({
       if (first) {
         map.setView([latitude, longitude], 16, { animate: true });
         first = false;
-      } else {
-        map.panTo([latitude, longitude], { animate: true, duration: 0.5 });
+      } else if (gpsMoving || haversineKm(map.getCenter(), here) > 0.02) {
+        // カメラはフィックス間隔ぶんかけて滑らかに追従（マーカー補間と同期）。
+        // animate:trueなので moveend は1フィックスにつき1回＝POI/軌跡レイヤーの過剰再描画を避ける。
+        // 停車中(ほぼ不動)は panTo を打たず、毎秒の moveend と微小ジッタ追従を抑える。
+        map.panTo([latitude, longitude], {
+          animate: true,
+          duration: segDur / 1000,
+        });
       }
       if (DEBUG) {
         dbg();
@@ -412,6 +459,29 @@ function FollowController({
       maximumAge: 1000,
       timeout: 20000,
     });
+
+    // フィックス間も自車マークを滑らかに動かす（毎フレーム線形補間）。
+    // marker.setLatLng は地図イベントを発火しないので POI/軌跡レイヤーには影響しない。
+    const animateMarker = () => {
+      if (settled) {
+        rafId = 0; // 区間到達後はループ自体を停止（停車時の省電力）。次フィックスで再起動
+        return;
+      }
+      if (haveFix) {
+        const t =
+          segDur > 0 ? Math.min(1, (performance.now() - segStart) / segDur) : 1;
+        dispLat = fromLat + (toLat - fromLat) * t;
+        dispLng = fromLng + (toLng - fromLng) * t;
+        marker.setLatLng([dispLat, dispLng]);
+        if (t >= 1) {
+          settled = true;
+          rafId = 0;
+          return;
+        }
+      }
+      rafId = requestAnimationFrame(animateMarker);
+    };
+    rafId = requestAnimationFrame(animateMarker);
 
     // 端末のコンパス（ジャイロ/方位センサー）の生値。停車時の向きに使う（offsetで較正）
     const onOrient = (e: DeviceOrientationEvent) => {
@@ -456,6 +526,7 @@ function FollowController({
 
     return () => {
       navigator.geolocation.clearWatch(watchId);
+      cancelAnimationFrame(rafId);
       window.clearInterval(speedoAnim);
       marker.remove();
       box.remove();
