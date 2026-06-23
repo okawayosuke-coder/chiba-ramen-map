@@ -151,3 +151,40 @@ python3 scripts/diff.py              # ⑦ 差分レビュー
 - **`npx playwright install chromium` を忘れると** `chromium.launch` でエラー。
 - **diff.py で消滅が大量**：閉店ではなく取りこぼしの可能性大。再収集し直す。
 - **reviewsUrl が消える心配**：scrape.mjs が shops.json を書かなくなったので不要（refine.py が引き継ぐ）。
+
+---
+
+# 周辺POI（コンビニ/GS）データの更新手順
+
+走行中に「確実な情報」として即時・オフライン表示するため、コンビニ/GS は OpenStreetMap から
+**事前収集してアプリに同梱**する（`public/pois.json`）。駐車場/EV/トイレは件数が多いため同梱せず、
+従来どおりライブ取得（Overpass）。同梱範囲は**関東一円（1都6県）**。範囲外は自動でライブにフォールバック。
+
+データ元は OpenStreetMap（ODbL。© OpenStreetMap contributors）。コンビニ/GSの位置は変化が緩やかなので、
+目安は **月1回**程度。下記2通りで更新できる。
+
+## 方法A：自動（GitHub Actions・推奨）
+
+- `.github/workflows/update-pois.yml` が **毎月1日(JST 翌2日3:00)** に自動実行。
+- `public/pois.json` に変更があれば自動コミット → デプロイを自動トリガー。
+- 任意のタイミングで回したい時は GitHub の Actions タブ →「Update bundled POIs」→ **Run workflow**（手動実行）。
+
+## 方法B：手動（ローカルMac）
+
+```bash
+cd ~/code/chiba-ramen-map
+node scripts/fetch-pois.mjs        # 関東一円をタイル分割してOverpassから収集 → public/pois.json
+git add public/pois.json
+git commit -m "chore(poi): refresh bundled POIs"
+git push                            # push で Pages デプロイが走る
+```
+
+- 収集は **数分〜十数分**（Overpassが混雑する時間帯は遅い／一部タイル失敗あり。失敗タイルはログに表示）。
+- **失敗タイルが多い時間帯は、時間を空けて再実行**すると埋まる（Overpassは時間帯で応答が大きくばらつく）。
+- 完了時に `コンビニN / GSN, 〇秒` を表示。`public/pois.json` の `updatedAt`（収集日）は設定パネルにも表示される。
+
+## 範囲を変えたい場合
+
+`scripts/fetch-pois.mjs` 冒頭の `REGION`（外接bbox）と `CELL`（タイル粒度）を編集。
+範囲を広げるとファイルが大きくなるが、PWAのプリキャッシュ上限は `vite.config.ts` の
+`maximumFileSizeToCacheInBytes` で調整可能。

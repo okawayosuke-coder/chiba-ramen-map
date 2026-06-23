@@ -1,0 +1,49 @@
+name: Update bundled POIs
+
+# 同梱の周辺POI（コンビニ/GS）データを定期再生成する。
+# 月1回の自動実行＋手動実行(workflow_dispatch)に対応。
+# 変更があれば public/pois.json をコミットし、デプロイを明示トリガーする。
+on:
+  schedule:
+    - cron: "0 18 1 * *" # 毎月1日 18:00 UTC（＝JST 翌2日 3:00）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: update-pois
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Collect POIs from OpenStreetMap (Overpass)
+        run: node scripts/fetch-pois.mjs
+
+      - name: Commit & push if changed
+        id: commit
+        run: |
+          if [ -n "$(git status --porcelain public/pois.json)" ]; then
+            count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('public/pois.json')).pois.length)")
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add public/pois.json
+            git commit -m "chore(poi): monthly refresh of bundled POIs ($(date -u +%Y-%m-%d), ${count} points)"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No POI changes."
+          fi
+
+      - name: Trigger deploy
+        if: steps.commit.outputs.changed == 'true'
+        run: gh workflow run "Deploy to GitHub Pages"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

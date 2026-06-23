@@ -13,6 +13,13 @@ import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
 import { fetchPois, poiBrandStyle, type BBox, type Poi, type PoiKind } from "../poi";
+import {
+  loadLocalPois,
+  coverageContains,
+  localPoisInView,
+  LOCAL_KINDS,
+  type LocalPoiData,
+} from "../poiData";
 import { fetchRoute, routeProvider } from "../route";
 import {
   addTrackPoint,
@@ -908,15 +915,25 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
       return ic;
     };
 
-    let cached: BBox | null = null;
+    let cachedLive: BBox | null = null; // ライブ取得（駐車場/EV/トイレ・県外のコンビニ/GS）のキャッシュ範囲
     let lastReqAt = 0;
     let aborted = false;
-    let inFlight = false; // 多重リクエスト防止（moveendとタイマーの重なり対策）
-    let failStreak = 0; // 連続失敗回数（可視化＆再試行制御）
-    let lastPicked: Poi[] = []; // 直近に描画したPOI（ズーム復帰時に再取得せず即再表示する）
+    let inFlight = false; // ライブ取得の多重リクエスト防止
+    let failStreak = 0; // ライブ取得の連続失敗回数（可視化用）
+    let lastLiveKey = ""; // ライブ取得対象の種類セット（変わったらキャッシュ破棄）
+    let lastLocal: Poi[] = []; // 直近の表示範囲内の同梱POI（コンビニ/GS）
+    let lastLive: Poi[] = []; // 直近のライブ取得POI
     let shown = false; // 現在マーカーを描画中か
+    let local: LocalPoiData | null = null; // 同梱POIデータ（読込後にセット）
+    let localLoadFailed = false; // 同梱データ読込失敗（=ライブにフォールバック）
     const ZOOM_HINT = "🏪 ズームすると周辺の施設を表示";
-    const BUFFER = 0.7; // 取得bboxの余白。大きいほど走行中に範囲を抜けにくく再取得が減る
+    const BUFFER = 0.7; // ライブ取得bboxの余白。大きいほど走行中に範囲を抜けにくい
+
+    // 同梱の種類（コンビニ/GS）と、ライブのみの種類（駐車場/EV/トイレ）に分ける
+    const localActive = active.filter((k) => LOCAL_KINDS.includes(k));
+    const liveOnly = active.filter((k) => !LOCAL_KINDS.includes(k));
+    const DEBUG =
+      new URLSearchParams(window.location.search).get("debug") === "1";
 
     const expand = (b: BBox, f: number): BBox => {
       const dy = (b.n - b.s) * f;
@@ -925,7 +942,33 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
     };
     const inside = (o: BBox, i: BBox) =>
       i.s >= o.s && i.w >= o.w && i.n <= o.n && i.e <= o.e;
-    const render = (picked: Poi[]) => {
+
+    // 種類が偏っても各種類が出るよう、種類別バケットからラウンドロビンで上限まで選ぶ
+    const capPick = (pois: Poi[]): Poi[] => {
+      const buckets = new Map<PoiKind, Poi[]>();
+      for (const p of pois) {
+        const arr = buckets.get(p.kind);
+        if (arr) arr.push(p);
+        else buckets.set(p.kind, [p]);
+      }
+      const lists = [...buckets.values()];
+      const picked: Poi[] = [];
+      for (let i = 0; picked.length < MAX; i++) {
+        let added = false;
+        for (const list of lists) {
+          if (i < list.length) {
+            picked.push(list[i]);
+            added = true;
+            if (picked.length >= MAX) break;
+          }
+        }
+        if (!added) break; // 全バケット出し切った
+      }
+      return picked;
+    };
+
+    const draw = () => {
+      const picked = capPick([...lastLocal, ...lastLive]);
       group.clearLayers();
       picked.forEach((p) => {
         L.marker([p.lat, p.lng], {
@@ -936,13 +979,17 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
           .addTo(group);
       });
       shown = true;
+      if (DEBUG) {
+        (window as unknown as { __poiDebug?: unknown }).__poiDebug = picked.map(
+          (p) => ({ label: p.label, kind: p.kind })
+        );
+      }
     };
 
     const refresh = async () => {
-      if (aborted || inFlight) return;
+      if (aborted) return;
       if (map.getZoom() < MINZOOM) {
-        // 広域表示中はOverpass負荷回避のため非表示にするが、cached と直近POIは保持する。
-        // ズームを戻した時に再取得せず即座に復帰できるようにする（cached=null にしない）。
+        // 広域表示中は非表示。データ・キャッシュは保持し、ズーム復帰時に即再描画する。
         if (shown) {
           group.clearLayers();
           shown = false;
@@ -951,6 +998,7 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
         hint.style.display = "";
         return;
       }
+      if (hint.textContent === ZOOM_HINT) hint.style.display = "none";
       const bd = map.getBounds();
       const view: BBox = {
         s: bd.getSouth(),
@@ -958,55 +1006,49 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
         n: bd.getNorth(),
         e: bd.getEast(),
       };
-      if (cached && inside(cached, view)) {
-        if (!shown) render(lastPicked); // ズーム復帰など：再取得せず即再描画
-        hint.style.display = "none";
-        return; // 既取得範囲内→通信しない
+
+      // 1) コンビニ/GS は同梱データから即時表示（Overpass非依存）。
+      //    カバレッジ外、または同梱データ読込失敗時はライブ取得にフォールバック。
+      let liveNeeded = liveOnly.slice();
+      if (localActive.length) {
+        if (local && coverageContains(local, view)) {
+          lastLocal = localPoisInView(local, view, localActive);
+        } else if (local || localLoadFailed) {
+          lastLocal = [];
+          liveNeeded = liveNeeded.concat(localActive);
+        }
+        // それ以外（読込中）は一時的に何も出さない（読込後に再描画）
       }
+
+      // 2) ライブ取得対象の種類が変わったらキャッシュ破棄
+      const liveKey = [...liveNeeded].sort().join(",");
+      if (liveKey !== lastLiveKey) {
+        cachedLive = null;
+        lastLive = [];
+        lastLiveKey = liveKey;
+      }
+
+      draw(); // 同梱POIを即描画（ライブは到着後に再描画）
+
+      // 3) ライブ取得（駐車場/EV/トイレ・県外のコンビニ/GS）
+      if (!liveNeeded.length) return;
+      if (inFlight) return;
+      if (cachedLive && inside(cachedLive, view)) return; // 既取得範囲内→通信しない
       const now = performance.now();
       if (now - lastReqAt < MIN_INTERVAL) return; // 過剰アクセス抑制
       lastReqAt = now;
       inFlight = true;
-      const area = expand(view, BUFFER); // 余白付きで取得し再取得頻度を下げる
+      const area = expand(view, BUFFER);
       try {
-        const pois = await fetchPois(area, active);
+        const pois = await fetchPois(area, liveNeeded);
         if (aborted) return;
-        cached = area;
+        cachedLive = area;
         failStreak = 0;
-        hint.style.display = "none";
-        if (
-          new URLSearchParams(window.location.search).get("debug") === "1"
-        ) {
-          (window as unknown as { __poiDebug?: unknown }).__poiDebug = pois.map(
-            (p) => ({ label: p.label, kind: p.kind, st: poiBrandStyle(p.kind, p.label) })
-          );
-        }
-        // 表示上限。種類が偏っても（例: 駐車場が極端に多い）どの種類も出るよう、
-        // 種類別バケットからラウンドロビンで上限まで選ぶ。
-        const buckets = new Map<PoiKind, Poi[]>();
-        for (const p of pois) {
-          const arr = buckets.get(p.kind);
-          if (arr) arr.push(p);
-          else buckets.set(p.kind, [p]);
-        }
-        const lists = [...buckets.values()];
-        const picked: Poi[] = [];
-        for (let i = 0; picked.length < MAX; i++) {
-          let added = false;
-          for (const list of lists) {
-            if (i < list.length) {
-              picked.push(list[i]);
-              added = true;
-              if (picked.length >= MAX) break;
-            }
-          }
-          if (!added) break; // 全バケット出し切った
-        }
-        lastPicked = picked;
-        render(picked);
+        lastLive = pois;
+        if (hint.textContent !== ZOOM_HINT) hint.style.display = "none";
+        draw();
       } catch {
-        // 取得失敗（Overpass混雑/タイムアウト/全ミラー全滅）。
-        // cached は更新しない＝次の moveend/タイマーで自動再試行。前回マーカーは消さず残す。
+        // ライブ取得失敗（Overpass混雑/タイムアウト）。cachedLive は更新せず自動再試行。
         if (aborted) return;
         failStreak++;
         if (failStreak >= 2) {
@@ -1018,9 +1060,23 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
       }
     };
 
+    // 同梱POIデータを読み込む（PWAでprecache＝オフライン可）。読込後/失敗後に再描画。
+    if (localActive.length) {
+      loadLocalPois()
+        .then((d) => {
+          if (aborted) return;
+          local = d;
+          refresh();
+        })
+        .catch(() => {
+          if (aborted) return;
+          localLoadFailed = true; // 読込失敗→以後ライブにフォールバック
+          refresh();
+        });
+    }
+
     map.on("moveend zoomend", refresh);
-    // 停止中（moveendが来ない）やOverpass復帰時にも自動で取得し直す。
-    // MIN_INTERVAL と inFlight で過剰アクセスは抑止される。
+    // 停止中やOverpassからのライブPOI復帰時にも再取得・再描画する
     const timer = window.setInterval(refresh, 5000);
     refresh();
     return () => {

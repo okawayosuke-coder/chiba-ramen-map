@@ -38,8 +38,11 @@ export default defineConfig(function (_a) {
                     ],
                 },
                 workbox: {
-                    // アプリシェル＋データ(JSに同梱)をプリキャッシュ。地図タイルは外部のためオフライン不可。
-                    globPatterns: ["**/*.{js,css,html,png,svg,woff2}"],
+                    // アプリシェル＋データをプリキャッシュ。pois.json(同梱POI)も含めオフライン表示可。
+                    // 地図タイルは外部のためオフライン不可。
+                    globPatterns: ["**/*.{js,css,html,png,svg,woff2,json}"],
+                    // pois.json は大きめ(~1MB)なのでプリキャッシュ上限を引き上げる
+                    maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
                     navigateFallback: null,
                 },
             }),

@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NAV_APP_META, navAppsForPlatform, type NavApp } from "../nav";
 import { exportFavorites, type PoiKindsUpdater, type ThemePref } from "../storage";
 import { POI_KINDS, POI_KIND_META, type PoiKind } from "../poi";
+import { loadLocalPois } from "../poiData";
 import { clearTrack, downloadTrackGPX, trackStats } from "../track";
 import { useEscape } from "../hooks";
 
@@ -57,7 +58,21 @@ export default function Settings({
   const fileRef = useRef<HTMLInputElement>(null);
   const apps = navAppsForPlatform();
   const [stats, setStats] = useState(() => trackStats());
+  const [poiDate, setPoiDate] = useState("");
   useEscape(onClose);
+
+  // 同梱POI（コンビニ/GS）データの収集日を表示（鮮度の明示）
+  useEffect(() => {
+    let on = true;
+    loadLocalPois()
+      .then((d) => {
+        if (on) setPoiDate(d.updatedAt);
+      })
+      .catch(() => {});
+    return () => {
+      on = false;
+    };
+  }, []);
 
   const onImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -149,7 +164,10 @@ export default function Settings({
           <p className="modal__small">
             地図を拡大（ズーム14以上）すると表示範囲の施設を表示します。
             ツールバーの🏪でまとめてON/OFF{showPoi ? "" : "（現在OFF）"}。
-            駐車場/EV/トイレは件数が多いため必要な時だけONを推奨。
+            <br />
+            <strong>コンビニ/GS</strong>は端末内データで表示（関東一円・
+            {poiDate || "—"}時点・オフライン可）。
+            駐車場/EV/トイレはネット取得（件数が多いため必要な時だけONを推奨）。
           </p>
         </section>
 
