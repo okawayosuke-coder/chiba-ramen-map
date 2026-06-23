@@ -474,8 +474,9 @@ function FollowController({
           if (txt) txt.textContent = `まもなく到着: ${dst.name}`;
           if (arr) arr.style.visibility = "hidden";
         } else {
-          if (txt)
-            txt.textContent = `${dst.name}　残り ${fmtDistance(dkm)}・約${roughMinutes(dkm)}分`;
+          // 直線距離・所要は出さない（道なりルートが正確な道路距離/時間を表示するため）。
+          // 目的地名と方向矢印のみ表示。
+          if (txt) txt.textContent = dst.name;
           if (arr) {
             arr.style.visibility = "";
             const rel = norm(
