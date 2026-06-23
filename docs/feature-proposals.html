@@ -137,6 +137,29 @@
     </ul>
   </div>
 
+  <h2>⑧ メジャーアップデート構想（v0.3〜）</h2>
+  <div class="grid">
+    <div class="card"><h3>v0.3 Navigation（カーナビ完成） <span class="badge L">L</span> <span class="tag hot">本命</span></h3><p>音声ターンバイターン＋ルート沿いPOI＋ヘディングアップ＋到着予定時刻。下記「ハイウェイモード」が目玉。</p></div>
+    <div class="card"><h3>v0.4 My Ramen（記録/パスポート化） <span class="badge L">L</span></h3><p>訪問済み＋自己評価＋写真＋メモ＋制覇マップ＋統計。「地図」→「自分のラーメン記録」へ格上げ＝リテンション強化。</p></div>
+    <div class="card"><h3>v0.5 Anywhere（全国・マルチジャンル） <span class="badge L">L</span></h3><p>千葉ラーメン→全国 or 他ジャンル(カレー/サウナ等)へ。データ＋ナビ基盤を流用。件数増の軽量化が課題。</p></div>
+    <div class="card"><h3>v0.6 Offline（完全オフライン） <span class="badge L">L</span></h3><p>地図タイル事前DL(GSI/PMTiles)＋データ同梱で走行中ほぼ通信ゼロ。経路探索は表示中心。</p></div>
+    <div class="card"><h3>v1.0 Native（ネイティブ化） <span class="badge L">L</span> <span class="tag warn">費用</span></h3><p>Capacitor等でバックグラウンド軌跡・VOICEVOX音声・常駐ナビ・通知。iOS Webの壁を外す唯一の道（Apple年$99等）。</p></div>
+    <div class="card"><h3>Discover（レコメンド/自然文検索） <span class="badge L">L</span></h3><p>「こってり系で近場・駐車場あり」等を提案。Claude API等＝サーバ/鍵/コスト要。</p></div>
+  </div>
+
+  <div class="top" style="border-color:#2f9e44">
+    <b>🛣 ハイウェイモード（高速道路モード）— v0.3 の目玉</b>
+    <p style="margin:6px 0 0;font-size:13.5px;color:#3f433b">高速走行時、画面右に前方の <b>JCT/IC/SA/PA を縦ストリップ表示</b>（↑＋名称＋分/km、SA/PAは設備アイコン P/⛽/🍴/☕、下端に現在地・「○○JCT 通過」）。日本のカーナビ定番UI。</p>
+    <ul style="margin:8px 0 0;padding-left:20px;font-size:13px;color:#3f433b">
+      <li><b>データ</b>：OSM <code>motorway_junction</code>(IC/JCT)・<code>highway=services</code>(SA)・<code>rest_area</code>(PA)・<code>motorway</code>(本線) を Overpass取得（既存POI方式・規約OK）</li>
+      <li><b>認識① ルート連動（確実）</b>：道なりルートの ORS <code>waytype</code>=高速で判定し、ルート沿いに前方施設を整列</li>
+      <li><b>認識② フリー走行</b>：速度＋最寄り motorway で自動判定。並走道路の誤認対策に <b>「🛣 高速⇄一般道」切替トグル</b>（市販ナビ標準・選択を記憶）。複数候補時は道路選択UI</li>
+      <li><b>距離/時間</b>：km＝沿線距離（正確）／分＝推定（渋滞非反映）</li>
+      <li><b>段階</b>：①SA/PA/IC地図表示 <span class="badge M">M</span> → ②高速モード判定 <span class="badge M">M</span> → ③右ストリップUI <span class="badge L">L</span> → ④フリー走行＋切替トグル <span class="badge L">L</span></li>
+      <li><b>制約</b>：生GPS＋OSMのマップマッチは市販ナビ未満／SA設備はOSM整備依存／iOS前面のみ・渋滞非反映</li>
+    </ul>
+  </div>
+
   <div class="x">
     <h3>⚠ できない/非推奨（正直に）</h3>
     <ul>
