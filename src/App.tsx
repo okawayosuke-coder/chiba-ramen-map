@@ -303,6 +303,11 @@ export default function App() {
     setToast(`目的地に設定: ${shop.name}（走行モードで残り距離を表示）`);
   }, []);
 
+  const onClearDest = useCallback(() => {
+    setDest(null);
+    setToast("目的地を解除しました");
+  }, []);
+
   const distanceTo = useCallback(
     (s: Shop) => (geo.pos ? haversineKm(geo.pos, s) : null),
     [geo.pos]
@@ -687,6 +692,7 @@ export default function App() {
           showTrack={showTrack}
           dest={dest}
           onSetDest={onSetDest}
+          onClearDest={onClearDest}
           userPos={geo.pos}
           isFav={isFav}
           onToggleFav={toggle}

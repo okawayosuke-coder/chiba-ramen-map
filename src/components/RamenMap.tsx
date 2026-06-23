@@ -834,6 +834,30 @@ function RouteLayer({ to }: { to: Pt | null }) {
   return null;
 }
 
+/** 目的地が設定されている間、地図右下（現在位置ボタンの少し下）に「✕ 目的地解除」ボタンを表示。
+ *  走行中でサイドバーが隠れていても目的地を解除/変更できるようにする。 */
+function ClearDestControl({
+  active,
+  onClear,
+}: {
+  active: boolean;
+  onClear: () => void;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (!active) return;
+    const btn = L.DomUtil.create("div", "clear-dest-btn");
+    btn.innerHTML = `<span aria-hidden="true">✕</span><span>目的地解除</span>`;
+    map.getContainer().appendChild(btn);
+    L.DomEvent.disableClickPropagation(btn);
+    L.DomEvent.on(btn, "click", onClear);
+    return () => {
+      btn.remove();
+    };
+  }, [active, map, onClear]);
+  return null;
+}
+
 // 種類→マーカー形状クラス（色は poiBrandStyle のインライン指定）
 const POI_SHAPE: Record<PoiKind, string> = {
   conv: "poi--conv",
@@ -983,6 +1007,7 @@ interface Props {
   showTrack: boolean;
   dest: Shop | null;
   onSetDest: (s: Shop) => void;
+  onClearDest: () => void;
   userPos: Pt | null;
   isFav: (s: Shop) => boolean;
   onToggleFav: (s: Shop) => void;
@@ -1000,6 +1025,7 @@ function RamenMap({
   showTrack,
   dest,
   onSetDest,
+  onClearDest,
   userPos,
   isFav,
   onToggleFav,
@@ -1045,6 +1071,7 @@ function RamenMap({
       <DemoFit />
       <DestMarker dest={dest ? { lat: dest.lat, lng: dest.lng } : null} />
       <RouteLayer to={dest ? { lat: dest.lat, lng: dest.lng } : null} />
+      <ClearDestControl active={!!dest} onClear={onClearDest} />
       <DebugExpose />
 
       {userPos && !follow && (
