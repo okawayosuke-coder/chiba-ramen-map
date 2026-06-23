@@ -911,6 +911,9 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
     let cached: BBox | null = null;
     let lastReqAt = 0;
     let aborted = false;
+    let inFlight = false; // 多重リクエスト防止（moveendとタイマーの重なり対策）
+    let failStreak = 0; // 連続失敗回数（可視化＆再試行制御）
+    const ZOOM_HINT = "🏪 ズームすると周辺の施設を表示";
 
     const expand = (b: BBox, f: number): BBox => {
       const dy = (b.n - b.s) * f;
@@ -921,13 +924,14 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
       i.s >= o.s && i.w >= o.w && i.n <= o.n && i.e <= o.e;
 
     const refresh = async () => {
+      if (aborted || inFlight) return;
       if (map.getZoom() < MINZOOM) {
         group.clearLayers();
         cached = null;
+        hint.textContent = ZOOM_HINT;
         hint.style.display = "";
         return;
       }
-      hint.style.display = "none";
       const bd = map.getBounds();
       const view: BBox = {
         s: bd.getSouth(),
@@ -935,15 +939,21 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
         n: bd.getNorth(),
         e: bd.getEast(),
       };
-      if (cached && inside(cached, view)) return; // 既取得範囲内→通信しない
+      if (cached && inside(cached, view)) {
+        hint.style.display = "none";
+        return; // 既取得範囲内→通信しない
+      }
       const now = performance.now();
       if (now - lastReqAt < MIN_INTERVAL) return; // 過剰アクセス抑制
       lastReqAt = now;
+      inFlight = true;
       const area = expand(view, 0.4); // 余白付きで取得し再取得頻度を下げる
       try {
         const pois = await fetchPois(area, active);
         if (aborted) return;
         cached = area;
+        failStreak = 0;
+        hint.style.display = "none";
         if (
           new URLSearchParams(window.location.search).get("debug") === "1"
         ) {
@@ -982,15 +992,28 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
             .addTo(group);
         });
       } catch {
-        /* レート制限等は黙ってスキップ（次のmoveendで再試行） */
+        // 取得失敗（Overpass混雑/タイムアウト/全ミラー全滅）。
+        // cached は更新しない＝次の moveend/タイマーで自動再試行。前回マーカーは消さず残す。
+        if (aborted) return;
+        failStreak++;
+        if (failStreak >= 2) {
+          hint.textContent = "⚠ 周辺施設を取得中…（地図サーバ混雑）";
+          hint.style.display = "";
+        }
+      } finally {
+        inFlight = false;
       }
     };
 
     map.on("moveend zoomend", refresh);
+    // 停止中（moveendが来ない）やOverpass復帰時にも自動で取得し直す。
+    // MIN_INTERVAL と inFlight で過剰アクセスは抑止される。
+    const timer = window.setInterval(refresh, 5000);
     refresh();
     return () => {
       aborted = true;
       map.off("moveend zoomend", refresh);
+      window.clearInterval(timer);
       group.remove();
       hint.remove();
     };

@@ -95,21 +95,52 @@ export function poiBrandStyle(kind: PoiKind, label: string): PoiStyle {
   }
 }
 
-// 主＝公式、副＝ミラー（公式が406/429等で失敗した時のフォールバック）
+// 公式＋ミラー。Overpassは時間帯で応答が極端にばらつく（同一クエリが1秒〜20秒超）。
+// そのため直列フォールバックではなく「全ミラーへ同時に投げ、最速の成功を採用」する。
 const ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
 ];
+// 1ミラーが沈黙した時に他へ素早く切り替えるためのクライアント側タイムアウト(ms)。
+const TIMEOUT_MS = 7000;
+
+/** Overpass応答のJSONをPoi配列へ整形（node/way/relation を中心点で拾う）。 */
+function parseElements(j: { elements?: unknown[] }): Poi[] {
+  const out: Poi[] = [];
+  for (const el of (j.elements ?? []) as Array<Record<string, unknown>>) {
+    const center = el.center as { lat?: number; lon?: number } | undefined;
+    const lat = (el.lat as number) ?? center?.lat;
+    const lng = (el.lon as number) ?? center?.lon;
+    if (lat == null || lng == null) continue;
+    const t = (el.tags ?? {}) as Record<string, string>;
+    const kind = kindFromTags(t);
+    if (!kind) continue;
+    out.push({
+      id: el.id as number,
+      lat,
+      lng,
+      kind,
+      label: t.brand || t.name || t.operator || POI_KIND_META[kind].label,
+    });
+  }
+  return out;
+}
 
 /** 指定bbox・指定種類のPOIを取得。kinds が空なら通信せず空配列を返す。
- *  nwr + out center で node だけでなく way/relation（駐車場のポリゴン等）も中心点で拾う。 */
+ *  nwr + out center で node だけでなく way/relation（駐車場のポリゴン等）も中心点で拾う。
+ *  全ミラーへ並列に1リクエストずつ投げ、最初に成功した応答を採用する（Promise.any）。
+ *  各リクエストは TIMEOUT_MS で自動中断。呼び出し側で最小間隔を担保しているため過剰アクセスにはならない。 */
 export async function fetchPois(b: BBox, kinds: PoiKind[]): Promise<Poi[]> {
   if (!kinds.length) return [];
   const bbox = `${b.s},${b.w},${b.n},${b.e}`;
   const body = kinds.map((k) => `nwr${KIND_FILTER[k]}(${bbox});`).join("");
   const q = `[out:json][timeout:25];(${body});out center;`;
-  let lastErr: unknown = null;
-  for (const url of ENDPOINTS) {
+  const payload = "data=" + encodeURIComponent(q);
+
+  const once = async (url: string): Promise<Poi[]> => {
+    const ac = new AbortController();
+    const to = setTimeout(() => ac.abort(), TIMEOUT_MS);
     try {
       const r = await fetch(url, {
         method: "POST",
@@ -117,33 +148,16 @@ export async function fetchPois(b: BBox, kinds: PoiKind[]): Promise<Poi[]> {
           "Content-Type": "application/x-www-form-urlencoded",
           Accept: "application/json",
         },
-        body: "data=" + encodeURIComponent(q),
+        body: payload,
+        signal: ac.signal,
       });
-      if (!r.ok) {
-        lastErr = new Error(`overpass ${r.status}`);
-        continue;
-      }
-      const j = await r.json();
-      const out: Poi[] = [];
-      for (const el of j.elements ?? []) {
-        const lat = el.lat ?? el.center?.lat;
-        const lng = el.lon ?? el.center?.lon;
-        if (lat == null || lng == null) continue;
-        const t = el.tags ?? {};
-        const kind = kindFromTags(t);
-        if (!kind) continue;
-        out.push({
-          id: el.id,
-          lat,
-          lng,
-          kind,
-          label: t.brand || t.name || t.operator || POI_KIND_META[kind].label,
-        });
-      }
-      return out;
-    } catch (e) {
-      lastErr = e;
+      if (!r.ok) throw new Error(`overpass ${r.status} @ ${url}`);
+      return parseElements(await r.json());
+    } finally {
+      clearTimeout(to);
     }
-  }
-  throw lastErr ?? new Error("overpass failed");
+  };
+
+  // 最速の成功を採用。全滅時は Promise.any が AggregateError を投げる（呼び出し側で捕捉）。
+  return Promise.any(ENDPOINTS.map(once));
 }
