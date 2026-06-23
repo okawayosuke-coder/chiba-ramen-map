@@ -158,6 +158,7 @@ export default function App() {
     setPersistWarn(false);
   };
 
+
   // 自動走行（常時オン）: 走行モードOFFの間は移動を監視し、走り出しで自動ON
   useMovementDetector(
     !follow,

@@ -13,6 +13,7 @@ import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
 import { fetchPois, poiBrandStyle, type BBox, type Poi, type PoiKind } from "../poi";
+import { fetchRoute, routeProvider } from "../route";
 import {
   addTrackPoint,
   getTrackPoints,
@@ -768,6 +769,71 @@ function DestMarker({ dest }: { dest: Pt | null }) {
   return null;
 }
 
+/** 目的地までの道なりルートを描画（現在地→目的地）。出発点は現在地に追従し、約0.6km以上動いたら再ルート。
+ *  OSMベースのルーティングAPI（route.ts）で経路ジオメトリ＋距離/所要を取得し、青線＋左上ボックスに表示。 */
+function RouteLayer({ to }: { to: Pt | null }) {
+  const map = useMap();
+  const toKey = to ? `${to.lat.toFixed(5)},${to.lng.toFixed(5)}` : "";
+  useEffect(() => {
+    if (!to) return;
+    let aborted = false;
+    let watchId: number | null = null;
+    let lastOrigin: Pt | null = null;
+    const line = L.polyline([], {
+      color: "#1a73e8",
+      weight: 6,
+      opacity: 0.7,
+      interactive: false,
+    }).addTo(map);
+    const box = L.DomUtil.create("div", "route-box");
+    box.textContent = "🛣 現在地を取得中…";
+    map.getContainer().appendChild(box);
+    const attr = `経路: ${routeProvider}`;
+    map.attributionControl?.addAttribution(attr);
+
+    const route = (from: Pt) => {
+      box.textContent = "🛣 経路を計算中…";
+      fetchRoute(from, to).then((r) => {
+        if (aborted) return;
+        if (!r) {
+          box.textContent = "🛣 経路を取得できませんでした";
+          return;
+        }
+        line.setLatLngs(r.coords);
+        box.textContent = `🛣 ${r.km.toFixed(1)}km ・ 約${r.min}分（道なり）`;
+      });
+    };
+    const onPos = (p: GeolocationPosition) => {
+      const here = { lat: p.coords.latitude, lng: p.coords.longitude };
+      // 初回、または前回ルート起点から約0.6km以上動いたら再ルート（API負荷を抑制）
+      if (!lastOrigin || haversineKm(lastOrigin, here) > 0.6) {
+        lastOrigin = here;
+        route(here);
+      }
+    };
+    if ("geolocation" in navigator && window.isSecureContext) {
+      watchId = navigator.geolocation.watchPosition(
+        onPos,
+        () => {
+          if (!aborted && !lastOrigin)
+            box.textContent = "🛣 現在地を取得できませんでした";
+        },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+      );
+    } else {
+      box.textContent = "🛣 現在地が使えません";
+    }
+    return () => {
+      aborted = true;
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      map.attributionControl?.removeAttribution(attr);
+      line.remove();
+      box.remove();
+    };
+  }, [toKey, map]);
+  return null;
+}
+
 // 種類→マーカー形状クラス（色は poiBrandStyle のインライン指定）
 const POI_SHAPE: Record<PoiKind, string> = {
   conv: "poi--conv",
@@ -978,6 +1044,7 @@ function RamenMap({
       <TrackLayer show={showTrack} />
       <DemoFit />
       <DestMarker dest={dest ? { lat: dest.lat, lng: dest.lng } : null} />
+      <RouteLayer to={dest ? { lat: dest.lat, lng: dest.lng } : null} />
       <DebugExpose />
 
       {userPos && !follow && (

@@ -20,6 +20,8 @@ jobs:
     env:
       # playwall はローカルのデータ収集用途のみ。CIではブラウザDLをスキップ
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      # 道なりルート用 OpenRouteService キー（GitHub Secrets。未設定ならOSRMデモにフォールバック）
+      VITE_ORS_KEY: ${{ secrets.VITE_ORS_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
