@@ -31,7 +31,7 @@
 </style>
 <div class="wrap">
   <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
-  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&残距離・ジャンル絞り込み・周辺POI(コンビニ/GS/駐車場/EV/トイレ)・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-23 / v0.2.0 時点）</p>
+  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&残距離・ジャンル絞り込み・周辺POI(コンビニ/GS/駐車場/EV/トイレ)・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-23 / v0.2.7 時点）</p>
 
   <div class="top">
     <b>⭐ おすすめ優先（コスパ順）</b>
@@ -44,12 +44,17 @@
     </ol>
   </div>
 
-  <h2>✅ 最近実装した改善（v0.2.0・提案リスト外を含む）</h2>
+  <h2>✅ 最近実装した改善（v0.2.0〜0.2.7・提案リスト外を含む）</h2>
   <div class="grid">
+    <div class="card done"><h3>道なりルート表示 <span class="badge done">✅</span></h3><p>店の「🧭 ルート」で、現在地→目的地の<b>道なり経路線（青）＋道路距離/所要</b>を表示。走行中は自車に追従して約0.6kmごと再ルート。ルーティングは OpenRouteService（OSMベース・無料枠）、未設定時はOSRMにフォールバック。</p></div>
+    <div class="card done"><h3>ナビボタンを2つに <span class="badge done">✅</span></h3><p>店カードのナビ操作を <b>🚗 Googleマップ（外部起動）</b> と <b>🧭 ルート（アプリ内の道なり経路）</b> に分離。</p></div>
+    <div class="card done"><h3>目的地の解除/変更ボタン <span class="badge done">✅</span></h3><p>目的地セット中、画面右（現在位置ボタンの下）に「✕ 目的地解除」を常時表示。走行中でサイドバーが隠れていても解除/変更が可能。</p></div>
+    <div class="card done"><h3>走行中の手動パン＋現在位置ボタン <span class="badge done">✅</span></h3><p>走行モードでも指でマップをスクロール可（追従を一時停止）。右の「📍現在位置」で自車へ復帰し追従再開。</p></div>
+    <div class="card done"><h3>走行軌跡の消失対策 <span class="badge done">✅</span></h3><p>走行終了時にGPX保存を案内＋端末が保存を永続化できない場合に一度だけ警告（iOSのデータ自動削除対策）。</p></div>
     <div class="card done"><h3>前方を広く表示（先読み追従） <span class="badge done">✅</span></h3><p>走行中、自車を画面下寄り（約⅓）に置き進行方向の先を広く表示。北上のまま、曲がると先読み方向が回り込む。</p></div>
     <div class="card done"><h3>自車の滑らか追従（フィックス間補間） <span class="badge done">✅</span></h3><p>GPS更新（約1Hz）の間も毎フレーム補間してカクつかず前進。大ジャンプは即スナップ、停車中は省電力停止。</p></div>
     <div class="card done"><h3>速度計の拡大＋速度連動カラー <span class="badge done">✅</span></h3><p>左下の速度計を拡大。0→現在速度の進捗アーク＋数値の色が速度で変化（〜40緑 / 〜80橙 / 80km/h以上赤）。</p></div>
-    <div class="card done"><h3>走行軌跡の密度調整 <span class="badge done">✅</span></h3><p>記録間隔を約20m→40mに（密集表示を解消、容量上限は約800km分に拡大）。</p></div>
+    <div class="card done"><h3>走行軌跡の密度調整 <span class="badge done">✅</span></h3><p>記録間隔を約20m→50mに調整（密集表示を解消、容量上限は約1000km分に拡大）。</p></div>
     <div class="card done"><h3>走行時の住所表示を改善 <span class="badge done">✅</span></h3><p>現在地住所（番地除く）を画面上部中央に・フォント拡大で視認性UP。</p></div>
     <div class="card done"><h3>データ最終更新日の表示 <span class="badge done">✅</span></h3><p>いつ時点のデータかを画面に明示（収集時に自動で日付を記録）。</p></div>
     <div class="card done"><h3>バージョン表示 <span class="badge done">✅</span></h3><p>設定パネルに「バージョン ・ ビルド日時(JST)」。PWA更新の確認に。</p></div>
@@ -61,7 +66,7 @@
   <div class="grid">
     <div class="card done"><h3>駐車場/EV/トイレ POI <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>Overpassで <code>amenity=parking / charging_station / toilets</code> を表示。設定の「周辺POIの表示」で種類を選択（既定はコンビニ/GS）、🏪ボタンで一括ON/OFF。種類別ラウンドロビンで表示上限を配分。<span class="note">※「道の駅」は未対応（必要なら追加可）。</span></p></div>
     <div class="card done"><h3>目的地セット＆残り距離 <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>店の🎯から目的地を設定すると、走行モードで残り直線距離・方位矢印・到着間近を表示。外部ナビに頼らず軽量。</p></div>
-    <div class="card"><h3>ルート沿いの高評価店ハイライト <span class="badge M">M</span> <span class="tag warn">制約あり</span></h3><p>現在地→目的地の経路“近く”の店を強調。<span class="note">正確な道なりルートは外部API＝地図外表示の規約懸念。直線バッファでの簡易抽出なら自前で可。</span></p></div>
+    <div class="card"><h3>ルート沿いの高評価店ハイライト <span class="badge M">M</span> <span class="tag">次の候補</span></h3><p>現在地→目的地の経路“近く”の店を強調。<span class="note">道なりルート(OpenRouteService)を実装済みなので、その経路ジオメトリのバッファ内の店を抽出すれば実現可能（OSMベースで規約クリア）。</span></p></div>
     <div class="card done"><h3>走行軌跡ログ <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>走行中 約20m毎にGPSトラックを記録（端末内・上限約400km）。進行方向の三角＋速度別色で地図表示、設定で表示ON/OFF・GPX書き出し・消去。</p></div>
     <div class="card"><h3>休憩リマインド <span class="badge S">S</span></h3><p>走行モードで連続運転○分を超えたら休憩を提案（コンビニ表示と連携可）。</p></div>
   </div>
