@@ -3,6 +3,7 @@ import RamenMap from "./components/RamenMap";
 import SafetyGate from "./components/SafetyGate";
 import NavPicker from "./components/NavPicker";
 import Settings from "./components/Settings";
+import ErrorBoundary from "./components/ErrorBoundary";
 import {
   DEFAULT_RATING,
   GENRE_DEFS,
@@ -683,23 +684,25 @@ export default function App() {
         >
           {paneHidden ? "☰" : "‹"}
         </button>
-        <RamenMap
-          shops={shops}
-          focus={focus}
-          follow={follow}
-          paneHidden={paneHidden}
-          poiKinds={activePoiKinds}
-          showTrack={showTrack}
-          dest={dest}
-          onSetDest={onSetDest}
-          onClearDest={onClearDest}
-          userPos={geo.pos}
-          isFav={isFav}
-          onToggleFav={toggle}
-          onNav={startGoogleNav}
-          onShare={doShare}
-          distanceTo={distanceTo}
-        />
+        <ErrorBoundary label="map" message="地図の表示で問題が発生しました。再読み込みしてください（店舗一覧は引き続き使えます）。">
+          <RamenMap
+            shops={shops}
+            focus={focus}
+            follow={follow}
+            paneHidden={paneHidden}
+            poiKinds={activePoiKinds}
+            showTrack={showTrack}
+            dest={dest}
+            onSetDest={onSetDest}
+            onClearDest={onClearDest}
+            userPos={geo.pos}
+            isFav={isFav}
+            onToggleFav={toggle}
+            onNav={startGoogleNav}
+            onShare={doShare}
+            distanceTo={distanceTo}
+          />
+        </ErrorBoundary>
       </div>
 
       {pendingNav && (

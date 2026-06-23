@@ -110,6 +110,33 @@
     <div class="card"><h3>店カード画像生成 <span class="badge M">M</span></h3><p>店情報＋地図のカード画像を生成しSNS共有。</p></div>
   </div>
 
+  <h2>⑦ 次の展開アイデア（2026-06-23 ブレスト）</h2>
+  <div class="top">
+    <b>⭐ おすすめ着手順（コスパ）</b>
+    <ol>
+      <li><b>総合スコア順</b>（②）— 即・探す質UP <span class="badge S">S</span></li>
+      <li><b>ルート沿いの高評価店ハイライト</b>（①）— 道なりルートを一番活かす目玉 <span class="badge M">M</span></li>
+      <li><b>訪問済み＆制覇マップ</b>（③）— リピート＆楽しさ <span class="badge M">M</span></li>
+      <li><b>エラーバウンダリ</b>（下記）— 白画面の保険 <span class="badge S">S</span></li>
+    </ol>
+  </div>
+  <div class="grid">
+    <div class="card"><h3>残り距離/ETAの道なり一本化 <span class="badge S">S</span></h3><p>現在の「直線残距離（残距離表示）＋道なり総距離（🛣）」の二重を、道なりの<b>残り距離・到着予定時刻</b>に統一。</p></div>
+    <div class="card"><h3>複数経由地ルート（はしご×道なり） <span class="badge M">M</span></h3><p>既存の「はしご」をORSの経由地ルーティングと連結し、ラーメン巡回コースを道なりで描画。</p></div>
+    <div class="card"><h3>到着予定時刻の表示 <span class="badge S">S</span></h3><p>道なりETAから「◯時◯分着」を表示。</p></div>
+    <div class="card"><h3>ルート沿いの休憩スポット <span class="badge M">M</span></h3><p>経路バッファ内のコンビニ/GS/トイレ/駐車場を抽出し「この先の休憩」候補に。道なりルート＋既存POIの組合せ。</p></div>
+    <div class="card"><h3>音声案内（Web Speech / Kyoko） <span class="badge S">S</span> <span class="tag warn">保留中</span></h3><p>「まもなく到着／残り◯km／再ルート」を読み上げ。無料・サーバ不要・iOS前面のみ。<span class="note">VOICEVOX品質は自前ホストかネイティブ化が前提（Web→ローカルVOICEVOXはCORS/混在コンテンツで不可）。</span></p></div>
+    <div class="card"><h3>エラーバウンダリ（白画面の保険） <span class="badge S">S</span></h3><p>1コンポーネントの例外で全画面が白くなるのを防ぎ、部分回復＋再読込導線を出す（過去にFollowControllerで露呈）。</p></div>
+    <div class="card"><h3>ルーティング使用量の監視/フォールバック <span class="badge S">S</span></h3><p>ORS無料枠(2000/日)の超過やキー露出に備え、OSRMへ安全にフォールバック。</p></div>
+  </div>
+  <div class="top" style="border-color:#1a73e8">
+    <b>🧭 プラットフォーム戦略・横展開</b>
+    <ul style="margin:6px 0 0;padding-left:20px">
+      <li><b>Webを磨く ↔ ネイティブ化/Capacitor</b>：バックグラウンド軌跡・VOICEVOX・常駐ナビが要るならネイティブ（費用と引き換え）。当面はWebで前面利用。</li>
+      <li><b>横展開</b>：データ＋ナビ基盤は汎用。他地域（全国）や他ジャンル（カレー/サウナ等）へ同型展開できる資産。</li>
+    </ul>
+  </div>
+
   <div class="x">
     <h3>⚠ できない/非推奨（正直に）</h3>
     <ul>
