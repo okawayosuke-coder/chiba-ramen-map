@@ -414,7 +414,7 @@ function FollowController({
       lastFixPerf = nowPerf;
       settled = false;
       if (!rafId) rafId = requestAnimationFrame(animateMarker); // 停止中なら補間ループを再起動
-      // 走行軌跡を記録（約40mごと。track側で間引き・永続化。実フィックス基準）
+      // 走行軌跡を記録（約50mごと。track側で間引き・永続化。実フィックス基準）
       addTrackPoint(latitude, longitude, p.timestamp);
       // 標高: 約40m以上動いたら取得し直してツールチップ更新（過剰リクエスト抑制）
       const here = { lat: latitude, lng: longitude };

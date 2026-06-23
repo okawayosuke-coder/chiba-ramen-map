@@ -10,8 +10,8 @@ export interface TrackPoint {
 }
 
 const KEY = "crm_track";
-const MAX = 20000; // 上限点数（約40m間隔で約800km分）
-const MIN_M = 40; // 記録間隔(m)。走行テストで密度が高すぎたため20→40に（記録点数が半減）
+const MAX = 20000; // 上限点数（約50m間隔で約1000km分）
+const MIN_M = 50; // 記録間隔(m)。走行テストの密度調整で 20→40→50
 const ROUND = 1e6; // 座標を6桁(約0.1m)に丸めて保存（容量節約・実害なし）
 
 let points: TrackPoint[] = load();
@@ -53,7 +53,7 @@ function emit() {
   listeners.forEach((l) => l());
 }
 
-/** 走行モードのGPS更新ごとに呼ぶ。前回から約40m以上動いた時だけ記録 */
+/** 走行モードのGPS更新ごとに呼ぶ。前回から約50m以上動いた時だけ記録 */
 export function addTrackPoint(lat: number, lng: number, t: number) {
   const last = points[points.length - 1];
   if (
