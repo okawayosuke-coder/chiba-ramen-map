@@ -859,6 +859,29 @@ body {
   font-weight: 700;
   line-height: 1.2;
 }
+/* 走行モードで手動パン中に出る「現在位置」復帰ボタン（画面右・中央） */
+.recenter-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(18, 20, 24, 0.9);
+  color: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  padding: 10px 16px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 /* ===== PWA更新通知バー ===== */
 .update-bar {

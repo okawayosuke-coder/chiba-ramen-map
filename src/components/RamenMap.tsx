@@ -309,6 +309,11 @@ function FollowController({
     map.getContainer().appendChild(destBox);
 
     let first = true;
+    // カメラの自動追従。手動でマップをパンすると false（一時停止）、現在位置ボタンで復帰。
+    let following = true;
+    let lastCarLat = NaN,
+      lastCarLng = NaN;
+    let lastCarHd: number | null = null;
     // 自車の向き:
     //  - 走行中はGPSの進行方位(travel course)を表示（端末向き/画面回転に依存せず正確）
     //  - 走行中にGPS方位とコンパス生値の差(offset)を学習 → 停車時は (コンパス+offset)
@@ -352,6 +357,18 @@ function FollowController({
       if (!el) return;
       currentRot += angDiff(target, currentRot); // 最短回転で連続角を更新
       el.style.transform = `rotate(${currentRot}deg)`;
+    };
+    // 追従カメラの中心点：進行方向へ少し先（前方を広く見せる）。方位なしなら自車位置そのもの。
+    const cameraTarget = (lat: number, lng: number, hd: number | null) => {
+      if (hd == null) return L.latLng(lat, lng);
+      const z = map.getZoom();
+      const carPt = map.project([lat, lng], z);
+      const rad = (hd * Math.PI) / 180;
+      const lead = map.getSize().y * 0.22;
+      const aheadPt = carPt.add(
+        L.point(Math.sin(rad), -Math.cos(rad)).multiplyBy(lead)
+      );
+      return map.unproject(aheadPt, z);
     };
 
     const DEBUG =
@@ -453,28 +470,21 @@ function FollowController({
       } else {
         destBox.style.display = "none";
       }
+      // 復帰用に最新の自車位置・方位を保持
+      lastCarLat = latitude;
+      lastCarLng = longitude;
+      lastCarHd = gpsMoving ? gpsHeading : null;
       if (first) {
         map.setView([latitude, longitude], 16, { animate: true });
         first = false;
-      } else if (gpsMoving || haversineKm(map.getCenter(), here) > 0.02) {
-        // 前方を広く見せる: 進行方向へ少し先の点を画面中央にし、自車を後方(画面手前)へ寄せる。
-        // 北上のまま、進行方向に応じて自車が中心の手前側に来る（どの向きでも前方が広い）。
-        let target: L.LatLngExpression = [latitude, longitude];
-        const hd = gpsMoving ? gpsHeading : null; // 走行中のGPS進行方位のみ採用
-        if (hd != null) {
-          const z = map.getZoom();
-          const carPt = map.project([latitude, longitude], z);
-          const rad = (hd * Math.PI) / 180;
-          const lead = map.getSize().y * 0.22; // 視野高さの約22%ぶん先を中央に
-          const aheadPt = carPt.add(
-            L.point(Math.sin(rad), -Math.cos(rad)).multiplyBy(lead)
-          );
-          target = map.unproject(aheadPt, z);
-        }
-        // フィックス間隔ぶんかけて滑らかに追従（マーカー補間と同期）。
+      } else if (following && (gpsMoving || haversineKm(map.getCenter(), here) > 0.02)) {
+        // 追従中のみカメラを動かす。前方を広く見せる中心点（cameraTarget）へ滑らかに。
         // animate:trueなので moveend は1フィックスにつき1回＝POI/軌跡レイヤーの過剰再描画を避ける。
         // 停車中(ほぼ不動)は panTo を打たず、毎秒の moveend と微小ジッタ追従を抑える。
-        map.panTo(target, { animate: true, duration: segDur / 1000 });
+        map.panTo(cameraTarget(latitude, longitude, lastCarHd), {
+          animate: true,
+          duration: segDur / 1000,
+        });
       }
       if (DEBUG) {
         dbg();
@@ -517,6 +527,28 @@ function FollowController({
       maximumAge: 1000,
       timeout: 20000,
     });
+
+    // 画面右の「現在位置」ボタン（手動パン中だけ表示。タップで自車へ復帰＝追従再開）
+    const recBtn = L.DomUtil.create("div", "recenter-btn");
+    recBtn.innerHTML = `<span aria-hidden="true">📍</span><span>現在位置</span>`;
+    recBtn.style.display = "none";
+    map.getContainer().appendChild(recBtn);
+    L.DomEvent.disableClickPropagation(recBtn);
+    L.DomEvent.on(recBtn, "click", () => {
+      following = true;
+      recBtn.style.display = "none";
+      if (Number.isFinite(lastCarLat))
+        map.panTo(cameraTarget(lastCarLat, lastCarLng, lastCarHd), {
+          animate: true,
+        });
+    });
+    // ユーザーが指でパンしたら追従を一時停止し、ボタンを出す（panTo等の自動移動では発火しない）
+    const onUserPan = () => {
+      if (!following) return;
+      following = false;
+      recBtn.style.display = "";
+    };
+    map.on("dragstart", onUserPan);
 
     // 端末のコンパス（ジャイロ/方位センサー）の生値。停車時の向きに使う（offsetで較正）
     const onOrient = (e: DeviceOrientationEvent) => {
@@ -563,6 +595,8 @@ function FollowController({
       navigator.geolocation.clearWatch(watchId);
       cancelAnimationFrame(rafId);
       window.clearInterval(speedoAnim);
+      map.off("dragstart", onUserPan);
+      recBtn.remove();
       marker.remove();
       box.remove();
       addrBox.remove();
