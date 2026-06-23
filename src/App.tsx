@@ -109,6 +109,7 @@ export default function App() {
   const [persistWarn, setPersistWarn] = useState(false);
   const prevFollowRef = useRef(false);
   const followStartCountRef = useRef(0);
+  const pendingAppRef = useRef<NavApp | null>(null); // 安全ゲート通過後に起動するナビアプリ
 
   const { favs, toggle, isFav, importKeys } = useFavorites();
   const [navApp, setNavApp] = useNavApp();
@@ -275,16 +276,18 @@ export default function App() {
     [navApp]
   );
 
-  const startNav = useCallback(
+  // 「Googleマップ」ボタン: Googleマップで外部ナビ起動（安全ゲート経由）
+  const startGoogleNav = useCallback(
     (shop: Shop) => {
-      // 未同意なら「停車中ですか」を再確認
       if (!safetyAck) {
+        pendingAppRef.current = "google";
         setPendingNav(shop);
         return;
       }
-      proceedNav(shop);
+      launchNav("google", shop, shop.name);
+      setToast(navToast("google", shop.name));
     },
-    [safetyAck, proceedNav]
+    [safetyAck]
   );
 
   const doShare = useCallback(async (shop: Shop) => {
@@ -619,8 +622,19 @@ export default function App() {
               </div>
               {s.address && <div className="shop__addr">{s.address}</div>}
               <div className="shop__actions" onClick={(e) => e.stopPropagation()}>
-                <button className="act act--nav" onClick={() => startNav(s)}>
-                  🚗 ナビ開始
+                <button
+                  className="act act--nav"
+                  onClick={() => startGoogleNav(s)}
+                  title="Googleマップでナビ起動"
+                >
+                  🚗 Googleマップ
+                </button>
+                <button
+                  className={`act act--route${dest === s ? " on" : ""}`}
+                  onClick={() => onSetDest(s)}
+                  title="アプリ内で道なりルートを表示"
+                >
+                  🧭 ルート
                 </button>
                 <button
                   className={`act act--fav${isFav(s) ? " on" : ""}`}
@@ -632,14 +646,6 @@ export default function App() {
                 </button>
                 <button className="act" onClick={() => doShare(s)} title="共有">
                   共有
-                </button>
-                <button
-                  className={`act act--icon${dest === s ? " on" : ""}`}
-                  onClick={() => onSetDest(s)}
-                  aria-label="目的地に設定"
-                  title="目的地に設定"
-                >
-                  🎯
                 </button>
                 <a
                   className="act act--link act--icon"
@@ -684,7 +690,7 @@ export default function App() {
           userPos={geo.pos}
           isFav={isFav}
           onToggleFav={toggle}
-          onNav={startNav}
+          onNav={startGoogleNav}
           onShare={doShare}
           distanceTo={distanceTo}
         />
@@ -697,7 +703,14 @@ export default function App() {
             setSafetyAck(true);
             const s = pendingNav;
             setPendingNav(null);
-            proceedNav(s);
+            const app = pendingAppRef.current;
+            pendingAppRef.current = null;
+            if (app) {
+              launchNav(app, s, s.name);
+              setToast(navToast(app, s.name));
+            } else {
+              proceedNav(s);
+            }
           }}
           onCancel={() => setPendingNav(null)}
         />

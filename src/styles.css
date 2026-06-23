@@ -547,6 +547,17 @@ body {
 .act--nav:hover {
   background: var(--accent-dark);
 }
+.act--route {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+}
+.act--route:hover {
+  background: #155cb8;
+}
+.act--route.on {
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.4);
+}
 .act--fav.on {
   color: #f59f00;
   border-color: #f59f00;

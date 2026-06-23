@@ -1083,7 +1083,13 @@ function RamenMap({
                   {s.address && <div>{s.address}</div>}
                   <div className="popup__actions">
                     <button className="act act--nav" onClick={() => onNav(s)}>
-                      🚗 ナビ開始
+                      🚗 Googleマップ
+                    </button>
+                    <button
+                      className="act act--route"
+                      onClick={() => onSetDest(s)}
+                    >
+                      🧭 ルート
                     </button>
                     <button
                       className={`act act--fav${isFav(s) ? " on" : ""}`}
@@ -1095,9 +1101,6 @@ function RamenMap({
                     </button>
                     <button className="act" onClick={() => onShare(s)}>
                       共有
-                    </button>
-                    <button className="act" onClick={() => onSetDest(s)}>
-                      🎯 目的地
                     </button>
                   </div>
                   <a
