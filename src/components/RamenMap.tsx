@@ -913,7 +913,10 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
     let aborted = false;
     let inFlight = false; // 多重リクエスト防止（moveendとタイマーの重なり対策）
     let failStreak = 0; // 連続失敗回数（可視化＆再試行制御）
+    let lastPicked: Poi[] = []; // 直近に描画したPOI（ズーム復帰時に再取得せず即再表示する）
+    let shown = false; // 現在マーカーを描画中か
     const ZOOM_HINT = "🏪 ズームすると周辺の施設を表示";
+    const BUFFER = 0.7; // 取得bboxの余白。大きいほど走行中に範囲を抜けにくく再取得が減る
 
     const expand = (b: BBox, f: number): BBox => {
       const dy = (b.n - b.s) * f;
@@ -922,12 +925,28 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
     };
     const inside = (o: BBox, i: BBox) =>
       i.s >= o.s && i.w >= o.w && i.n <= o.n && i.e <= o.e;
+    const render = (picked: Poi[]) => {
+      group.clearLayers();
+      picked.forEach((p) => {
+        L.marker([p.lat, p.lng], {
+          icon: iconFor(p.kind, p.label),
+          keyboard: false,
+        })
+          .bindTooltip(p.label, { direction: "top", offset: [0, -12] })
+          .addTo(group);
+      });
+      shown = true;
+    };
 
     const refresh = async () => {
       if (aborted || inFlight) return;
       if (map.getZoom() < MINZOOM) {
-        group.clearLayers();
-        cached = null;
+        // 広域表示中はOverpass負荷回避のため非表示にするが、cached と直近POIは保持する。
+        // ズームを戻した時に再取得せず即座に復帰できるようにする（cached=null にしない）。
+        if (shown) {
+          group.clearLayers();
+          shown = false;
+        }
         hint.textContent = ZOOM_HINT;
         hint.style.display = "";
         return;
@@ -940,6 +959,7 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
         e: bd.getEast(),
       };
       if (cached && inside(cached, view)) {
+        if (!shown) render(lastPicked); // ズーム復帰など：再取得せず即再描画
         hint.style.display = "none";
         return; // 既取得範囲内→通信しない
       }
@@ -947,7 +967,7 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
       if (now - lastReqAt < MIN_INTERVAL) return; // 過剰アクセス抑制
       lastReqAt = now;
       inFlight = true;
-      const area = expand(view, 0.4); // 余白付きで取得し再取得頻度を下げる
+      const area = expand(view, BUFFER); // 余白付きで取得し再取得頻度を下げる
       try {
         const pois = await fetchPois(area, active);
         if (aborted) return;
@@ -982,15 +1002,8 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
           }
           if (!added) break; // 全バケット出し切った
         }
-        group.clearLayers();
-        picked.forEach((p) => {
-          L.marker([p.lat, p.lng], {
-            icon: iconFor(p.kind, p.label),
-            keyboard: false,
-          })
-            .bindTooltip(p.label, { direction: "top", offset: [0, -12] })
-            .addTo(group);
-        });
+        lastPicked = picked;
+        render(picked);
       } catch {
         // 取得失敗（Overpass混雑/タイムアウト/全ミラー全滅）。
         // cached は更新しない＝次の moveend/タイマーで自動再試行。前回マーカーは消さず残す。
