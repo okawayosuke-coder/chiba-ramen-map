@@ -23,6 +23,16 @@ import {
 
 type DestRef = { lat: number; lng: number; name: string } | null;
 
+// 速度別カラー（走行軌跡・スピードメーターで共通）。
+// 不明/停車=灰, <10=赤(渋滞), <30=黄, <50=緑, それ以上=青
+function kmhColor(kmh: number | null): string {
+  if (kmh == null) return "#868e96";
+  if (kmh < 10) return "#e03131";
+  if (kmh < 30) return "#f5b800";
+  if (kmh < 50) return "#2f9e44";
+  return "#1c7ed6";
+}
+
 function rawTierColor(rating: number): string {
   if (rating >= 4.3) return "#d6336c";
   if (rating >= 4.1) return "#e8590c";
@@ -226,10 +236,9 @@ function FollowController({
     const CX = 50, CY = 52, MAXKMH = 120;
     const ang = (kmh: number) =>
       -120 + (Math.min(Math.max(kmh, 0), MAXKMH) / MAXKMH) * 240;
-    // 速度に応じた色（停車=灰 / 〜40緑 / 〜80橙 / 80+赤）と、0→現在速度の進捗アーク
+    // 速度に応じた色（走行軌跡と同配色 kmhColor: <10赤/<30黄/<50緑/≥50青、停車=灰）と進捗アーク
     const R_ARC = 44;
-    const speedColor = (kmh: number) =>
-      kmh < 1 ? "#868e96" : kmh < 40 ? "#37b24d" : kmh < 80 ? "#f08c00" : "#e03131";
+    const speedColor = (kmh: number) => (kmh < 1 ? "#868e96" : kmhColor(kmh));
     const arcPath = (kmh: number) => {
       const a0 = ((ang(0) - 90) * Math.PI) / 180;
       const a1 = ((ang(kmh) - 90) * Math.PI) / 180;
@@ -255,7 +264,7 @@ function FollowController({
     box.innerHTML =
       `<svg class="speedo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">` +
       `<circle cx="${CX}" cy="${CY}" r="40" fill="rgba(255,255,255,0.04)" stroke="#3a424c" stroke-width="2"/>` +
-      `<path class="speedo-arc" d="" fill="none" stroke="#37b24d" stroke-width="3.6" stroke-linecap="round"/>` +
+      `<path class="speedo-arc" d="" fill="none" stroke="#868e96" stroke-width="3.6" stroke-linecap="round"/>` +
       ticks +
       `<g class="speedo-needle" transform="rotate(${ang(0)} ${CX} ${CY})"><line x1="${CX}" y1="${CY}" x2="${CX}" y2="16" stroke="#ff6b35" stroke-width="2.6" stroke-linecap="round"/></g>` +
       `<circle cx="${CX}" cy="${CY}" r="3.6" fill="#ff6b35"/>` +
@@ -641,16 +650,7 @@ function TrackLayer({ show }: { show: boolean }) {
     const group = L.layerGroup().addTo(map);
     const SPACING = 20; // 画面上の最小間隔(px)
     // 速度別の色: 渋滞/停止=赤, 〜30=黄, 〜50=緑, それ以上=青
-    const colorForKmh = (kmh: number | null): string =>
-      kmh == null
-        ? "#868e96"
-        : kmh < 10
-        ? "#e03131"
-        : kmh < 30
-        ? "#f5b800"
-        : kmh < 50
-        ? "#2f9e44"
-        : "#1c7ed6";
+    const colorForKmh = kmhColor; // 走行軌跡の速度別色（スピードメーターと共通）
     const iconCache = new Map<string, L.DivIcon>();
     const iconFor = (deg: number, color: string): L.DivIcon => {
       const k = (Math.round(deg / 10) * 10) % 360; // 10°刻みでキャッシュ
