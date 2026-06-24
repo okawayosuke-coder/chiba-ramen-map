@@ -1,5 +1,12 @@
 # リリースノート — 千葉ラーメンMAP
 
+## v0.2.19（2026-06-24・出光(apollostation)のロゴをApolloマークに差し替え）
+
+- 出光/apollostation のアイコンを、筆書き「出光」から**正式なApolloマーク**（赤い横顔）に差し替え。
+
+---
+公開URL: https://okawayosuke-coder.github.io/chiba-ramen-map/
+
 ## v0.2.18（2026-06-24・Esso(エッソ)のロゴを追加）
 
 - GSの **Esso（エッソ）にロゴ**を追加（同梱データに95件存在）。対応ブランドは ENEOS／出光／コスモ／キグナス／SOLATO／三井／Shell／**Esso** の8種に。
