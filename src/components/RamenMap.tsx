@@ -922,7 +922,8 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
     let inFlight = false; // ライブ取得の多重リクエスト防止
     let failStreak = 0; // ライブ取得の連続失敗回数（可視化用）
     let lastLiveKey = ""; // ライブ取得対象の種類セット（変わったらキャッシュ破棄）
-    let lastLocal: Poi[] = []; // 直近の表示範囲内の同梱POI（コンビニ/GS）
+    let lastLocal: Poi[] = []; // 直近の表示範囲(+余白)内の同梱POI（コンビニ/GS）
+    let localArea: BBox | null = null; // lastLocal を算出した範囲（抜けるまで再フィルタしない）
     let lastLive: Poi[] = []; // 直近のライブ取得POI
     let shown = false; // 現在マーカーを描画中か
     let local: LocalPoiData | null = null; // 同梱POIデータ（読込後にセット）
@@ -1008,14 +1009,26 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
         e: bd.getEast(),
       };
 
-      // 1) コンビニ/GS は同梱データから即時表示（Overpass非依存）。
+      // 1) コンビニ/GS は同梱データから表示（Overpass非依存）。表示範囲を BUFFER 拡張した
+      //    範囲ぶん描画し、その範囲を抜けるまで再フィルタ・再描画しない。これで走行中も
+      //    画面の少し先のコンビニが先に描画され、毎フレームの全消去によるちらつきも防ぐ。
       //    カバレッジ外、または同梱データ読込失敗時はライブ取得にフォールバック。
       let liveNeeded = liveOnly.slice();
+      let changed = false;
       if (localActive.length) {
         if (local && coverageContains(local, view)) {
-          lastLocal = localPoisInView(local, view, localActive);
+          if (!localArea || !inside(localArea, view)) {
+            const larea = expand(view, BUFFER);
+            lastLocal = localPoisInView(local, larea, localActive);
+            localArea = larea;
+            changed = true;
+          }
         } else if (local || localLoadFailed) {
-          lastLocal = [];
+          if (lastLocal.length || localArea) {
+            lastLocal = [];
+            localArea = null;
+            changed = true;
+          }
           liveNeeded = liveNeeded.concat(localActive);
         }
         // それ以外（読込中）は一時的に何も出さない（読込後に再描画）
@@ -1025,11 +1038,15 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
       const liveKey = [...liveNeeded].sort().join(",");
       if (liveKey !== lastLiveKey) {
         cachedLive = null;
-        lastLive = [];
+        if (lastLive.length) {
+          lastLive = [];
+          changed = true;
+        }
         lastLiveKey = liveKey;
       }
 
-      draw(); // 同梱POIを即描画（ライブは到着後に再描画）
+      // 変化があった時、またはズーム復帰で未描画の時だけ描画（不要な再描画＝ちらつきを避ける）
+      if (changed || !shown) draw();
 
       // 3) ライブ取得（駐車場/EV/トイレ・県外のコンビニ/GS）
       if (!liveNeeded.length) return;

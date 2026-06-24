@@ -64,6 +64,11 @@ async function fetchCell(cell, idx, total) {
       clearTimeout(to);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
+      // Overpassはサーバ側タイムアウト/メモリ超過時にHTTP200で部分データ＋remarkを返す。
+      // これを成功扱いすると取りこぼしになるため、remarkがあれば失敗として再試行する。
+      if (j.remark && /timed out|runtime error|out of memory/i.test(j.remark)) {
+        throw new Error(`overpass remark: ${String(j.remark).slice(0, 70)}`);
+      }
       const els = j.elements || [];
       console.log(`  [${idx + 1}/${total}] ${bbox} -> ${els.length} (${url.split("/")[2]})`);
       return els;
