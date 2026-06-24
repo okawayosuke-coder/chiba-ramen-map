@@ -131,6 +131,7 @@ export function poiIconFile(kind: PoiKind, label: string): string | null {
     if (has("solato", "太陽石油", "taiyo")) return "gs-solato.png";
     if (has("mitsui", "三井")) return "gs-mitsui.png";
     if (has("shell", "シェル", "昭和シェル", "昭和shell")) return "gs-shell.png";
+    if (has("esso", "エッソ")) return "gs-esso.png";
     return null; // 未一致GS（JA-SS/ホクレン/無名）は色＋文字
   }
   return null; // 駐車場/EV/トイレ

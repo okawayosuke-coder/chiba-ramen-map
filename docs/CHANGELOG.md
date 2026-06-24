@@ -1,5 +1,12 @@
 # リリースノート — 千葉ラーメンMAP
 
+## v0.2.18（2026-06-24・Esso(エッソ)のロゴを追加）
+
+- GSの **Esso（エッソ）にロゴ**を追加（同梱データに95件存在）。対応ブランドは ENEOS／出光／コスモ／キグナス／SOLATO／三井／Shell／**Esso** の8種に。
+
+---
+公開URL: https://okawayosuke-coder.github.io/chiba-ramen-map/
+
 ## v0.2.17（2026-06-24・Shell(昭和シェル)のロゴを追加）
 
 - GSの **Shell（昭和シェル）に正式なペクテン（貝）ロゴ**を追加。これまで「S」文字だったShell系SSがロゴ表示に。対応ブランドは ENEOS／出光／コスモ／キグナス／SOLATO／三井／**Shell** の7種。
