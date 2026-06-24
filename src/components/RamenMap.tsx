@@ -900,16 +900,20 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
     const iconCache = new Map<string, L.DivIcon>();
     const ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
     const iconFor = (kind: PoiKind, label: string): L.DivIcon => {
-      const file = poiIconFile(kind, label); // コンビニのみ画像、他は null
+      const file = poiIconFile(kind, label); // コンビニ＝円形画像 / GS主要＝角丸バッジ / 他＝null
       if (file) {
         const key = `img|${file}`;
         let ic = iconCache.get(key);
         if (!ic) {
+          // GS(fuel)は白角丸バッジに logo を contain 表示（縦横比維持）、コンビニは円形
+          const gs = kind === "fuel";
+          const sz = gs ? 32 : 30;
+          const cls = gs ? "poi-img-gs" : "poi-img";
           ic = L.divIcon({
             className: "",
-            html: `<div class="poi-img"><img src="${ICON_BASE}${file}" width="30" height="30" alt="" /></div>`,
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
+            html: `<div class="${cls}"><img src="${ICON_BASE}${file}" alt="" /></div>`,
+            iconSize: [sz, sz],
+            iconAnchor: [sz / 2, sz / 2],
           });
           iconCache.set(key, ic);
         }

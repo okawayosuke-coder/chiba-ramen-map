@@ -1105,6 +1105,25 @@ body {
   display: block;
   object-fit: cover;
 }
+/* GS＝白い角丸バッジに logo 全体表示（縦横比維持）。コンビニ(円)と区別 */
+.poi-img-gs {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.poi-img-gs img {
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+  display: block;
+}
 .poi-hint {
   position: absolute;
   left: 50%;
