@@ -13,8 +13,17 @@ if (enabled) {
   const TICK_MS = 1000; // 1秒ごとにフィックス供給
   const TURN_RATE = 35; // 1tickで目標方位へ寄せる角度（90°ターンを約3秒で）
 
-  let lat = 35.61; // 千葉市付近スタート
+  // 既定は千葉市付近スタート。?simstart=lat,lng で開始地点を上書き可（検証用）。
+  let lat = 35.61;
   let lng = 140.12;
+  const startParam = new URLSearchParams(window.location.search).get("simstart");
+  if (startParam) {
+    const [pLat, pLng] = startParam.split(",").map(Number);
+    if (Number.isFinite(pLat) && Number.isFinite(pLng)) {
+      lat = pLat;
+      lng = pLng;
+    }
+  }
   let heading = 0; // 現在の進行方位(deg, 0=北)
   let target = 0; // 目標方位（←/→で±90）
 

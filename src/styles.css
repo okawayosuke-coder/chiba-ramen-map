@@ -1089,6 +1089,22 @@ body {
 .poi--toilet {
   border-radius: 7px;
 } /* トイレ＝角丸四角（🚻） */
+/* コンビニ＝ブランドアイコン画像（円形クリップ＋白フチで地図上に映える） */
+.poi-img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  background: #fff;
+}
+.poi-img img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
 .poi-hint {
   position: absolute;
   left: 50%;

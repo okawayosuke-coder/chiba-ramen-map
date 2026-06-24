@@ -12,7 +12,7 @@ import L from "leaflet";
 import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
-import { fetchPois, poiBrandStyle, type BBox, type Poi, type PoiKind } from "../poi";
+import { fetchPois, poiBrandStyle, poiIconFile, type BBox, type Poi, type PoiKind } from "../poi";
 import {
   loadLocalPois,
   coverageContains,
@@ -896,9 +896,25 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
     hint.style.display = "none";
     map.getContainer().appendChild(hint);
 
-    // ブランド別アイコン（色＋識別文字）。同一スタイルは使い回す
+    // アイコン生成。コンビニ＝ブランドアイコン画像、それ以外＝色＋識別文字。同一は使い回す。
     const iconCache = new Map<string, L.DivIcon>();
+    const ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
     const iconFor = (kind: PoiKind, label: string): L.DivIcon => {
+      const file = poiIconFile(kind, label); // コンビニのみ画像、他は null
+      if (file) {
+        const key = `img|${file}`;
+        let ic = iconCache.get(key);
+        if (!ic) {
+          ic = L.divIcon({
+            className: "",
+            html: `<div class="poi-img"><img src="${ICON_BASE}${file}" width="30" height="30" alt="" /></div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+          });
+          iconCache.set(key, ic);
+        }
+        return ic;
+      }
       const st = poiBrandStyle(kind, label);
       const key = `${kind}|${st.bg}|${st.t}`;
       let ic = iconCache.get(key);
@@ -983,7 +999,7 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
       shown = true;
       if (DEBUG) {
         (window as unknown as { __poiDebug?: unknown }).__poiDebug = picked.map(
-          (p) => ({ label: p.label, kind: p.kind })
+          (p) => ({ label: p.label, kind: p.kind, lat: p.lat, lng: p.lng })
         );
       }
     };

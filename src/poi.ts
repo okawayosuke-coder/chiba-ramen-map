@@ -95,6 +95,33 @@ export function poiBrandStyle(kind: PoiKind, label: string): PoiStyle {
   }
 }
 
+/** コンビニのブランドアイコン画像ファイル名を返す（public/poi-icons/ 配下）。
+ *  コンビニ(conv)のみ。一致しないコンビニ（セコマ/ニューデイズ等）は汎用アイコン。
+ *  GS/駐車場/EV/トイレはアイコンを使わず色＋文字（poiBrandStyle）で表示するため null。
+ *  判定順は派生ブランド（ナチュラルローソン/ローソンストア100）を先に。 */
+export function poiIconFile(kind: PoiKind, label: string): string | null {
+  if (kind !== "conv") return null;
+  const s = (label || "").toLowerCase();
+  const has = (...keys: string[]) => keys.some((k) => s.includes(k.toLowerCase()));
+  if (has("natural lawson", "natural-lawson", "ナチュラルローソン")) return "naturallawson.png";
+  if (has("lawson store 100", "lawson-store-100", "lawsonstore100", "ローソンストア100", "ローソンストア１００", "ローソン100", "store100"))
+    return "lawson100.png";
+  if (has("lawson", "ローソン")) return "lawson.png";
+  if (has("7-eleven", "7‐eleven", "7eleven", "seven", "セブン")) return "seven.png";
+  if (has("familymart", "family mart", "ファミリーマート", "ファミマ")) return "familymart.png";
+  if (has("ministop", "ミニストップ")) return "ministop.png";
+  if (has("daily", "デイリーヤマザキ", "ヤマザキ")) return "dailyyamazaki.png";
+  if (has("poplar", "ポプラ")) return "poplar.png";
+  if (has("circle k", "circlek", "サークルk")) return "circlek.png";
+  if (has("sunkus", "sankus", "サンクス")) return "sunkus.png";
+  if (has("am/pm", "am-pm", "ampm", "エーエムピーエム")) return "ampm.png";
+  if (has("heart in", "heart-in", "heartin", "ハートイン")) return "heartin.png";
+  if (has("community store", "community-store", "コミュニティストア", "コミュニティ・ストア"))
+    return "community.png";
+  if (has("coco", "ここストア", "ココストア")) return "coco.png";
+  return "generic.png"; // 一致しないコンビニ
+}
+
 // 公式＋ミラー。Overpassは時間帯で応答が極端にばらつく（同一クエリが1秒〜20秒超）。
 // そのため直列フォールバックではなく「全ミラーへ同時に投げ、最速の成功を採用」する。
 const ENDPOINTS = [
