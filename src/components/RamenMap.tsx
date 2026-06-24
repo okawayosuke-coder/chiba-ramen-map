@@ -1225,7 +1225,14 @@ function RamenMap({
   };
 
   return (
-    <MapContainer className="map" center={[35.55, 140.18]} zoom={10} scrollWheelZoom>
+    <MapContainer
+      className="map"
+      center={[35.55, 140.18]}
+      zoom={10}
+      scrollWheelZoom
+      zoomSnap={0.5}
+      zoomDelta={0.5}
+    >
       <TileLayer attribution={tile.attribution} url={tile.url} maxZoom={19} />
       <FocusController focus={focus} />
       <UserFocus pos={userPos} />
@@ -1317,16 +1324,28 @@ function RamenMap({
 
 export default memo(RamenMap);
 
-/** 右下に地図スケール（メートル法）を表示 */
+/** 右下に地図スケール（メートル法）を表示。
+ *  半段ズーム(zoomDelta=0.5)で 200m と 100m の間に 150m が出るよう、
+ *  Leaflet標準の 1/2/3/5 倍に加えて 1.5・7 倍も「キリの良い数」として許可する
+ *  （結果: …300m / 200m / 150m / 100m / 70m / 50m …）。 */
 function ScaleBar() {
   const map = useMap();
   useEffect(() => {
-    const ctrl = L.control.scale({
+    const ScaleWith150 = L.Control.Scale.extend({
+      _getRoundNum(num: number) {
+        const pow10 = Math.pow(10, (Math.floor(num) + "").length - 1);
+        let d = num / pow10;
+        d =
+          d >= 10 ? 10 : d >= 7 ? 7 : d >= 5 ? 5 : d >= 3 ? 3 : d >= 2 ? 2 : d >= 1.5 ? 1.5 : 1;
+        return pow10 * d;
+      },
+    });
+    const ctrl = new ScaleWith150({
       position: "bottomright",
       imperial: false,
       metric: true,
       maxWidth: 130,
-    });
+    } as L.Control.ScaleOptions);
     ctrl.addTo(map);
     return () => {
       ctrl.remove();
