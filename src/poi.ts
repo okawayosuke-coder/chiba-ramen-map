@@ -95,34 +95,43 @@ export function poiBrandStyle(kind: PoiKind, label: string): PoiStyle {
   }
 }
 
-/** POIのブランドアイコン画像ファイル名を返す（public/poi-icons/ 配下）。
- *  コンビニ(conv)＝ブランド円形アイコン（一致しなければ汎用 generic.png）。
- *  GS(fuel)＝主要6ブランドのみアイコン（白角丸バッジ表示）。一致しないGSは null＝色＋文字。
- *  駐車場/EV/トイレは null＝色＋文字（poiBrandStyle）。
- *  判定順は派生ブランド（ナチュラルローソン/ローソンストア100）を先に。 */
-export function poiIconFile(kind: PoiKind, label: string): string | null {
+/** 名称(label)からコンビニブランドのアイコンを判定（種別に依存しない）。
+ *  OSMで amenity=fuel 等に誤タグされた「名称はコンビニ」を救済するため切り出し。 */
+function convIconByName(label: string): string | null {
   const s = (label || "").toLowerCase();
   const has = (...keys: string[]) => keys.some((k) => s.includes(k.toLowerCase()));
-  if (kind === "conv") {
-    if (has("natural lawson", "natural-lawson", "ナチュラルローソン")) return "naturallawson.png";
-    if (has("lawson store 100", "lawson-store-100", "lawsonstore100", "ローソンストア100", "ローソンストア１００", "ローソン100", "store100"))
-      return "lawson100.png";
-    if (has("lawson", "ローソン")) return "lawson.png";
-    if (has("7-eleven", "7‐eleven", "7eleven", "seven", "セブン")) return "seven.png";
-    if (has("familymart", "family mart", "ファミリーマート", "ファミマ")) return "familymart.png";
-    if (has("ministop", "ミニストップ")) return "ministop.png";
-    if (has("daily", "デイリーヤマザキ", "ヤマザキ")) return "dailyyamazaki.png";
-    if (has("poplar", "ポプラ")) return "poplar.png";
-    if (has("circle k", "circlek", "サークルk")) return "circlek.png";
-    if (has("sunkus", "sankus", "サンクス")) return "sunkus.png";
-    if (has("am/pm", "am-pm", "ampm", "エーエムピーエム")) return "ampm.png";
-    if (has("heart in", "heart-in", "heartin", "ハートイン")) return "heartin.png";
-    if (has("community store", "community-store", "コミュニティストア", "コミュニティ・ストア"))
-      return "community.png";
-    if (has("coco", "ここストア", "ココストア")) return "coco.png";
-    return "generic.png"; // 一致しないコンビニ
-  }
+  if (has("natural lawson", "natural-lawson", "ナチュラルローソン")) return "naturallawson.png";
+  if (has("lawson store 100", "lawson-store-100", "lawsonstore100", "ローソンストア100", "ローソンストア１００", "ローソン100", "store100"))
+    return "lawson100.png";
+  if (has("lawson", "ローソン")) return "lawson.png";
+  if (has("7-eleven", "7‐eleven", "7eleven", "seven", "セブン")) return "seven.png";
+  if (has("familymart", "family mart", "ファミリーマート", "ファミマ")) return "familymart.png";
+  if (has("ministop", "ミニストップ")) return "ministop.png";
+  if (has("daily", "デイリーヤマザキ", "ヤマザキ")) return "dailyyamazaki.png";
+  if (has("poplar", "ポプラ")) return "poplar.png";
+  if (has("circle k", "circlek", "サークルk")) return "circlek.png";
+  if (has("sunkus", "sankus", "サンクス")) return "sunkus.png";
+  if (has("am/pm", "am-pm", "ampm", "エーエムピーエム")) return "ampm.png";
+  if (has("heart in", "heart-in", "heartin", "ハートイン")) return "heartin.png";
+  if (has("community store", "community-store", "コミュニティストア", "コミュニティ・ストア"))
+    return "community.png";
+  if (has("coco", "ここストア", "ココストア")) return "coco.png";
+  return null;
+}
+
+/** POIのブランドアイコン画像ファイル名を返す（public/poi-icons/ 配下）。
+ *  コンビニ(conv)＝ブランド円形アイコン（一致しなければ汎用 generic.png）。
+ *  GS(fuel)＝主要ブランドのみ角丸バッジ（gs-*.png）。一致しないGSは null＝色＋文字。
+ *  名称がコンビニブランドなら種別がfuel等でもコンビニアイコンを優先（OSM誤タグ救済）。
+ *  返り値が "gs-" で始まればGSバッジ形状、それ以外は円形（呼び出し側で判定）。 */
+export function poiIconFile(kind: PoiKind, label: string): string | null {
+  const convBrand = convIconByName(label);
+  if (kind === "conv") return convBrand || "generic.png";
+  // conv以外でも名称がコンビニブランドなら救済（例: amenity=fuel で name=7-Eleven）
+  if (convBrand) return convBrand;
   if (kind === "fuel") {
+    const s = (label || "").toLowerCase();
+    const has = (...keys: string[]) => keys.some((k) => s.includes(k.toLowerCase()));
     // 現役主要ブランドのみ（旧ブランドはENEOS/出光に統合済み・OSMでも現ブランド表記が大半）
     if (has("eneos", "エネオス")) return "gs-eneos.png";
     if (has("idemitsu", "出光", "apollostation", "apollo")) return "gs-idemitsu.png";

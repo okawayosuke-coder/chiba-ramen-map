@@ -100,11 +100,16 @@ async function runPool(cells, seen) {
           const lng = el.lon ?? el.center?.lon;
           if (lat == null || lng == null) continue;
           const t = el.tags || {};
-          const k = kindFromTags(t);
+          let k = kindFromTags(t);
           if (k < 0) continue;
           const key = `${el.type}/${el.id}`;
           if (seen.has(key)) continue; // タイル境界の重複を排除
-          const label = t.brand || t.name || t.operator || (k === 0 ? "コンビニ" : "GS");
+          const rawLabel = t.brand || t.name || t.operator || "";
+          // OSMで amenity=fuel に誤タグされた「名称はコンビニ」をコンビニ(0)へ補正
+          if (k === 1 && /7-?eleven|seven|セブン|lawson|ローソン|familymart|ファミ|ministop|ミニストップ|デイリーヤマザキ|ポプラ|ニューデイズ|newdays|セイコーマート|seicomart/i.test(rawLabel)) {
+            k = 0;
+          }
+          const label = rawLabel || (k === 0 ? "コンビニ" : "GS");
           seen.set(key, [
             +lat.toFixed(6),
             +lng.toFixed(6),

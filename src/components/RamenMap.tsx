@@ -905,8 +905,9 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
         const key = `img|${file}`;
         let ic = iconCache.get(key);
         if (!ic) {
-          // GS(fuel)は白角丸バッジに logo を contain 表示（縦横比維持）、コンビニは円形
-          const gs = kind === "fuel";
+          // 形状はアイコン種別で決定（gs-*=白角丸バッジ / それ以外=コンビニ円形）。
+          // kindではなくファイル名で判定＝OSM誤タグ救済時もコンビニは円形で表示。
+          const gs = file.startsWith("gs-");
           const sz = gs ? 32 : 30;
           const cls = gs ? "poi-img-gs" : "poi-img";
           ic = L.divIcon({
