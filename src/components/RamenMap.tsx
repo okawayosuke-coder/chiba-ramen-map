@@ -10,7 +10,7 @@ import {
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Shop } from "../types";
-import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt } from "../nav";
+import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
 import { fetchPois, poiBrandStyle, poiIconFile, type BBox, type Poi, type PoiKind } from "../poi";
 import {
@@ -879,10 +879,21 @@ const POI_SHAPE: Record<PoiKind, string> = {
  *  kinds で表示種類を切替え（空なら何も取得・表示しない）。
  *  z14未満は非表示、bboxキャッシュ＋最小間隔でOverpassへの過剰アクセスを抑制。
  *  走行モードでも moveend ごとに呼ばれるが、キャッシュ内・間隔内は即returnで通信しない。 */
-function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
+function PoiLayer({
+  kinds,
+  onPoiDest,
+  onPoiNav,
+}: {
+  kinds: PoiKind[];
+  onPoiDest: (d: Dest) => void;
+  onPoiNav: (d: Dest) => void;
+}) {
   const map = useMap();
   // 配列の同一性に依存せず、種類の集合が変わった時だけ effect を貼り直す
   const kindsKey = useMemo(() => [...kinds].sort().join(","), [kinds]);
+  // コールバックは ref 経由で読む（effectを貼り直さない＝POI再取得を誘発しない）
+  const cbRef = useRef({ onPoiDest, onPoiNav });
+  cbRef.current = { onPoiDest, onPoiNav };
   useEffect(() => {
     const active = (kindsKey ? kindsKey.split(",") : []) as PoiKind[];
     if (active.length === 0) return;
@@ -990,6 +1001,29 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
       return picked;
     };
 
+    // タップ時のポップアップ：店名＋「目的地に設定」「Googleマップ」（ラーメン店と同様）
+    const popupFor = (p: Poi): HTMLElement => {
+      const el = L.DomUtil.create("div", "poi-popup");
+      const nm = L.DomUtil.create("div", "poi-popup__name", el);
+      nm.textContent = p.label;
+      const d: Dest = { lat: p.lat, lng: p.lng, name: p.label };
+      const bDest = L.DomUtil.create("button", "poi-popup__btn poi-popup__btn--dest", el);
+      bDest.textContent = "🎯 目的地に設定";
+      const bNav = L.DomUtil.create("button", "poi-popup__btn", el);
+      bNav.textContent = "🚗 Googleマップ";
+      L.DomEvent.on(bDest, "click", (e) => {
+        L.DomEvent.stop(e);
+        map.closePopup();
+        cbRef.current.onPoiDest(d);
+      });
+      L.DomEvent.on(bNav, "click", (e) => {
+        L.DomEvent.stop(e);
+        map.closePopup();
+        cbRef.current.onPoiNav(d);
+      });
+      return el;
+    };
+
     const draw = () => {
       const picked = capPick([...lastLocal, ...lastLive]);
       group.clearLayers();
@@ -999,6 +1033,7 @@ function PoiLayer({ kinds }: { kinds: PoiKind[] }) {
           keyboard: false,
         })
           .bindTooltip(p.label, { direction: "top", offset: [0, -12] })
+          .bindPopup(() => popupFor(p), { closeButton: true, autoPan: true })
           .addTo(group);
       });
       shown = true;
@@ -1136,13 +1171,13 @@ interface Props {
   paneHidden: boolean;
   poiKinds: PoiKind[];
   showTrack: boolean;
-  dest: Shop | null;
-  onSetDest: (s: Shop) => void;
+  dest: Dest | null;
+  onSetDest: (s: Dest) => void;
   onClearDest: () => void;
   userPos: Pt | null;
   isFav: (s: Shop) => boolean;
   onToggleFav: (s: Shop) => void;
-  onNav: (s: Shop) => void;
+  onNav: (s: Dest) => void;
   onShare: (s: Shop) => void;
   distanceTo: (s: Shop) => number | null;
 }
@@ -1197,7 +1232,7 @@ function RamenMap({
       <ElevationProbe />
       <FollowController active={follow} destRef={destRef} />
       <ResizeOnChange dep={paneHidden} />
-      <PoiLayer kinds={poiKinds} />
+      <PoiLayer kinds={poiKinds} onPoiDest={onSetDest} onPoiNav={onNav} />
       <TrackLayer show={showTrack} />
       <DemoFit />
       <DestMarker dest={dest ? { lat: dest.lat, lng: dest.lng } : null} />

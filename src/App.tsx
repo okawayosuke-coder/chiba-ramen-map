@@ -27,6 +27,7 @@ import {
   roughMinutes,
   shareNav,
   type NavApp,
+  type Dest,
 } from "./nav";
 import {
   shopKey,
@@ -99,11 +100,11 @@ export default function App() {
   const [paneHidden, setPaneHidden] = useState(false);
   const [showPoi, setShowPoi] = useState(true); // 周辺POIレイヤーの全体ON/OFF（既定ON）
   const [poiKinds, setPoiKinds] = usePoiKinds(); // 表示する種類（既定: コンビニ・GS）
-  const [dest, setDest] = useState<Shop | null>(null); // 目的地
+  const [dest, setDest] = useState<Dest | null>(null); // 目的地（店 or 周辺POI）
   const [showTrack, setShowTrack] = useShowTrack();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [pendingNav, setPendingNav] = useState<Shop | null>(null);
-  const [pickerFor, setPickerFor] = useState<Shop | null>(null);
+  const [pendingNav, setPendingNav] = useState<Dest | null>(null);
+  const [pickerFor, setPickerFor] = useState<Dest | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   // 走行終了後のバックアップ案内 / 端末ストレージの永続化警告
   const [backupPrompt, setBackupPrompt] = useState<{ km: number } | null>(null);
@@ -266,27 +267,27 @@ export default function App() {
 
   // ===== ナビ起動フロー（安全ゲート → アプリ選択 → 起動） =====
   const proceedNav = useCallback(
-    (shop: Shop) => {
+    (d: Dest) => {
       if (!navApp) {
-        setPickerFor(shop);
+        setPickerFor(d);
         return;
       }
-      launchNav(navApp, shop, shop.name);
-      setToast(navToast(navApp, shop.name));
+      launchNav(navApp, d, d.name);
+      setToast(navToast(navApp, d.name));
     },
     [navApp]
   );
 
   // 「Googleマップ」ボタン: Googleマップで外部ナビ起動（安全ゲート経由）
   const startGoogleNav = useCallback(
-    (shop: Shop) => {
+    (target: Dest) => {
       if (!safetyAck) {
         pendingAppRef.current = "google";
-        setPendingNav(shop);
+        setPendingNav(target);
         return;
       }
-      launchNav("google", shop, shop.name);
-      setToast(navToast("google", shop.name));
+      launchNav("google", target, target.name);
+      setToast(navToast("google", target.name));
     },
     [safetyAck]
   );
@@ -298,10 +299,10 @@ export default function App() {
     // "shared" / "cancelled" は通知不要
   }, []);
 
-  const onSetDest = useCallback((shop: Shop) => {
-    setDest(shop);
+  const onSetDest = useCallback((d: Dest) => {
+    setDest(d);
     setSheetOpen(false);
-    setToast(`目的地に設定: ${shop.name}（走行モードで残り距離を表示）`);
+    setToast(`目的地に設定: ${d.name}（走行モードで残り距離を表示）`);
   }, []);
 
   const onClearDest = useCallback(() => {

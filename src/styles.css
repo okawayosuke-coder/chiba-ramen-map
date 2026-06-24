@@ -1124,6 +1124,35 @@ body {
   object-fit: contain;
   display: block;
 }
+/* 周辺POIタップ時のポップアップ（名称＋目的地設定/Googleマップ） */
+.poi-popup {
+  min-width: 150px;
+}
+.poi-popup__name {
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+.poi-popup__btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 9px 10px;
+  border: 1px solid #c7ccd1;
+  border-radius: 8px;
+  background: #fff;
+  color: #1b2733;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.poi-popup__btn--dest {
+  background: #2f9e44;
+  border-color: #2f9e44;
+  color: #fff;
+}
 .poi-hint {
   position: absolute;
   left: 50%;

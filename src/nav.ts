@@ -5,6 +5,10 @@ export interface Pt {
   lat: number;
   lng: number;
 }
+/** 目的地の最小形（緯度経度＋名称）。Shop も周辺POIもこれを満たすので目的地にできる。 */
+export interface Dest extends Pt {
+  name: string;
+}
 
 export const NAV_APP_META: Record<NavApp, { label: string; note: string }> = {
   google: { label: "Google マップ", note: "全機種で確実。徒歩・車対応" },
