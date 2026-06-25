@@ -31,7 +31,7 @@
 </style>
 <div class="wrap">
   <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
-  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&残距離・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-24 / v0.2.20 時点）</p>
+  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&残距離・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-24 / v0.2.28 時点）</p>
 
   <div class="top">
     <b>⭐ おすすめ優先（コスパ順）</b>
@@ -44,15 +44,18 @@
     </ol>
   </div>
 
-  <h2>🆕 今日の進捗（2026-06-24 / v0.2.10〜0.2.20）</h2>
+  <h2>🆕 今日の進捗（2026-06-24 / v0.2.10〜0.2.28）</h2>
   <p class="sub">テーマは「周辺POIの信頼性」。実走で「コンビニ/GSが出ない・ちらつく」報告を起点に、原因究明→端末内データ化→ブランドアイコン化まで実施。</p>
   <div class="grid">
     <div class="card done"><h3>コンビニ/GSを端末内データ化＝Overpass非依存 <span class="badge done">✅</span></h3><p>走行中の都度ライブ取得をやめ、<b>関東一円 約24,000地点（コンビニ19,748/GS4,713）をアプリに同梱</b>。走行中は<b>Overpassを一切叩かず即時表示・オフライン可</b>。混雑/遅延/全滅窓の影響を受けない「確実な情報」に。範囲外は従来どおりライブにフォールバック。データ元 OpenStreetMap（ODbL）。<span class="note">月次自動更新（GitHub Actions）＋手動 <code>scripts/fetch-pois.mjs</code>。網羅性チェック <code>scripts/verify-pois.mjs</code>。</span></p></div>
     <div class="card done"><h3>走行中POIの信頼性・表示安定化 <span class="badge done">✅</span></h3><p>（端末内データ化の前段）公共Overpassの応答が時間帯で1〜20秒超に乱高下する問題に対し、<b>3ミラー並列＋7秒タイムアウト＋失敗時自動再試行＋「混雑」表示</b>。さらに<b>表示範囲を少し広げて描画し範囲を抜けるまで再描画しない</b>方式で、走行中の「先のコンビニが出ない／全消去のちらつき」を解消。</p></div>
     <div class="card done"><h3>コンビニをブランドアイコン表示 <span class="badge done">✅</span></h3><p>色＋頭文字から<b>ブランドの円形アイコン</b>に（セブン/ローソン/ファミマ/ミニストップ/デイリー/ポプラ/ナチュラルローソン/ローソンストア100 ほか）。一致しない店は汎用の店舗アイコン。アイコンはPWAキャッシュ＝オフライン可。</p></div>
-    <div class="card done"><h3>GSをブランドロゴ表示 <span class="badge done">✅</span></h3><p>主要GSを<b>白い角丸バッジ＋ロゴ</b>で（ENEOS／出光〔Apolloマーク〕／コスモ／キグナス／SOLATO／三井／Shell〔ペクテン〕／Esso）。コンビニ（円形）と形で区別。未対応GS（JA-SS等）は従来の色＋文字。</p></div>
+    <div class="card done"><h3>GSをブランドロゴ表示 <span class="badge done">✅</span></h3><p>主要GSを<b>白い角丸バッジ＋ロゴ</b>で（ENEOS／出光〔Apolloマーク〕／コスモ／キグナス／SOLATO／三井／Shell〔ペクテン〕／Esso／Mobil〔天馬〕）。コンビニ（円形）と形で区別。未対応GS（JA-SS等）は従来の色＋文字。</p></div>
     <div class="card done"><h3>OSM誤タグのコンビニ救済 <span class="badge done">✅</span></h3><p>OSMで <code>amenity=fuel</code> に誤って登録された「名称はコンビニ」のPOI（例：千葉公園付近の"7-Eleven"がGSの⛽表示）を、<b>名称優先でコンビニアイコン（円形）</b>として表示。収集側でも種別を自動補正。</p></div>
     <div class="card done"><h3>目的地表示の整理 <span class="badge done">✅</span></h3><p>走行中の目的地表示から<b>直線距離・直線の目安時間を削除</b>（道なりルートが出す正確な道路距離/所要に一本化）。目的地名と方向矢印・「まもなく到着」は継続。</p></div>
+    <div class="card done"><h3>周辺POIを目的地に設定 <span class="badge done">✅</span></h3><p>コンビニ/GSのPOIを<b>タップ→「🎯 目的地に設定」「🚗 Googleマップ」</b>（ラーメン店と同様）。目的地にすると道なりルート線・残距離/所要・「✕ 目的地解除」が出る。走行中に「この先のコンビニ/GSに寄る」がワンタップ。</p></div>
+    <div class="card done"><h3>地図ズームを半段化（150mスケール追加） <span class="badge done">✅</span></h3><p>ズーム+/-を半段ステップに変更し、<b>200mと100mの間に150m</b>が入るように（…300m/200m/150m/100m/70m/50m…）。走行中の細かな縮尺調整がしやすく。</p></div>
+    <div class="card"><h3>ガソリン価格表示 <span class="tag warn">見送り</span></h3><p>GSに現在価格を出す案を検討。個店リアルタイム価格は <b>gogo.gs等のクラウドソースのみ＝bot対策＋再配布が規約NG寄り</b>、公的データは県/一部市の週・月次平均のみで個店は不可、と判明。<span class="note">無料・合法での個店価格表示は困難なため<b>見送り</b>（gogo.gsへのリンク誘導も一旦削除）。やるなら公式許諾 or e-Stat APIで「県の週次平均」表示が現実的。</span></p></div>
     <div class="card"><h3>POIデータの網羅性（OSM）— 実測と方針 <span class="tag warn">データ制約</span></h3><p>同梱データはOSM由来で<b>網羅率 約9割</b>（千葉県のセブンで実測 公式約1,150店 vs 同梱1,052店＝約91%）。新規開店や未マップ店は欠落し得る。<span class="note">公式店舗検索データの統合でほぼ100%化は可能だが、非公開API＝壊れやすい／チェーン別に解析が必要／規約グレー、のため<b>当面は保留</b>。抜けが多い場合に再検討（OSMへの追記でも改善）。</span></p></div>
   </div>
 
