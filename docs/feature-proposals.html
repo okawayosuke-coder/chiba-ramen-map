@@ -114,7 +114,7 @@
   <h2>⑤ オフライン・基盤</h2>
   <div class="grid">
     <div class="card"><h3>ルート/エリア事前DL <span class="badge L">L</span> <span class="tag hot">通信大幅減</span></h3><p>WiFiで地図を先に保存→走行中ほぼ通信ゼロ。<span class="note">GSIタイル化が前提（OSM公式は一括DL規約NG）。以前の保留案件。</span></p></div>
-    <div class="card"><h3>POIキャッシュ <span class="badge M">M</span></h3><p>コンビニ/GS等を事前取得・キャッシュし、走行中の取得を削減。</p></div>
+    <div class="card done"><h3>POIキャッシュ <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>コンビニ/GSを<b>事前取得して端末内に同梱</b>（関東一円 約24,000地点）。走行中はOverpass取得ゼロ＝即時表示・オフライン可。「削減」どころか<b>完全同梱</b>に。<span class="note">v0.2.12。月次自動更新＋手動収集。詳細は上の「今日の進捗」参照。</span></p></div>
     <div class="card done"><h3>PWA更新通知 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>新バージョン検知で「更新する」ボタンを表示（<code>UpdatePrompt</code>）。</p></div>
     <div class="card"><h3>ストレージ管理 <span class="badge S">S</span></h3><p>端末のキャッシュ使用量を表示・クリア。</p></div>
   </div>
@@ -136,7 +136,7 @@
     </ol>
   </div>
   <div class="grid">
-    <div class="card"><h3>残り距離/ETAの道なり一本化 <span class="badge S">S</span></h3><p>現在の「直線残距離（残距離表示）＋道なり総距離（🛣）」の二重を、道なりの<b>残り距離・到着予定時刻</b>に統一。</p></div>
+    <div class="card"><h3>残り距離/ETAの道なり一本化 <span class="badge S">S</span> <span class="tag">一部対応</span></h3><p>二重表示は解消済み（v0.2.13で<b>直線残距離を削除</b>、🛣の道なり距離/所要に一本化）。残るは<b>道なりの「残り距離」をリアルタイム更新＋到着予定時刻(◯時◯分着)</b>の表示（現状は経路作成時の総距離/所要のみ）。</p></div>
     <div class="card"><h3>複数経由地ルート（はしご×道なり） <span class="badge M">M</span></h3><p>既存の「はしご」をORSの経由地ルーティングと連結し、ラーメン巡回コースを道なりで描画。</p></div>
     <div class="card"><h3>到着予定時刻の表示 <span class="badge S">S</span></h3><p>道なりETAから「◯時◯分着」を表示。</p></div>
     <div class="card"><h3>ルート沿いの休憩スポット <span class="badge M">M</span></h3><p>経路バッファ内のコンビニ/GS/トイレ/駐車場を抽出し「この先の休憩」候補に。道なりルート＋既存POIの組合せ。</p></div>
