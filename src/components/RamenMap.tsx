@@ -915,9 +915,9 @@ function RouteLayer({ to }: { to: Pt | null }) {
     const REROUTE_DEV_KM = 0.05; // 経路線から約50m外れたら再ルート（逸脱検知）
     const REROUTE_MIN_INTERVAL = 10000; // 連続再ルートの最小間隔(ms, API負荷抑制)
     const line = L.polyline([], {
-      color: "#1a73e8",
-      weight: 6,
-      opacity: 0.7,
+      color: "#0b57d0", // 濃いめの青（薄くて見辛い指摘に対応。ライト/ダーク両対応）
+      weight: 7,
+      opacity: 0.95,
       interactive: false,
     }).addTo(map);
     const box = L.DomUtil.create("div", "route-box");
