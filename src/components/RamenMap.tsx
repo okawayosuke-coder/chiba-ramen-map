@@ -1010,25 +1010,12 @@ function RouteLayer({ to }: { to: Pt | null }) {
           }
         }
       }
-      const g = Math.round(curGrade);
-      const main =
-        Math.abs(curGrade) < GRADE_FLAT
-          ? "勾配 ほぼ平坦"
-          : curGrade > 0
-            ? `⬈ 上り ${g}%`
-            : `⬊ 下り ${Math.abs(g)}%`;
       gradeBox.style.display = "";
-      if (steepDistM >= 0) {
-        gradeBox.className = "grade-box warn";
-        const arrow = steepGrade > 0 ? "↑" : "↓";
-        const sg = Math.abs(Math.round(steepGrade));
-        gradeBox.innerHTML =
-          `<div class="grade-main">${main}</div>` +
-          `<div class="grade-warn">⚠ この先 急勾配 ${arrow}${sg}%（${steepDistM}m先）</div>`;
-      } else {
-        gradeBox.className = "grade-box";
-        gradeBox.innerHTML = `<div class="grade-main">${main}</div>`;
-      }
+      updateGradeMeter(
+        gradeBox,
+        curGrade,
+        steepDistM >= 0 ? { grade: steepGrade, distM: steepDistM } : null
+      );
     };
 
     // 自車の道なり進行距離(distFromStartKm)を基に、前方マークの標高を取得して勾配表示を更新。
@@ -1169,6 +1156,64 @@ function pointAhead(from: Pt, headingDeg: number, distM: number): Pt {
   return { lat: from.lat + dLat, lng: from.lng + dLng };
 }
 
+// ===== 勾配メーター（傾斜計＝車が坂に乗って傾く）。文言表示の代わりに使う共通描画。 =====
+type GradeMeter = { tilt: SVGElement; road: SVGElement; label: SVGElement; warn: HTMLElement };
+const _gradeMeters = new WeakMap<HTMLElement, GradeMeter>();
+
+/** box 内に傾斜計SVGを一度だけ構築して各パーツの参照を返す（以後は属性更新でなめらかにアニメ）。 */
+function ensureGradeMeter(box: HTMLElement): GradeMeter {
+  const cached = _gradeMeters.get(box);
+  if (cached) return cached;
+  box.innerHTML =
+    '<svg class="grade-meter" viewBox="0 0 170 96" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="20" y1="56" x2="150" y2="56" stroke="#3a3f47" stroke-width="2" stroke-dasharray="2 5"/>' +
+    '<g class="gm-tilt">' +
+    '<line class="gm-road" x1="27" y1="56" x2="143" y2="56" stroke="#9aa0a6" stroke-width="6" stroke-linecap="round"/>' +
+    '<g class="gm-car" fill="#e8e6e1">' +
+    '<rect x="70" y="42" width="30" height="11" rx="4"/>' +
+    '<rect x="77" y="35" width="16" height="8" rx="3"/>' +
+    '<circle cx="77" cy="54" r="4" fill="#181b20" stroke="#e8e6e1" stroke-width="1.6"/>' +
+    '<circle cx="93" cy="54" r="4" fill="#181b20" stroke="#e8e6e1" stroke-width="1.6"/>' +
+    "</g></g>" +
+    '<text class="gm-label" x="85" y="90" text-anchor="middle" font-size="20" font-weight="700" fill="#cdd3da">平坦</text>' +
+    "</svg>" +
+    '<div class="grade-warn" style="display:none"></div>';
+  const m: GradeMeter = {
+    tilt: box.querySelector(".gm-tilt") as SVGElement,
+    road: box.querySelector(".gm-road") as SVGElement,
+    label: box.querySelector(".gm-label") as SVGElement,
+    warn: box.querySelector(".grade-warn") as HTMLElement,
+  };
+  _gradeMeters.set(box, m);
+  return m;
+}
+
+/** 勾配メーターを更新。grade=現在勾配(%)、warn=この先の急勾配(任意・ルート時のみ)。 */
+function updateGradeMeter(
+  box: HTMLElement,
+  grade: number,
+  warn: { grade: number; distM: number } | null
+) {
+  const m = ensureGradeMeter(box);
+  const flat = Math.abs(grade) < GRADE_FLAT;
+  const col = flat ? "#9aa0a6" : grade > 0 ? "#EF9F27" : "#378ADD"; // 平坦灰/上り琥珀/下り青
+  const labelCol = flat ? "#cdd3da" : grade > 0 ? "#FAC775" : "#85B7EB";
+  const ang = Math.max(-34, Math.min(34, grade * 2.2)); // 視認性のため傾きを誇張（数値は実値）
+  m.tilt.setAttribute("transform", `rotate(${(-ang).toFixed(1)} 85 56)`);
+  m.road.setAttribute("stroke", col);
+  const g = Math.abs(Math.round(grade));
+  m.label.textContent = flat ? "平坦" : grade > 0 ? `↗ ${g}%` : `↘ ${g}%`;
+  m.label.setAttribute("fill", labelCol);
+  if (warn) {
+    m.warn.style.display = "";
+    m.warn.textContent = `⚠ この先 ${warn.grade > 0 ? "↑" : "↓"}${Math.abs(
+      Math.round(warn.grade)
+    )}%・${warn.distM}m`;
+  } else {
+    m.warn.style.display = "none";
+  }
+}
+
 /** ルート未設定でも「現在の道の勾配」を左下に表示する（追従走行向け）。
  *  進行方位の前方150mのDEM標高差から勾配を先読み算出（現在地→前方）＝予測的・反応が速い。
  *  ※急カーブ/つづら折れでは直線前方が道から外れ過大評価することがある（直線〜緩カーブは正確）。
@@ -1216,16 +1261,8 @@ function FreeGradeLayer({ active }: { active: boolean }) {
         box.style.display = "none";
         return;
       }
-      const g = Math.round(grade);
       box.style.display = "";
-      box.className = "grade-box";
-      const main =
-        Math.abs(grade) < GRADE_FLAT
-          ? "勾配 ほぼ平坦"
-          : grade > 0
-            ? `⬈ 上り ${g}%`
-            : `⬊ 下り ${Math.abs(g)}%`;
-      box.innerHTML = `<div class="grade-main">${main}</div>`;
+      updateGradeMeter(box, grade, null);
     };
 
     const onPos = (p: GeolocationPosition) => {

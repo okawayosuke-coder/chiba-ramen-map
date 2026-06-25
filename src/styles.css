@@ -932,27 +932,39 @@ body {
   box-shadow: 0 2px 9px rgba(0, 0, 0, 0.4);
 }
 /* 勾配計（DEMベース）。左下・速度計の上。ルート案内中に表示 */
+/* 勾配メーター（傾斜計＝車が坂に乗って傾く）。左下・速度計の上。ルート案内中／追従走行中に表示 */
 .grade-box {
   position: absolute;
   left: 10px;
   bottom: 212px; /* 速度計(follow-box, 満寸約168px+下12px)の上に余白を確保 */
   z-index: 640;
   pointer-events: none;
-  background: rgba(20, 22, 26, 0.82);
-  color: #fff;
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.25;
-  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.35);
+  background: rgba(20, 22, 26, 0.85);
+  border-radius: 14px;
+  padding: 5px 7px 3px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
-.grade-box .grade-warn {
-  margin-top: 3px;
-  font-size: 16px;
+.grade-meter {
+  width: 118px;
+  height: auto;
+  display: block;
 }
-.grade-box.warn {
-  background: rgba(200, 42, 42, 0.92);
+/* 傾き・色をフィックス間でなめらかに補間 */
+.gm-tilt {
+  transition: transform 0.45s ease;
+}
+.gm-road {
+  transition: stroke 0.4s linear;
+}
+.gm-label {
+  transition: fill 0.4s linear;
+}
+.grade-warn {
+  margin-top: 1px;
+  text-align: center;
+  color: #ff7a7a;
+  font-size: 13px;
+  font-weight: 700;
 }
 /* 目的地解除ボタン（画面右・現在位置ボタンの少し下）。目的地セット中のみ表示 */
 .clear-dest-btn {
