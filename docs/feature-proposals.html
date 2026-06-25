@@ -136,9 +136,9 @@
     </ol>
   </div>
   <div class="grid">
-    <div class="card"><h3>残り距離/ETAの道なり一本化 <span class="badge S">S</span> <span class="tag">一部対応</span></h3><p>二重表示は解消済み（v0.2.13で<b>直線残距離を削除</b>、🛣の道なり距離/所要に一本化）。残るは<b>道なりの「残り距離」をリアルタイム更新＋到着予定時刻(◯時◯分着)</b>の表示（現状は経路作成時の総距離/所要のみ）。</p></div>
+    <div class="card done"><h3>残り距離/ETAの道なり一本化 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>v0.2.13で<b>直線残距離を削除</b>して二重表示を解消、v0.2.29で<b>道なりの「残り距離」をリアルタイム更新＋到着予定時刻(◯時◯分着)</b>を実装。左上は「🛣 残り◯◯km ・ ◯時◯分着」を毎フレーム更新（残り80m以内で「まもなく到着」）。これで一本化完了。</p></div>
     <div class="card"><h3>複数経由地ルート（はしご×道なり） <span class="badge M">M</span></h3><p>既存の「はしご」をORSの経由地ルーティングと連結し、ラーメン巡回コースを道なりで描画。</p></div>
-    <div class="card"><h3>到着予定時刻の表示 <span class="badge S">S</span></h3><p>道なりETAから「◯時◯分着」を表示。</p></div>
+    <div class="card done"><h3>到着予定時刻の表示 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>v0.2.29で実装。道なりの残り距離から所要を逆算し、左上に「◯時◯分着」(JST)を表示。</p></div>
     <div class="card"><h3>ルート沿いの休憩スポット <span class="badge M">M</span></h3><p>経路バッファ内のコンビニ/GS/トイレ/駐車場を抽出し「この先の休憩」候補に。道なりルート＋既存POIの組合せ。</p></div>
     <div class="card"><h3>音声案内（Web Speech / Kyoko） <span class="badge S">S</span> <span class="tag warn">保留中</span></h3><p>「まもなく到着／残り◯km／再ルート」を読み上げ。無料・サーバ不要・iOS前面のみ。<span class="note">VOICEVOX品質は自前ホストかネイティブ化が前提（Web→ローカルVOICEVOXはCORS/混在コンテンツで不可）。</span></p></div>
     <div class="card done"><h3>エラーバウンダリ（白画面の保険） <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>描画/effect時の例外を捕捉し全画面が白くなるのを防止。地図がクラッシュしてもサイドバー(検索/一覧)は生存し、再読み込み/再試行を表示。</p></div>
