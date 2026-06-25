@@ -1021,6 +1021,17 @@ function PoiLayer({
         map.closePopup();
         cbRef.current.onPoiNav(d);
       });
+      // GS は gogo.gs（ガソリン価格比較）のマップへリンク＝最新の実勢価格を確認できる。
+      // 価格データの自前取得は規約/bot対策の都合で行わず、公式サイトへ誘導する。
+      if (p.kind === "fuel") {
+        const bGas = L.DomUtil.create("button", "poi-popup__btn poi-popup__btn--gas", el);
+        bGas.textContent = "⛽ gogo.gsで価格";
+        L.DomEvent.on(bGas, "click", (e) => {
+          L.DomEvent.stop(e);
+          map.closePopup();
+          window.open("https://gogo.gs/map/", "_blank", "noopener");
+        });
+      }
       return el;
     };
 
