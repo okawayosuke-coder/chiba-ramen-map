@@ -1082,10 +1082,11 @@ function RouteLayer({ to }: { to: Pt | null }) {
       return pr;
     };
 
+    let lastHeading: number | null = null; // 自車の進行方位（リルートを走行方向優先にする）
     const route = (from: Pt) => {
       lastRouteAt = Date.now(); // 取得開始時刻でガード（再入防止＋throttle基準）
       if (!rCoords) box.textContent = "🛣 経路を計算中…";
-      fetchRoute(from, to).then((r) => {
+      fetchRoute(from, to, lastHeading).then((r) => {
         if (aborted) return;
         if (!r) {
           if (!rCoords) box.textContent = "🛣 経路を取得できませんでした";
@@ -1115,6 +1116,8 @@ function RouteLayer({ to }: { to: Pt | null }) {
     const onPos = (p: GeolocationPosition) => {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
       const sp = p.coords.speed;
+      const hd = p.coords.heading;
+      if (hd != null && isFinite(hd) && sp != null && sp > 1) lastHeading = hd; // 移動中のみ進行方位を更新
       updateHighwayState(sp != null && sp >= 0 ? sp * 3.6 : null);
       if (!rCoords) {
         // まだ経路がない: 間隔を空けて初回取得（失敗時はこの間隔で自動リトライ）

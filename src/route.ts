@@ -12,15 +12,37 @@ export interface RouteResult {
 const ORS_KEY = (import.meta.env.VITE_ORS_KEY as string | undefined) || "";
 
 const OSRM = "https://router.project-osrm.org/route/v1/driving";
-const ORS = "https://api.openrouteservice.org/v2/directions/driving-car";
+const ORS = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
+const ORS_GET = "https://api.openrouteservice.org/v2/directions/driving-car";
+
+// 自車の前方この距離(m)に経由地を置き、出発を進行方向へ誘導してリルートのUターン(引き返し)を防ぐ。
+// ※ORSのbearingsはcyclingプロファイル限定でdriving-carでは無視されるため、経由地方式を採る。
+const AHEAD_M = 150;
 
 /** ルーティング提供元の表示名（attribution用）。 */
 export const routeProvider = ORS_KEY ? "OpenRouteService" : "OSRM demo";
 
-async function fetchOSRM(from: Pt, to: Pt): Promise<RouteResult | null> {
-  const url =
-    `${OSRM}/${from.lng},${from.lat};${to.lng},${to.lat}` +
-    `?overview=full&geometries=geojson`;
+type Heading = number | null | undefined;
+const validHeading = (h: Heading): h is number =>
+  typeof h === "number" && isFinite(h);
+
+/** from から進行方位 headingDeg(0=北) 方向へ distM メートル進んだ地点。 */
+function pointAhead(from: Pt, headingDeg: number, distM: number): Pt {
+  const rad = (headingDeg * Math.PI) / 180;
+  const dLat = (distM * Math.cos(rad)) / 111320;
+  const dLng = (distM * Math.sin(rad)) / (111320 * Math.cos((from.lat * Math.PI) / 180));
+  return { lat: from.lat + dLat, lng: from.lng + dLng };
+}
+
+/** 経由地列を作る。heading が有効なら前方150mに経由地を挟み「前進→回り込み」を強制する。 */
+function waypoints(from: Pt, to: Pt, heading: Heading): Pt[] {
+  return validHeading(heading) ? [from, pointAhead(from, heading, AHEAD_M), to] : [from, to];
+}
+
+async function fetchOSRM(pts: Pt[], forward: boolean): Promise<RouteResult | null> {
+  const path = pts.map((p) => `${p.lng},${p.lat}`).join(";");
+  let url = `${OSRM}/${path}?overview=full&geometries=geojson`;
+  if (forward) url += `&continue_straight=true`; // 経由地でのUターンを禁止
   try {
     const r = await fetch(url);
     if (!r.ok) return null;
@@ -38,34 +60,79 @@ async function fetchOSRM(from: Pt, to: Pt): Promise<RouteResult | null> {
   }
 }
 
-async function fetchORS(from: Pt, to: Pt): Promise<RouteResult | null> {
-  // GET + クエリのapi_key（カスタムヘッダ無し＝CORSプリフライト無しでレート消費を節約）
+// ORS GET（カスタムヘッダ無し＝CORSプリフライト無し）。経由地・前方誘導なしの通常取得用。
+async function fetchORSGet(from: Pt, to: Pt): Promise<RouteResult | null> {
   const url =
-    `${ORS}?api_key=${encodeURIComponent(ORS_KEY)}` +
+    `${ORS_GET}?api_key=${encodeURIComponent(ORS_KEY)}` +
     `&start=${from.lng},${from.lat}&end=${to.lng},${to.lat}`;
   try {
     const r = await fetch(url);
     if (!r.ok) return null;
-    const j = await r.json();
-    const f = j?.features?.[0];
-    const co = f?.geometry?.coordinates;
-    if (!Array.isArray(co)) return null;
-    const s = f.properties?.summary ?? {};
-    return {
-      coords: co.map((c: number[]) => [c[1], c[0]] as [number, number]),
-      km: (s.distance ?? 0) / 1000,
-      min: Math.round((s.duration ?? 0) / 60),
-    };
+    return parseORS(await r.json());
   } catch {
     return null;
   }
 }
 
-/** from→to の道なり経路を取得。失敗時 null。ORSキーがあればORS、無ければOSRM。ORS失敗時はOSRMへフォールバック。 */
-export async function fetchRoute(from: Pt, to: Pt): Promise<RouteResult | null> {
-  if (ORS_KEY) {
-    const r = await fetchORS(from, to);
-    return r ?? fetchOSRM(from, to);
+// ORS POST（経由地＋continue_straight で前方誘導）。
+async function fetchORSPost(pts: Pt[], forward: boolean): Promise<RouteResult | null> {
+  try {
+    const r = await fetch(ORS, {
+      method: "POST",
+      headers: { Authorization: ORS_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        coordinates: pts.map((p) => [p.lng, p.lat]),
+        ...(forward ? { continue_straight: true } : {}),
+      }),
+    });
+    if (!r.ok) return null;
+    return parseORS(await r.json());
+  } catch {
+    return null;
   }
-  return fetchOSRM(from, to);
+}
+
+function parseORS(j: unknown): RouteResult | null {
+  const f = (
+    j as {
+      features?: {
+        geometry?: { coordinates?: number[][] };
+        properties?: { summary?: { distance?: number; duration?: number } };
+      }[];
+    }
+  )?.features?.[0];
+  const co = f?.geometry?.coordinates;
+  if (!Array.isArray(co)) return null;
+  const s = f?.properties?.summary ?? {};
+  return {
+    coords: co.map((c: number[]) => [c[1], c[0]] as [number, number]),
+    km: (s.distance ?? 0) / 1000,
+    min: Math.round((s.duration ?? 0) / 60),
+  };
+}
+
+/** from→to の道なり経路を取得。失敗時 null。
+ *  heading（自車の進行方位）を渡すと前方に経由地を挟み、走行方向優先（Uターン抑止）のリルートにする。
+ *  経由地つき取得が失敗した場合は経由地なしで再取得してフォールバック。 */
+export async function fetchRoute(
+  from: Pt,
+  to: Pt,
+  heading?: Heading
+): Promise<RouteResult | null> {
+  const useFwd = validHeading(heading);
+  const pts = waypoints(from, to, heading);
+  if (ORS_KEY) {
+    if (useFwd) {
+      const r = await fetchORSPost(pts, true);
+      if (r) return r;
+    }
+    const g = await fetchORSGet(from, to); // 前方誘導なしの速いGET
+    if (g) return g;
+    return fetchOSRM([from, to], false);
+  }
+  if (useFwd) {
+    const r = await fetchOSRM(pts, true);
+    if (r) return r;
+  }
+  return fetchOSRM([from, to], false);
 }
