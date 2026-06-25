@@ -1175,7 +1175,7 @@ function ensureGradeMeter(box: HTMLElement): GradeMeter {
     '<circle cx="77" cy="54" r="4" fill="#181b20" stroke="#e8e6e1" stroke-width="1.6"/>' +
     '<circle cx="93" cy="54" r="4" fill="#181b20" stroke="#e8e6e1" stroke-width="1.6"/>' +
     "</g></g>" +
-    '<text class="gm-label" x="85" y="90" text-anchor="middle" font-size="20" font-weight="700" fill="#cdd3da">平坦</text>' +
+    '<text class="gm-label" x="85" y="90" text-anchor="middle" font-size="20" font-weight="700" fill="#cdd3da">0%</text>' +
     "</svg>" +
     '<div class="grade-warn" style="display:none"></div>';
   const m: GradeMeter = {
@@ -1202,7 +1202,7 @@ function updateGradeMeter(
   m.tilt.setAttribute("transform", `rotate(${(-ang).toFixed(1)} 85 56)`);
   m.road.setAttribute("stroke", col);
   const g = Math.abs(Math.round(grade));
-  m.label.textContent = flat ? "平坦" : grade > 0 ? `↗ ${g}%` : `↘ ${g}%`;
+  m.label.textContent = flat ? "0%" : grade > 0 ? `↗ ${g}%` : `↘ ${g}%`;
   m.label.setAttribute("fill", labelCol);
   if (warn) {
     m.warn.style.display = "";
