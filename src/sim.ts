@@ -68,8 +68,7 @@ if (enabled) {
   };
   geo.clearWatch = () => {};
 
-  window.setInterval(() => {
-    advance();
+  const fire = () => {
     const p = makePos();
     listeners.forEach((cb) => {
       try {
@@ -78,7 +77,37 @@ if (enabled) {
         /* noop */
       }
     });
+  };
+
+  window.setInterval(() => {
+    advance();
+    fire();
   }, TICK_MS);
+
+  // テスト用の手動操作フック（?sim=drive のときだけ存在）。ヘッドレスでの
+  // タイマースロットリングに左右されず、eval から決定論的に走行を進められる。
+  (window as unknown as Record<string, unknown>).__sim = {
+    tick: (n = 1) => {
+      for (let i = 0; i < n; i++) advance();
+      fire();
+      return [lat, lng, heading];
+    },
+    set: (la: number, ln: number, hd?: number) => {
+      lat = la;
+      lng = ln;
+      if (typeof hd === "number") {
+        heading = hd;
+        target = hd;
+      }
+      fire();
+      return [lat, lng, heading];
+    },
+    turn: (d: number) => {
+      target = norm(target + d);
+      return target;
+    },
+    pos: () => [lat, lng, heading],
+  };
 
   // ←/→ で90°ずつ曲がる、↑/↓ で±10km/h
   const hint = document.createElement("div");

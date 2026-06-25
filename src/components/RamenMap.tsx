@@ -777,21 +777,39 @@ function DestMarker({ dest }: { dest: Pt | null }) {
   return null;
 }
 
-/** 目的地までの道なりルートを描画（現在地→目的地）。出発点は現在地に追従し、約0.6km以上動いたら再ルート。
+/** 目的地までの道なりルートを描画（現在地→目的地）。現在地に追従し、走行済み区間は即トリム。
+ *  経路線から一定距離(約50m)外れたら再ルートする実機ナビ同様の逸脱検知方式。
  *  OSMベースのルーティングAPI（route.ts）で経路ジオメトリ＋距離/所要を取得し、青線＋左上ボックスに表示。 */
-/** 現在地 here を経路 coords に投影し、投影点から終点までの「道路上の残り距離(km)」を返す。
+/** 現在地 here の経路上への投影結果。 */
+interface RouteProjection {
+  /** 投影点から終点までの道なり残り距離(km)。 */
+  remKm: number;
+  /** 投影がのっているセグメント coords[segIdx]→coords[segIdx+1] の始点インデックス。 */
+  segIdx: number;
+  /** 経路上の最近接点（自車の道なり現在位置）。 */
+  proj: Pt;
+  /** 自車から経路線への垂直距離(km)。逸脱検知に使用。 */
+  devKm: number;
+}
+
+/** 現在地 here を経路 coords に投影し、残り距離・最近接セグメント・投影点・逸脱距離を返す。
  *  suffix[i] = 頂点i から終点までの道路距離(km, 事前計算)。経度は cos(緯度) でスケールして平面近似。 */
-function remainingOnRoute(
+function projectOnRoute(
   coords: [number, number][],
   suffix: number[],
   here: Pt
-): number {
-  if (coords.length < 2) return 0;
+): RouteProjection {
+  if (coords.length < 2) {
+    const proj = coords[0] ? { lat: coords[0][0], lng: coords[0][1] } : here;
+    return { remKm: 0, segIdx: 0, proj, devKm: haversineKm(here, proj) };
+  }
   const cosLat = Math.cos((here.lat * Math.PI) / 180) || 1;
   const px = here.lng * cosLat;
   const py = here.lat;
   let best = Infinity;
   let bestRem = 0;
+  let bestIdx = 0;
+  let bestProj: Pt = here;
   for (let i = 0; i < coords.length - 1; i++) {
     const ax = coords[i][1] * cosLat;
     const ay = coords[i][0];
@@ -811,9 +829,16 @@ function remainingOnRoute(
       const proj = { lat: cy, lng: cx / cosLat };
       const segEnd = { lat: coords[i + 1][0], lng: coords[i + 1][1] };
       bestRem = haversineKm(proj, segEnd) + suffix[i + 1];
+      bestIdx = i;
+      bestProj = proj;
     }
   }
-  return bestRem;
+  return {
+    remKm: bestRem,
+    segIdx: bestIdx,
+    proj: bestProj,
+    devKm: haversineKm(here, bestProj),
+  };
 }
 
 function RouteLayer({ to }: { to: Pt | null }) {
@@ -823,7 +848,9 @@ function RouteLayer({ to }: { to: Pt | null }) {
     if (!to) return;
     let aborted = false;
     let watchId: number | null = null;
-    let lastOrigin: Pt | null = null;
+    let lastRouteAt = 0; // 直近に経路を取得した時刻(ms)。0=未取得
+    const REROUTE_DEV_KM = 0.05; // 経路線から約50m外れたら再ルート（逸脱検知）
+    const REROUTE_MIN_INTERVAL = 10000; // 連続再ルートの最小間隔(ms, API負荷抑制)
     const line = L.polyline([], {
       color: "#1a73e8",
       weight: 6,
@@ -848,20 +875,28 @@ function RouteLayer({ to }: { to: Pt | null }) {
         minute: "2-digit",
       }).format(new Date(Date.now() + Math.max(0, minFromNow) * 60000));
 
-    // 現在地→終点の道なり残り距離＋到着予定時刻を表示（道なり総所要を残り割合で按分）
-    const updateBox = (here: Pt) => {
-      if (!rCoords || rKm <= 0) return;
-      const remKm = remainingOnRoute(rCoords, rSuffix, here);
-      if (remKm < 0.08) {
+    // 現在地を経路に投影し、残り距離・ETA表示＋走行済み区間のトリムを実施。投影結果を返す。
+    const refresh = (here: Pt): RouteProjection | null => {
+      if (!rCoords || rKm <= 0) return null;
+      const pr = projectOnRoute(rCoords, rSuffix, here);
+      if (pr.remKm < 0.08) {
         box.textContent = "🛣 まもなく到着";
-        return;
+      } else {
+        const remMin = rMin * (pr.remKm / rKm);
+        const dist =
+          pr.remKm < 10 ? pr.remKm.toFixed(1) : Math.round(pr.remKm).toString();
+        box.textContent = `🛣 残り ${dist}km ・ ${fmtEta(remMin)}着`;
       }
-      const remMin = rMin * (remKm / rKm);
-      const dist = remKm < 10 ? remKm.toFixed(1) : Math.round(remKm).toString();
-      box.textContent = `🛣 残り ${dist}km ・ ${fmtEta(remMin)}着`;
+      // 走行済み区間を消す: 残り経路 = 投影点（自車の道なり現在位置）→ 以降の頂点
+      line.setLatLngs([
+        [pr.proj.lat, pr.proj.lng],
+        ...rCoords.slice(pr.segIdx + 1),
+      ]);
+      return pr;
     };
 
     const route = (from: Pt) => {
+      lastRouteAt = Date.now(); // 取得開始時刻でガード（再入防止＋throttle基準）
       if (!rCoords) box.textContent = "🛣 経路を計算中…";
       fetchRoute(from, to).then((r) => {
         if (aborted) return;
@@ -883,15 +918,23 @@ function RouteLayer({ to }: { to: Pt | null }) {
               { lat: r.coords[i + 1][0], lng: r.coords[i + 1][1] }
             );
         }
-        updateBox(from);
+        refresh(from);
       });
     };
     const onPos = (p: GeolocationPosition) => {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
-      updateBox(here); // 毎フィックスで残り距離・ETAを更新
-      // 初回、または前回ルート起点から約0.6km以上動いたら再ルート（API負荷を抑制）
-      if (!lastOrigin || haversineKm(lastOrigin, here) > 0.6) {
-        lastOrigin = here;
+      if (!rCoords) {
+        // まだ経路がない: 間隔を空けて初回取得（失敗時はこの間隔で自動リトライ）
+        if (Date.now() - lastRouteAt > REROUTE_MIN_INTERVAL) route(here);
+        return;
+      }
+      const pr = refresh(here); // 毎フィックスで残り距離・ETA更新＋走行済み区間を即トリム
+      // 経路線から約50m以上外れ、かつ前回取得から一定間隔が空いていれば再ルート
+      if (
+        pr &&
+        pr.devKm > REROUTE_DEV_KM &&
+        Date.now() - lastRouteAt > REROUTE_MIN_INTERVAL
+      ) {
         route(here);
       }
     };
@@ -899,7 +942,7 @@ function RouteLayer({ to }: { to: Pt | null }) {
       watchId = navigator.geolocation.watchPosition(
         onPos,
         () => {
-          if (!aborted && !lastOrigin)
+          if (!aborted && !rCoords)
             box.textContent = "🛣 現在地を取得できませんでした";
         },
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
