@@ -936,7 +936,7 @@ body {
 .grade-box {
   position: absolute;
   left: 10px;
-  bottom: 212px; /* 速度計(follow-box, 満寸約168px+下12px)の上に余白を確保 */
+  bottom: 170px; /* 速度計(follow-box, 高さ約152px+下12px=上端164px)のすぐ上に近接配置 */
   z-index: 640;
   pointer-events: none;
   background: rgba(20, 22, 26, 0.85);

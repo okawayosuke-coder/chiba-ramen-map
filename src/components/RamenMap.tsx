@@ -1198,7 +1198,7 @@ function updateGradeMeter(
   const flat = Math.abs(grade) < GRADE_FLAT;
   const col = flat ? "#9aa0a6" : grade > 0 ? "#EF9F27" : "#378ADD"; // 平坦灰/上り琥珀/下り青
   const labelCol = flat ? "#cdd3da" : grade > 0 ? "#FAC775" : "#85B7EB";
-  const ang = Math.max(-34, Math.min(34, grade * 2.2)); // 視認性のため傾きを誇張（数値は実値）
+  const ang = flat ? 0 : Math.max(-34, Math.min(34, grade * 2.2)); // 平坦は0°、それ以外は視認性のため誇張（数値は実値）
   m.tilt.setAttribute("transform", `rotate(${(-ang).toFixed(1)} 85 56)`);
   m.road.setAttribute("stroke", col);
   const g = Math.abs(Math.round(grade));
