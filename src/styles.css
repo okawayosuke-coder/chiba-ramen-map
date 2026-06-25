@@ -1153,11 +1153,6 @@ body {
   border-color: #2f9e44;
   color: #fff;
 }
-.poi-popup__btn--gas {
-  background: #e8590c;
-  border-color: #e8590c;
-  color: #fff;
-}
 .poi-hint {
   position: absolute;
   left: 50%;

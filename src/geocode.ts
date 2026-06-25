@@ -29,24 +29,3 @@ export async function reverseAddressNoBanchi(
     return null;
   }
 }
-
-/** 緯度経度から都道府県のJISコード（整数, 例: 千葉=12, 茨城=8）を返す。取得不可時 null。
- *  GSI逆ジオコーダの muniCd 上2桁が都道府県コード（pref<10 は先頭ゼロ付き5桁）。
- *  gogo.gs の都道府県ページ /<code> へのリンクに使う。 */
-export async function prefCodeFromLatLng(
-  lat: number,
-  lng: number
-): Promise<number | null> {
-  try {
-    const r = await fetch(
-      `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lng}`
-    );
-    const j = await r.json();
-    const m = j?.results?.muniCd;
-    if (!m) return null;
-    const code = parseInt(String(m).padStart(5, "0").slice(0, 2), 10);
-    return code >= 1 && code <= 47 ? code : null;
-  } catch {
-    return null;
-  }
-}
