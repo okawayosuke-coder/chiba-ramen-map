@@ -11,7 +11,7 @@ import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
-import { reverseAddressNoBanchi } from "../geocode";
+import { reverseAddressNoBanchi, prefCodeFromLatLng } from "../geocode";
 import { fetchPois, poiBrandStyle, poiIconFile, type BBox, type Poi, type PoiKind } from "../poi";
 import {
   loadLocalPois,
@@ -1021,7 +1021,8 @@ function PoiLayer({
         map.closePopup();
         cbRef.current.onPoiNav(d);
       });
-      // GS は gogo.gs（ガソリン価格比較）のマップへリンク＝最新の実勢価格を確認できる。
+      // GS は gogo.gs（ガソリン価格比較）の「その県の価格ページ」へリンク＝最新の実勢価格を確認。
+      // gogo.gsマップ(Mapbox)は座標での中心指定が効かず別エリアが出るため、県コードで該当県ページを開く。
       // 価格データの自前取得は規約/bot対策の都合で行わず、公式サイトへ誘導する。
       if (p.kind === "fuel") {
         const bGas = L.DomUtil.create("button", "poi-popup__btn poi-popup__btn--gas", el);
@@ -1029,7 +1030,17 @@ function PoiLayer({
         L.DomEvent.on(bGas, "click", (e) => {
           L.DomEvent.stop(e);
           map.closePopup();
-          window.open("https://gogo.gs/map/", "_blank", "noopener");
+          // 非同期取得後の window.open はブロックされるため、先に空タブを開いて後でURLを差し込む
+          const w = window.open("about:blank", "_blank");
+          prefCodeFromLatLng(p.lat, p.lng)
+            .then((code) => {
+              const url = code ? `https://gogo.gs/${code}` : "https://gogo.gs/";
+              if (w) w.location.href = url;
+              else window.open(url, "_blank");
+            })
+            .catch(() => {
+              if (w) w.location.href = "https://gogo.gs/";
+            });
         });
       }
       return el;
