@@ -942,6 +942,33 @@ function RouteLayer({ to }: { to: Pt | null }) {
     let lastGradePos: Pt | null = null; // 前回勾配を更新した地点（移動量スロットル用）
     let gradeReqId = 0; // 標高取得の競合排除
 
+    // 高速道路判定（案1）: 高速は設計上ゆるやか(おおむね≤5%)なので、高速上で出る急勾配は
+    // ほぼDEMノイズ(トンネル=山の地表/高架=谷底)。高速走行中は「この先急勾配」警告を抑制する。
+    // ヒステリシス: 連続8フィックス(約8秒)≥80km/hで高速ON、連続20フィックス(約20秒)<60km/hでOFF。
+    // トンネルでGPSが切れるとフィックスが来ない=状態は凍結され、抜けるまで高速判定が維持される。
+    let onHighway = false;
+    let fastCount = 0; // 連続で80km/h以上のフィックス数
+    let slowCount = 0; // 連続で60km/h未満のフィックス数
+    const HW_ENTER_KMH = 80;
+    const HW_EXIT_KMH = 60;
+    const HW_ENTER_FIXES = 8;
+    const HW_EXIT_FIXES = 20;
+    const updateHighwayState = (speedKmh: number | null) => {
+      if (speedKmh == null || !isFinite(speedKmh)) return; // 速度不明(トンネル等)=現状維持
+      if (speedKmh >= HW_ENTER_KMH) {
+        fastCount++;
+        slowCount = 0;
+        if (fastCount >= HW_ENTER_FIXES) onHighway = true;
+      } else if (speedKmh < HW_EXIT_KMH) {
+        slowCount++;
+        fastCount = 0;
+        if (slowCount >= HW_EXIT_FIXES) onHighway = false;
+      } else {
+        fastCount = 0; // 60〜80km/hの中間帯は現状維持（ヒステリシス）
+        slowCount = 0;
+      }
+    };
+
     // 既知の標高から現在勾配＋この先の急勾配を算出して gradeBox を更新。
     const renderGrade = (cur: number, end: number, distFromStartKm: number) => {
       let curGrade: number | null = null;
@@ -960,21 +987,23 @@ function RouteLayer({ to }: { to: Pt | null }) {
         gradeBox.style.display = "none";
         return;
       }
-      // この先(cur〜end)で最も急なペアを探す
+      // この先(cur〜end)で最も急なペアを探す。高速道路走行中は警告を抑制(DEMノイズ対策・案1)。
       let steepGrade = 0;
       let steepDistM = -1;
-      for (let i = cur; i < end; i++) {
-        const a = eleAtMark[i];
-        const b = eleAtMark[i + 1];
-        if (typeof a === "number" && typeof b === "number") {
-          const g = ((b - a) / (GRADE_SPACING_KM * 1000)) * 100;
-          if (
-            Math.abs(g) >= GRADE_STEEP &&
-            Math.abs(g) <= GRADE_MAX_PLAUSIBLE &&
-            Math.abs(g) > Math.abs(steepGrade)
-          ) {
-            steepGrade = g;
-            steepDistM = Math.max(0, Math.round((i * GRADE_SPACING_KM - distFromStartKm) * 1000));
+      if (!onHighway) {
+        for (let i = cur; i < end; i++) {
+          const a = eleAtMark[i];
+          const b = eleAtMark[i + 1];
+          if (typeof a === "number" && typeof b === "number") {
+            const g = ((b - a) / (GRADE_SPACING_KM * 1000)) * 100;
+            if (
+              Math.abs(g) >= GRADE_STEEP &&
+              Math.abs(g) <= GRADE_MAX_PLAUSIBLE &&
+              Math.abs(g) > Math.abs(steepGrade)
+            ) {
+              steepGrade = g;
+              steepDistM = Math.max(0, Math.round((i * GRADE_SPACING_KM - distFromStartKm) * 1000));
+            }
           }
         }
       }
@@ -1085,6 +1114,8 @@ function RouteLayer({ to }: { to: Pt | null }) {
     };
     const onPos = (p: GeolocationPosition) => {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
+      const sp = p.coords.speed;
+      updateHighwayState(sp != null && sp >= 0 ? sp * 3.6 : null);
       if (!rCoords) {
         // まだ経路がない: 間隔を空けて初回取得（失敗時はこの間隔で自動リトライ）
         if (Date.now() - lastRouteAt > REROUTE_MIN_INTERVAL) route(here);
