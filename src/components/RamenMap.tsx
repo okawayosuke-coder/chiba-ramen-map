@@ -971,6 +971,11 @@ function RouteLayer({ to }: { to: Pt | null }) {
 
     // 既知の標高から現在勾配＋この先の急勾配を算出して gradeBox を更新。
     const renderGrade = (cur: number, end: number, distFromStartKm: number) => {
+      if (onHighway) {
+        // 高速道路走行中は勾配を表示しない（トンネル=山の地表/高架=谷底でDEMが道路と乖離するため）
+        gradeBox.style.display = "none";
+        return;
+      }
       let curGrade: number | null = null;
       for (let i = cur; i < end; i++) {
         const a = eleAtMark[i];
@@ -987,23 +992,21 @@ function RouteLayer({ to }: { to: Pt | null }) {
         gradeBox.style.display = "none";
         return;
       }
-      // この先(cur〜end)で最も急なペアを探す。高速道路走行中は警告を抑制(DEMノイズ対策・案1)。
+      // この先(cur〜end)で最も急なペアを探す
       let steepGrade = 0;
       let steepDistM = -1;
-      if (!onHighway) {
-        for (let i = cur; i < end; i++) {
-          const a = eleAtMark[i];
-          const b = eleAtMark[i + 1];
-          if (typeof a === "number" && typeof b === "number") {
-            const g = ((b - a) / (GRADE_SPACING_KM * 1000)) * 100;
-            if (
-              Math.abs(g) >= GRADE_STEEP &&
-              Math.abs(g) <= GRADE_MAX_PLAUSIBLE &&
-              Math.abs(g) > Math.abs(steepGrade)
-            ) {
-              steepGrade = g;
-              steepDistM = Math.max(0, Math.round((i * GRADE_SPACING_KM - distFromStartKm) * 1000));
-            }
+      for (let i = cur; i < end; i++) {
+        const a = eleAtMark[i];
+        const b = eleAtMark[i + 1];
+        if (typeof a === "number" && typeof b === "number") {
+          const g = ((b - a) / (GRADE_SPACING_KM * 1000)) * 100;
+          if (
+            Math.abs(g) >= GRADE_STEEP &&
+            Math.abs(g) <= GRADE_MAX_PLAUSIBLE &&
+            Math.abs(g) > Math.abs(steepGrade)
+          ) {
+            steepGrade = g;
+            steepDistM = Math.max(0, Math.round((i * GRADE_SPACING_KM - distFromStartKm) * 1000));
           }
         }
       }
@@ -1155,6 +1158,104 @@ function RouteLayer({ to }: { to: Pt | null }) {
       gradeBox.remove();
     };
   }, [toKey, map]);
+  return null;
+}
+
+/** ルート未設定でも「現在の道の勾配」を左下に表示する（追従走行向け）。
+ *  走行してきた軌跡（約120m手前→現在）の標高差から現在勾配を算出＝推測なしの実測ベース。
+ *  高速道路走行中は表示しない（DEMが道路と乖離するため。RouteLayerと同じヒステリシス判定）。
+ *  ルート設定中は RouteLayer が勾配＋この先予告を出すので、こちらは無効（active=false）。 */
+function FreeGradeLayer({ active }: { active: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!active) return;
+    let aborted = false;
+    let watchId: number | null = null;
+    const box = L.DomUtil.create("div", "grade-box");
+    box.style.display = "none";
+    map.getContainer().appendChild(box);
+
+    // 高速道路判定（RouteLayerと同じヒステリシス）。高速は表示しない。
+    let onHighway = false;
+    let fastCount = 0;
+    let slowCount = 0;
+    const updateHighwayState = (kmh: number | null) => {
+      if (kmh == null || !isFinite(kmh)) return;
+      if (kmh >= 80) {
+        fastCount++;
+        slowCount = 0;
+        if (fastCount >= 8) onHighway = true;
+      } else if (kmh < 60) {
+        slowCount++;
+        fastCount = 0;
+        if (slowCount >= 20) onHighway = false;
+      } else {
+        fastCount = 0;
+        slowCount = 0;
+      }
+    };
+
+    // 走行軌跡の標高アンカー（約120m手前）。実際に通った道の標高差で現在勾配を出す。
+    const GRADE_BASE_KM = 0.12;
+    let anchor: { pt: Pt; elev: number } | null = null;
+    let reqId = 0;
+
+    const render = (grade: number | null) => {
+      if (onHighway || grade === null) {
+        box.style.display = "none";
+        return;
+      }
+      const g = Math.round(grade);
+      box.style.display = "";
+      box.className = "grade-box";
+      const main =
+        Math.abs(grade) < GRADE_FLAT
+          ? "勾配 ほぼ平坦"
+          : grade > 0
+            ? `⬈ 上り ${g}%`
+            : `⬊ 下り ${Math.abs(g)}%`;
+      box.innerHTML = `<div class="grade-main">${main}</div>`;
+    };
+
+    const onPos = (p: GeolocationPosition) => {
+      const here = { lat: p.coords.latitude, lng: p.coords.longitude };
+      const sp = p.coords.speed;
+      updateHighwayState(sp != null && sp >= 0 ? sp * 3.6 : null);
+      if (onHighway) {
+        render(null);
+        return;
+      }
+      if (!anchor) {
+        const id = ++reqId;
+        fetchElevationNum(here.lat, here.lng).then((e) => {
+          if (!aborted && id === reqId && e != null) anchor = { pt: here, elev: e };
+        });
+        return;
+      }
+      const d = haversineKm(anchor.pt, here);
+      if (d < GRADE_BASE_KM) return; // 基準距離(約120m)動くまで待つ
+      const id = ++reqId;
+      fetchElevationNum(here.lat, here.lng).then((e) => {
+        if (aborted || id !== reqId || e == null) return;
+        const grade = ((e - anchor!.elev) / (d * 1000)) * 100;
+        if (Math.abs(grade) <= GRADE_MAX_PLAUSIBLE) render(grade);
+        anchor = { pt: here, elev: e }; // アンカーを前進
+      });
+    };
+
+    if ("geolocation" in navigator && window.isSecureContext) {
+      watchId = navigator.geolocation.watchPosition(onPos, () => {}, {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 15000,
+      });
+    }
+    return () => {
+      aborted = true;
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      box.remove();
+    };
+  }, [active, map]);
   return null;
 }
 
@@ -1560,6 +1661,7 @@ function RamenMap({
       <DemoFit />
       <DestMarker dest={dest ? { lat: dest.lat, lng: dest.lng } : null} />
       <RouteLayer to={dest ? { lat: dest.lat, lng: dest.lng } : null} />
+      <FreeGradeLayer active={!dest} />
       <ClearDestControl active={!!dest} onClear={onClearDest} />
       <DebugExpose />
 
