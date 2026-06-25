@@ -876,8 +876,8 @@ function projectOnRoute(
 }
 
 // ===== 勾配計（DEMベース）の設定 =====
-const GRADE_SPACING_KM = 0.15; // 標高サンプル間隔(150m)。勾配の基準距離も兼ねる
-const GRADE_LOOK = 6; // 前方何マーク先まで見るか（150m×6＝約900m先まで予告）
+const GRADE_SPACING_KM = 0.08; // 標高サンプル間隔(80m)。現在勾配の基準距離も兼ねる（短い＝瞬間性◎・カーブ◎、ノイズ±0.5%）
+const GRADE_LOOK = 11; // 前方何マーク先まで見るか（80m×11＝約880m先まで予告）
 const GRADE_STEEP = 8; // この先「急勾配」と警告する閾値(%)
 const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」(%)
 const GRADE_MAX_PLAUSIBLE = 25; // これ超の区間勾配はDEM/経路のノイズとして無視（実道路はまず超えない）
@@ -1215,7 +1215,7 @@ function updateGradeMeter(
 }
 
 /** ルート未設定でも「現在の道の勾配」を左下に表示する（追従走行向け）。
- *  進行方位の前方150mのDEM標高差から勾配を先読み算出（現在地→前方）＝予測的・反応が速い。
+ *  進行方位の前方80mのDEM標高差から勾配を先読み算出（現在地→前方）＝予測的・反応が速い。
  *  ※急カーブ/つづら折れでは直線前方が道から外れ過大評価することがある（直線〜緩カーブは正確）。
  *  高速道路走行中は表示しない（DEMが道路と乖離するため。RouteLayerと同じヒステリシス判定）。
  *  ルート設定中は RouteLayer が経路に沿った先読み＋この先予告を出すので、こちらは無効（active=false）。 */
@@ -1250,7 +1250,7 @@ function FreeGradeLayer({ active }: { active: boolean }) {
     };
 
     // 先読み設定: 進行方位の前方この距離(m)のDEMで勾配を算出。50m移動ごとに更新。
-    const AHEAD_M = 150;
+    const AHEAD_M = 80;
     const MIN_MOVE_KM = 0.05;
     let lastHeading: number | null = null;
     let lastUpdatePos: Pt | null = null;
@@ -1285,7 +1285,7 @@ function FreeGradeLayer({ active }: { active: boolean }) {
         fetchElevationNum(ahead.lat, ahead.lng),
       ]).then(([e0, e1]) => {
         if (aborted || id !== reqId || e0 == null || e1 == null) return;
-        const grade = ((e1 - e0) / AHEAD_M) * 100; // 前方150m先との標高差＝先読み勾配
+        const grade = ((e1 - e0) / AHEAD_M) * 100; // 前方80m先との標高差＝先読み勾配
         render(Math.abs(grade) <= GRADE_MAX_PLAUSIBLE ? grade : null);
       });
     };
