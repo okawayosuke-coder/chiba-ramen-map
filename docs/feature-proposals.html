@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>千葉ラーメンMAP 追加機能の提案</title>
 <style>
   :root{--g:#2f9e44;--o:#e8590c;--r:#c92a2a;--ink:#22251f;--mut:#6b7280;--line:#e6e0d6;--bg:#faf8f4;--card:#fff;--accent:#c92a2a;}
@@ -31,7 +34,7 @@
 </style>
 <div class="wrap">
   <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
-  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&残距離・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-24 / v0.2.28 時点）</p>
+  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&道なり残距離/到着予定時刻(リアルタイム)・走行済みルート自動消去・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-25 / v0.2.31 時点）</p>
 
   <div class="top">
     <b>⭐ おすすめ優先（コスパ順）</b>
@@ -44,7 +47,7 @@
     </ol>
   </div>
 
-  <h2>🆕 今日の進捗（2026-06-24 / v0.2.10〜0.2.28）</h2>
+  <h2>📅 前日の進捗（2026-06-24 / v0.2.10〜0.2.28）</h2>
   <p class="sub">テーマは「周辺POIの信頼性」。実走で「コンビニ/GSが出ない・ちらつく」報告を起点に、原因究明→端末内データ化→ブランドアイコン化まで実施。</p>
   <div class="grid">
     <div class="card done"><h3>コンビニ/GSを端末内データ化＝Overpass非依存 <span class="badge done">✅</span></h3><p>走行中の都度ライブ取得をやめ、<b>関東一円 約24,000地点（コンビニ19,748/GS4,713）をアプリに同梱</b>。走行中は<b>Overpassを一切叩かず即時表示・オフライン可</b>。混雑/遅延/全滅窓の影響を受けない「確実な情報」に。範囲外は従来どおりライブにフォールバック。データ元 OpenStreetMap（ODbL）。<span class="note">月次自動更新（GitHub Actions）＋手動 <code>scripts/fetch-pois.mjs</code>。網羅性チェック <code>scripts/verify-pois.mjs</code>。</span></p></div>
@@ -59,9 +62,17 @@
     <div class="card"><h3>POIデータの網羅性（OSM）— 実測と方針 <span class="tag warn">データ制約</span></h3><p>同梱データはOSM由来で<b>網羅率 約9割</b>（千葉県のセブンで実測 公式約1,150店 vs 同梱1,052店＝約91%）。新規開店や未マップ店は欠落し得る。<span class="note">公式店舗検索データの統合でほぼ100%化は可能だが、非公開API＝壊れやすい／チェーン別に解析が必要／規約グレー、のため<b>当面は保留</b>。抜けが多い場合に再検討（OSMへの追記でも改善）。</span></p></div>
   </div>
 
+  <h2>🆕 今日の進捗（2026-06-25 / v0.2.29〜0.2.31）</h2>
+  <p class="sub">テーマは「道なりナビの仕上げ」。残り距離/ETAのリアルタイム化、走行済みルートの即消去、再ルート判定の逸脱ベース化、走行中の視認性改善まで実施。</p>
+  <div class="grid">
+    <div class="card done"><h3>道なりの残り距離をリアルタイム表示＋到着予定時刻 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>左上を「🛣 残り◯◯km ・ ◯時◯分着」に刷新。現在地を道なり経路に投影し、<b>残りの道路距離をGPS取得のたびに更新</b>。残り距離からETA（到着予定時刻, JST）を逆算して表示し、残り80m以内で「まもなく到着」。経路作成時の総距離/所要のみの表示を置換。<span class="note">v0.2.29。</span></p></div>
+    <div class="card done"><h3>走行済みルートの即消去＋逸脱ベース再ルート <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>青線を<b>「自車の現在位置→以降の経路」へ毎フィックス張り替え</b>、通過した瞬間から後ろが消えるように。再ルート判定も<b>「600m走行」→「経路から約50m逸脱」</b>（+10秒throttle）へ刷新（Mapbox/Ferrostar等の標準=50mに準拠）。曲がり損ね時の復帰が速く、オンルート時はルーティングAPIを叩かない。<span class="note">v0.2.30。ORS無料枠2000/日・40/分／OSRM 1/秒の制約に配慮。</span></p></div>
+    <div class="card done"><h3>残り距離/ETA表示の拡大＋ズームボタン重なり解消 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>「残り◯◯km ・ ◯時◯分着」が<b>＋/−ズームボタンに重なっていた</b>のを、ボタンの下へ配置し直して解消。走行中の視認性向上のため<b>文字を拡大</b>（残り/ETA 13.5→22px、目的地名 14→17px）。<span class="note">v0.2.31。</span></p></div>
+  </div>
+
   <h2>✅ 最近実装した改善（v0.2.0〜0.2.7・提案リスト外を含む）</h2>
   <div class="grid">
-    <div class="card done"><h3>道なりルート表示 <span class="badge done">✅</span></h3><p>店の「🧭 ルート」で、現在地→目的地の<b>道なり経路線（青）＋道路距離/所要</b>を表示。走行中は自車に追従して約0.6kmごと再ルート。ルーティングは OpenRouteService（OSMベース・無料枠）、未設定時はOSRMにフォールバック。</p></div>
+    <div class="card done"><h3>道なりルート表示 <span class="badge done">✅</span></h3><p>店の「🧭 ルート」で、現在地→目的地の<b>道なり経路線（青）＋道路距離/所要</b>を表示。走行中は自車に追従し、残り距離/ETAをリアルタイム更新、走行済み区間は即消去。再ルートは経路から約50m逸脱したときのみ（v0.2.30）。ルーティングは OpenRouteService（OSMベース・無料枠）、未設定時はOSRMにフォールバック。</p></div>
     <div class="card done"><h3>ナビボタンを2つに <span class="badge done">✅</span></h3><p>店カードのナビ操作を <b>🚗 Googleマップ（外部起動）</b> と <b>🧭 ルート（アプリ内の道なり経路）</b> に分離。</p></div>
     <div class="card done"><h3>目的地の解除/変更ボタン <span class="badge done">✅</span></h3><p>目的地セット中、画面右（現在位置ボタンの下）に「✕ 目的地解除」を常時表示。走行中でサイドバーが隠れていても解除/変更が可能。</p></div>
     <div class="card done"><h3>走行中の手動パン＋現在位置ボタン <span class="badge done">✅</span></h3><p>走行モードでも指でマップをスクロール可（追従を一時停止）。右の「📍現在位置」で自車へ復帰し追従再開。</p></div>
