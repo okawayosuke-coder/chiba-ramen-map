@@ -135,6 +135,40 @@ async function fetchElevation(lat: number, lng: number): Promise<string | null> 
   return null;
 }
 
+/** 標高を数値(m)で返す。GSI高精度DEM→open-meteo概算の順。海域/取得不可は null。
+ *  勾配計算で同一地点を何度も問い合わせるためセッション内キャッシュ（座標5桁丸め）を持つ。 */
+const _eleNumCache = new Map<string, number | null>();
+async function fetchElevationNum(lat: number, lng: number): Promise<number | null> {
+  const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  const hit = _eleNumCache.get(key);
+  if (hit !== undefined) return hit;
+  let val: number | null = null;
+  try {
+    const r = await fetch(
+      `https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=${lng}&lat=${lat}&outtype=JSON`
+    );
+    const j = await r.json();
+    if (j && j.elevation !== "-----" && j.elevation != null && !isNaN(Number(j.elevation)))
+      val = Number(j.elevation);
+  } catch {
+    /* GSI失敗時は予備へ */
+  }
+  if (val === null) {
+    try {
+      const r = await fetch(
+        `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`
+      );
+      const j = await r.json();
+      if (j && Array.isArray(j.elevation) && j.elevation[0] != null)
+        val = Number(j.elevation[0]);
+    } catch {
+      /* 取得不可 */
+    }
+  }
+  _eleNumCache.set(key, val);
+  return val;
+}
+
 /** マウス位置の横に標高を表示（DOM直接操作・再描画なし。移動が止まったら取得） */
 function ElevationProbe() {
   const map = useMap();
@@ -841,6 +875,35 @@ function projectOnRoute(
   };
 }
 
+// ===== 勾配計（DEMベース）の設定 =====
+const GRADE_SPACING_KM = 0.15; // 標高サンプル間隔(150m)。勾配の基準距離も兼ねる
+const GRADE_LOOK = 6; // 前方何マーク先まで見るか（150m×6＝約900m先まで予告）
+const GRADE_STEEP = 8; // この先「急勾配」と警告する閾値(%)
+const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」(%)
+const GRADE_MAX_PLAUSIBLE = 25; // これ超の区間勾配はDEM/経路のノイズとして無視（実道路はまず超えない）
+
+/** 経路 coords を距離 spacingKm ごとのマーク点に分割。marks[i] は始点から i*spacingKm の地点。 */
+function buildMarks(coords: [number, number][], spacingKm: number): Pt[] {
+  const marks: Pt[] = [];
+  if (coords.length === 0) return marks;
+  marks.push({ lat: coords[0][0], lng: coords[0][1] });
+  let acc = 0;
+  let next = spacingKm;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const a = { lat: coords[i][0], lng: coords[i][1] };
+    const b = { lat: coords[i + 1][0], lng: coords[i + 1][1] };
+    const seg = haversineKm(a, b);
+    if (seg <= 0) continue;
+    while (acc + seg >= next) {
+      const t = (next - acc) / seg;
+      marks.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+      next += spacingKm;
+    }
+    acc += seg;
+  }
+  return marks;
+}
+
 function RouteLayer({ to }: { to: Pt | null }) {
   const map = useMap();
   const toKey = to ? `${to.lat.toFixed(5)},${to.lng.toFixed(5)}` : "";
@@ -863,11 +926,101 @@ function RouteLayer({ to }: { to: Pt | null }) {
     const attr = `経路: ${routeProvider}`;
     map.attributionControl?.addAttribution(attr);
 
+    // 勾配計（DEMベース）の表示ボックス（左下・速度計の上）。標高取得まで非表示。
+    const gradeBox = L.DomUtil.create("div", "grade-box");
+    gradeBox.style.display = "none";
+    map.getContainer().appendChild(gradeBox);
+
     // 取得済み経路（残り距離・ETAのリアルタイム計算用）
     let rCoords: [number, number][] | null = null;
     let rSuffix: number[] = [];
     let rKm = 0;
     let rMin = 0;
+    // 勾配計の状態: 経路を150m間隔に分割したマークと、その標高キャッシュ
+    let marks: Pt[] = [];
+    let eleAtMark: (number | null | undefined)[] = []; // undefined=未取得, null=海域/取得不可
+    let lastGradePos: Pt | null = null; // 前回勾配を更新した地点（移動量スロットル用）
+    let gradeReqId = 0; // 標高取得の競合排除
+
+    // 既知の標高から現在勾配＋この先の急勾配を算出して gradeBox を更新。
+    const renderGrade = (cur: number, end: number, distFromStartKm: number) => {
+      let curGrade: number | null = null;
+      for (let i = cur; i < end; i++) {
+        const a = eleAtMark[i];
+        const b = eleAtMark[i + 1];
+        if (typeof a === "number" && typeof b === "number") {
+          const gv = ((b - a) / (GRADE_SPACING_KM * 1000)) * 100;
+          if (Math.abs(gv) <= GRADE_MAX_PLAUSIBLE) {
+            curGrade = gv;
+            break;
+          }
+        }
+      }
+      if (curGrade === null) {
+        gradeBox.style.display = "none";
+        return;
+      }
+      // この先(cur〜end)で最も急なペアを探す
+      let steepGrade = 0;
+      let steepDistM = -1;
+      for (let i = cur; i < end; i++) {
+        const a = eleAtMark[i];
+        const b = eleAtMark[i + 1];
+        if (typeof a === "number" && typeof b === "number") {
+          const g = ((b - a) / (GRADE_SPACING_KM * 1000)) * 100;
+          if (
+            Math.abs(g) >= GRADE_STEEP &&
+            Math.abs(g) <= GRADE_MAX_PLAUSIBLE &&
+            Math.abs(g) > Math.abs(steepGrade)
+          ) {
+            steepGrade = g;
+            steepDistM = Math.max(0, Math.round((i * GRADE_SPACING_KM - distFromStartKm) * 1000));
+          }
+        }
+      }
+      const g = Math.round(curGrade);
+      const main =
+        Math.abs(curGrade) < GRADE_FLAT
+          ? "勾配 ほぼ平坦"
+          : curGrade > 0
+            ? `⬈ 上り ${g}%`
+            : `⬊ 下り ${Math.abs(g)}%`;
+      gradeBox.style.display = "";
+      if (steepDistM >= 0) {
+        gradeBox.className = "grade-box warn";
+        const arrow = steepGrade > 0 ? "↑" : "↓";
+        const sg = Math.abs(Math.round(steepGrade));
+        gradeBox.innerHTML =
+          `<div class="grade-main">${main}</div>` +
+          `<div class="grade-warn">⚠ この先 急勾配 ${arrow}${sg}%（${steepDistM}m先）</div>`;
+      } else {
+        gradeBox.className = "grade-box";
+        gradeBox.innerHTML = `<div class="grade-main">${main}</div>`;
+      }
+    };
+
+    // 自車の道なり進行距離(distFromStartKm)を基に、前方マークの標高を取得して勾配表示を更新。
+    const updateGrade = (distFromStartKm: number) => {
+      if (marks.length < 2) return;
+      const cur = Math.min(
+        Math.max(Math.round(distFromStartKm / GRADE_SPACING_KM), 0),
+        marks.length - 1
+      );
+      const end = Math.min(cur + GRADE_LOOK, marks.length - 1);
+      const need: number[] = [];
+      for (let i = cur; i <= end; i++) if (eleAtMark[i] === undefined) need.push(i);
+      renderGrade(cur, end, distFromStartKm); // 既知分で即描画（チラつき防止）
+      if (!need.length) return;
+      const reqId = ++gradeReqId;
+      Promise.allSettled(
+        need.map(async (i) => {
+          eleAtMark[i] = await fetchElevationNum(marks[i].lat, marks[i].lng);
+        })
+      ).then(() => {
+        if (aborted || reqId !== gradeReqId) return;
+        renderGrade(cur, end, distFromStartKm);
+      });
+    };
     const fmtEta = (minFromNow: number): string =>
       new Intl.DateTimeFormat("ja-JP", {
         timeZone: "Asia/Tokyo",
@@ -892,6 +1045,11 @@ function RouteLayer({ to }: { to: Pt | null }) {
         [pr.proj.lat, pr.proj.lng],
         ...rCoords.slice(pr.segIdx + 1),
       ]);
+      // 勾配計の更新（50m以上移動した時だけ＝過剰な標高取得を抑制）
+      if (!lastGradePos || haversineKm(here, lastGradePos) > 0.05) {
+        lastGradePos = here;
+        updateGrade(rKm - pr.remKm);
+      }
       return pr;
     };
 
@@ -918,6 +1076,10 @@ function RouteLayer({ to }: { to: Pt | null }) {
               { lat: r.coords[i + 1][0], lng: r.coords[i + 1][1] }
             );
         }
+        // 勾配計: 経路を150m間隔のマークに分割し標高キャッシュをリセット
+        marks = buildMarks(r.coords, GRADE_SPACING_KM);
+        eleAtMark = new Array(marks.length);
+        lastGradePos = null;
         refresh(from);
       });
     };
@@ -956,6 +1118,7 @@ function RouteLayer({ to }: { to: Pt | null }) {
       map.attributionControl?.removeAttribution(attr);
       line.remove();
       box.remove();
+      gradeBox.remove();
     };
   }, [toKey, map]);
   return null;
