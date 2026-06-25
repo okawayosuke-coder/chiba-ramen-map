@@ -1161,10 +1161,19 @@ function RouteLayer({ to }: { to: Pt | null }) {
   return null;
 }
 
+/** from から進行方位 headingDeg(0=北) 方向へ distM メートル進んだ地点。 */
+function pointAhead(from: Pt, headingDeg: number, distM: number): Pt {
+  const rad = (headingDeg * Math.PI) / 180;
+  const dLat = (distM * Math.cos(rad)) / 111320;
+  const dLng = (distM * Math.sin(rad)) / (111320 * Math.cos((from.lat * Math.PI) / 180));
+  return { lat: from.lat + dLat, lng: from.lng + dLng };
+}
+
 /** ルート未設定でも「現在の道の勾配」を左下に表示する（追従走行向け）。
- *  走行してきた軌跡（約120m手前→現在）の標高差から現在勾配を算出＝推測なしの実測ベース。
+ *  進行方位の前方150mのDEM標高差から勾配を先読み算出（現在地→前方）＝予測的・反応が速い。
+ *  ※急カーブ/つづら折れでは直線前方が道から外れ過大評価することがある（直線〜緩カーブは正確）。
  *  高速道路走行中は表示しない（DEMが道路と乖離するため。RouteLayerと同じヒステリシス判定）。
- *  ルート設定中は RouteLayer が勾配＋この先予告を出すので、こちらは無効（active=false）。 */
+ *  ルート設定中は RouteLayer が経路に沿った先読み＋この先予告を出すので、こちらは無効（active=false）。 */
 function FreeGradeLayer({ active }: { active: boolean }) {
   const map = useMap();
   useEffect(() => {
@@ -1195,9 +1204,11 @@ function FreeGradeLayer({ active }: { active: boolean }) {
       }
     };
 
-    // 走行軌跡の標高アンカー（約120m手前）。実際に通った道の標高差で現在勾配を出す。
-    const GRADE_BASE_KM = 0.12;
-    let anchor: { pt: Pt; elev: number } | null = null;
+    // 先読み設定: 進行方位の前方この距離(m)のDEMで勾配を算出。50m移動ごとに更新。
+    const AHEAD_M = 150;
+    const MIN_MOVE_KM = 0.05;
+    let lastHeading: number | null = null;
+    let lastUpdatePos: Pt | null = null;
     let reqId = 0;
 
     const render = (grade: number | null) => {
@@ -1220,26 +1231,25 @@ function FreeGradeLayer({ active }: { active: boolean }) {
     const onPos = (p: GeolocationPosition) => {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
       const sp = p.coords.speed;
+      const hd = p.coords.heading;
+      if (hd != null && isFinite(hd) && sp != null && sp > 1) lastHeading = hd; // 移動中のみ進行方位を更新
       updateHighwayState(sp != null && sp >= 0 ? sp * 3.6 : null);
       if (onHighway) {
         render(null);
         return;
       }
-      if (!anchor) {
-        const id = ++reqId;
-        fetchElevationNum(here.lat, here.lng).then((e) => {
-          if (!aborted && id === reqId && e != null) anchor = { pt: here, elev: e };
-        });
-        return;
-      }
-      const d = haversineKm(anchor.pt, here);
-      if (d < GRADE_BASE_KM) return; // 基準距離(約120m)動くまで待つ
+      if (lastHeading == null) return; // 方位不明(停止中)は更新せず前回表示を維持
+      if (lastUpdatePos && haversineKm(here, lastUpdatePos) < MIN_MOVE_KM) return; // 50mスロットル
+      lastUpdatePos = here;
+      const ahead = pointAhead(here, lastHeading, AHEAD_M);
       const id = ++reqId;
-      fetchElevationNum(here.lat, here.lng).then((e) => {
-        if (aborted || id !== reqId || e == null) return;
-        const grade = ((e - anchor!.elev) / (d * 1000)) * 100;
-        if (Math.abs(grade) <= GRADE_MAX_PLAUSIBLE) render(grade);
-        anchor = { pt: here, elev: e }; // アンカーを前進
+      Promise.all([
+        fetchElevationNum(here.lat, here.lng),
+        fetchElevationNum(ahead.lat, ahead.lng),
+      ]).then(([e0, e1]) => {
+        if (aborted || id !== reqId || e0 == null || e1 == null) return;
+        const grade = ((e1 - e0) / AHEAD_M) * 100; // 前方150m先との標高差＝先読み勾配
+        render(Math.abs(grade) <= GRADE_MAX_PLAUSIBLE ? grade : null);
       });
     };
 
