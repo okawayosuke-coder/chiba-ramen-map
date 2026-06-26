@@ -1178,11 +1178,16 @@ function ensureGradeMeter(box: HTMLElement): GradeMeter {
     '<line x1="20" y1="56" x2="150" y2="56" stroke="#3a3f47" stroke-width="2" stroke-dasharray="2 5"/>' +
     '<g class="gm-tilt">' +
     '<line class="gm-road" x1="27" y1="56" x2="143" y2="56" stroke="#9aa0a6" stroke-width="6" stroke-linecap="round"/>' +
-    '<g class="gm-car" fill="#e8e6e1">' +
-    '<rect x="70" y="42" width="30" height="11" rx="4"/>' +
-    '<rect x="77" y="35" width="16" height="8" rx="3"/>' +
-    '<circle cx="77" cy="54" r="4" fill="#181b20" stroke="#e8e6e1" stroke-width="1.6"/>' +
-    '<circle cx="93" cy="54" r="4" fill="#181b20" stroke="#e8e6e1" stroke-width="1.6"/>' +
+    // 軽バンの側面シルエット(右向き=前)。背の高い箱型・短い前面で軽バンらしさを出し、
+    // 前=黄ヘッドライト/後=赤テールランプで前後を明示。小サイズでも判別しやすい。
+    '<g class="gm-car">' +
+    '<path d="M56 53 L56 31 Q56 29 58 29 L105 29 Q109 29 111 33 L114 46 L114 53 Z" fill="#86a980"/>' +
+    '<path d="M63 33 L85 33 L85 43 L63 43 Z" fill="#222a25"/>' +
+    '<path d="M88 33 L104 33 Q106 33 107 36 L107 43 L88 43 Z" fill="#222a25"/>' +
+    '<rect x="56.4" y="33" width="2.6" height="8" rx="0.8" fill="#ff5a5a"/>' +
+    '<circle cx="112" cy="47" r="2.3" fill="#ffe07a"/>' +
+    '<circle cx="67" cy="54" r="5.2" fill="#181b20" stroke="#e8e6e1" stroke-width="1.8"/>' +
+    '<circle cx="103" cy="54" r="5.2" fill="#181b20" stroke="#e8e6e1" stroke-width="1.8"/>' +
     "</g></g>" +
     '<text class="gm-label" x="85" y="90" text-anchor="middle" font-size="20" font-weight="700" fill="#cdd3da">0%</text>' +
     "</svg>" +
