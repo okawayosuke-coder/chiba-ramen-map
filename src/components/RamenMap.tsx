@@ -501,32 +501,21 @@ function FollowController({
       const large = ang(kmh) - ang(0) > 180 ? 1 : 0;
       return `M ${p0} A ${R_ARC} ${R_ARC} 0 ${large} 1 ${p1}`;
     };
-    let ticks = "";
-    for (let v = 0; v <= 120; v += 20) {
-      const a = ((ang(v) - 90) * Math.PI) / 180;
-      const x1 = (CX + 33 * Math.cos(a)).toFixed(1);
-      const y1 = (CY + 33 * Math.sin(a)).toFixed(1);
-      const x2 = (CX + 40 * Math.cos(a)).toFixed(1);
-      const y2 = (CY + 40 * Math.sin(a)).toFixed(1);
-      ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#8a929c" stroke-width="1.3"/>`;
-      if (v % 40 === 0) {
-        const lx = (CX + 25 * Math.cos(a)).toFixed(1);
-        const ly = (CY + 25 * Math.sin(a) + 3).toFixed(1);
-        ticks += `<text x="${lx}" y="${ly}" font-size="11.5" font-weight="700" fill="#cdd3da" text-anchor="middle">${v}</text>`;
-      }
-    }
+    // モダンなリング型ゲージ: 背景トラック＋速度色の進捗アーク＋先端ビーズ＋中央のクリーンな数値（針・目盛りは廃止してすっきり）
+    const trackD = arcPath(MAXKMH);
+    const startA = ((ang(0) - 90) * Math.PI) / 180;
+    const tipX0 = (CX + R_ARC * Math.cos(startA)).toFixed(2);
+    const tipY0 = (CY + R_ARC * Math.sin(startA)).toFixed(2);
     box.innerHTML =
       `<svg class="speedo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">` +
-      `<circle cx="${CX}" cy="${CY}" r="40" fill="rgba(255,255,255,0.04)" stroke="#3a424c" stroke-width="2"/>` +
-      `<path class="speedo-arc" d="" fill="none" stroke="#868e96" stroke-width="3.6" stroke-linecap="round"/>` +
-      ticks +
-      `<g class="speedo-needle" transform="rotate(${ang(0)} ${CX} ${CY})"><line x1="${CX}" y1="${CY}" x2="${CX}" y2="16" stroke="#ff6b35" stroke-width="2.6" stroke-linecap="round"/></g>` +
-      `<circle cx="${CX}" cy="${CY}" r="3.6" fill="#ff6b35"/>` +
-      `<text class="speedo-num" x="${CX}" y="80" font-size="30" font-weight="800" fill="#fff" text-anchor="middle">0</text>` +
-      `<text x="${CX}" y="92" font-size="8" fill="#aeb6c0" text-anchor="middle">km/h</text>` +
+      `<path d="${trackD}" fill="none" stroke="#262b34" stroke-width="6" stroke-linecap="round"/>` +
+      `<path class="speedo-arc" d="" fill="none" stroke="#868e96" stroke-width="6" stroke-linecap="round"/>` +
+      `<circle class="speedo-tip" cx="${tipX0}" cy="${tipY0}" r="3.4" fill="#868e96" stroke="#11141a" stroke-width="1.4"/>` +
+      `<text class="speedo-num" x="${CX}" y="59" font-size="33" font-weight="800" fill="#eef1f5" text-anchor="middle">0</text>` +
+      `<text x="${CX}" y="72" font-size="8.5" font-weight="600" fill="#9aa3ae" text-anchor="middle" letter-spacing="1">km/h</text>` +
       `</svg><div class="speedo-status">測位中…</div>`;
     map.getContainer().appendChild(box);
-    const needleEl = box.querySelector(".speedo-needle");
+    const tipEl = box.querySelector(".speedo-tip");
     const numEl = box.querySelector(".speedo-num");
     const arcEl = box.querySelector(".speedo-arc");
     const statusEl = box.querySelector(".speedo-status");
@@ -535,17 +524,21 @@ function FollowController({
     const speedoAnim = window.setInterval(() => {
       dispKmh += (targetKmh - dispKmh) * 0.18;
       if (Math.abs(targetKmh - dispKmh) < 0.15) dispKmh = targetKmh;
-      needleEl?.setAttribute("transform", `rotate(${ang(dispKmh)} ${CX} ${CY})`);
-      // 速度に応じた視覚変化: 進捗アークの伸び＋色、数値の色
       const col = speedColor(dispKmh);
+      // 進捗アークの伸び＋速度色
       if (arcEl) {
         arcEl.setAttribute("d", dispKmh < 0.5 ? "" : arcPath(dispKmh));
         arcEl.setAttribute("stroke", col);
       }
-      if (numEl) {
-        numEl.textContent = String(Math.round(dispKmh));
-        numEl.setAttribute("fill", dispKmh < 1 ? "#fff" : col);
+      // 先端ビーズを現在速度の位置へ移動＋速度色
+      if (tipEl) {
+        const a = ((ang(dispKmh) - 90) * Math.PI) / 180;
+        tipEl.setAttribute("cx", (CX + R_ARC * Math.cos(a)).toFixed(2));
+        tipEl.setAttribute("cy", (CY + R_ARC * Math.sin(a)).toFixed(2));
+        tipEl.setAttribute("fill", col);
       }
+      // 中央の数値（白基調でクリーンに）
+      if (numEl) numEl.textContent = String(Math.round(dispKmh));
     }, 50);
     const updateSpeedo = (
       kmh: number | null,

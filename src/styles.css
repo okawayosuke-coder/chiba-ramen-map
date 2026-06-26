@@ -845,23 +845,22 @@ body {
   bottom: 12px;
   z-index: 600;
   pointer-events: none;
-  background: rgba(18, 20, 24, 0.85);
-  border-radius: 14px;
+  background: rgba(16, 18, 23, 0.9);
+  border-radius: 16px;
   padding: 5px 5px 3px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 .speedo-svg {
   width: 130px;
   height: 130px;
   display: block;
 }
-.speedo-needle {
-  transition: transform 0.05s linear;
-}
-/* 速度に応じた色変化をなめらかに */
+/* 速度色の変化と先端ビーズの移動をなめらかに */
 .speedo-arc,
-.speedo-num {
-  transition: stroke 0.25s linear, fill 0.25s linear;
+.speedo-tip {
+  transition: stroke 0.25s linear, fill 0.25s linear, cx 0.06s linear,
+    cy 0.06s linear;
 }
 .speedo-status {
   text-align: center;
@@ -939,10 +938,11 @@ body {
   bottom: 170px; /* 速度計(follow-box, 高さ約152px+下12px=上端164px)のすぐ上に近接配置 */
   z-index: 640;
   pointer-events: none;
-  background: rgba(20, 22, 26, 0.85);
-  border-radius: 14px;
+  background: rgba(16, 18, 23, 0.9);
+  border-radius: 16px;
   padding: 5px 5px 3px; /* 速度計(.follow-box)と同じ余白＝背景幅を揃える */
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 .grade-meter {
   width: 130px; /* 速度計(.speedo-svg 130px)と同幅。padding込みで .follow-box と同じ140px */
