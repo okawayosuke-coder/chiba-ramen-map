@@ -34,7 +34,7 @@
 </style>
 <div class="wrap">
   <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
-  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&道なり残距離/到着予定時刻(リアルタイム)・走行済みルート自動消去・勾配メーター(軽バン)/この先急勾配予告・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ハイウェイモード〔前方SA/PA/IC/JCTストリップ・SA/PA設備アイコン/ブランド画像〕・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-26 / v0.3.2 時点）</p>
+  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&道なり残距離/到着予定時刻(リアルタイム)・走行済みルート自動消去・勾配メーター(軽バン)/この先急勾配予告・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ハイウェイモード〔前方SA/PA/IC/JCTストリップ・SA/PA設備アイコン/ブランド画像〕・地図表示(位置/縮尺)の記憶・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-26 / v0.3.10 時点）</p>
 
   <div class="top">
     <b>⭐ おすすめ優先（コスパ順）</b>
@@ -73,8 +73,8 @@
     <div class="card done"><h3>走行中表示の見やすさ調整 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>実走フィードバックを反映し、<b>ルート線を濃い青＋太く</b>（薄くて見辛いを解消）、<b>「残り◯km・◯時◯分着」を20pxに＋背景をコンパクト化</b>、<b>目的地名を18pxにして残り距離のすぐ下へ近接</b>。走行中にパッと読めるレイアウトに整理。<span class="note">v0.2.37〜0.2.40。</span></p></div>
   </div>
 
-  <h2>🆕 今日の進捗（2026-06-26 / v0.2.41〜v0.3.2）</h2>
-  <p class="sub">テーマは「勾配表示のメーター化」と「<b>ハイウェイモード（v0.3）の新設</b>」。勾配を傾斜計メーター（軽バン）に刷新し基準距離を80mへ最適化。さらに前方の高速道路施設ストリップ＋SA/PA設備アイコン（ブランド画像）を新設して<b>v0.3系を開始</b>、走行UIの仕上げ（ボタン拡大・標高誤表示の不感エリア）まで。</p>
+  <h2>🆕 今日の進捗（2026-06-26 / v0.2.41〜v0.3.10）</h2>
+  <p class="sub">テーマは「勾配表示のメーター化」と「<b>ハイウェイモード（v0.3）の新設</b>」、そして<b>走行UIの読みやすさ調整</b>。勾配を傾斜計メーター（軽バン）に刷新し基準距離を80mへ最適化。前方の高速道路施設ストリップ＋SA/PA設備アイコン（ブランド画像）を新設して<b>v0.3系を開始</b>。さらに施設ストリップ/傾斜計の拡大・幅統一、地図表示(位置+縮尺)の記憶、HW切替ボタンの短縮、地図の文字拡大（テスト）、sim検証ツールの拡充まで。</p>
   <div class="grid">
     <div class="card done"><h3>勾配を傾斜計メーター化（車が坂に乗って傾く） <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>文言（⬈上り◯%）を、<b>車が実際の坂に乗って傾くメーター</b>に刷新（4案のモックアップから選択）。<b>上り=琥珀／下り=青／平坦=水平で「0%」</b>、傾きはフィックス間をなめらかにアニメ。左下・<b>速度計のすぐ上</b>に配置。<span class="note">v0.2.41〜0.2.46。車は<b>軽バンの側面シルエット</b>（前=黄ヘッドライト／後=赤テールランプで前後を明示）。傾きは視認性のため誇張（±34°上限）、数値は実値。</span></p></div>
     <div class="card done"><h3>勾配の基準距離を80mにチューニング <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>勾配を測る前方距離を<b>150m→80m</b>に短縮。<b>現在地により近い瞬間値</b>になり、ルート無し走行時の<b>カーブでの過大評価も軽減</b>。80/100/150mを実データで比較して決定。ノイズは±0.3→0.5%だが地理院5mレーザDEMでは実害なし。<span class="note">v0.2.44。この先急勾配の予告窓は約880m維持。</span></p></div>
@@ -82,6 +82,12 @@
     <div class="card done"><h3>🛣 ハイウェイモード新設（v0.3系開始） <span class="badge L">L</span> <span class="badge done">✅</span></h3><p>高速走行/高速ルート時、前方のSA/PA/IC/JCTを<b>近い順（下＝最寄り）で積み上げ表示</b>。<b>SA/PAは中の設備をアイコン表示</b>（コンビニ/GSはブランド画像・他は絵文字）。新機能のため<b>patchではなくminorバンプ＝v0.3.0</b>。<span class="note">詳細は下部「🛣 ハイウェイモード」参照。</span></p></div>
     <div class="card done"><h3>走行中ボタンの文字拡大 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>地図右の<b>「目的地解除」「高速道路切り替え」ボタンの文字を拡大</b>（目的地解除13.5→16.5px／高速切替ラベル11.5→15px・値13→16px）。走行中の視認性向上。<span class="note">v0.3.1。</span></p></div>
     <div class="card done"><h3>ボタン周囲の不感エリア（標高の誤表示防止） <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>地図上ボタンの操作時、タップが地図に貫通して<b>その地点の標高が誤表示される</b>問題を修正。地図上UI（目的地解除/高速切替/現在位置/速度計/勾配計/施設ストリップ等）の<b>上＋周囲16pxは標高プローブを発火させない</b>不感エリアに。開けた地図のタップは従来どおり標高表示。<span class="note">v0.3.2。</span></p></div>
+    <div class="card done"><h3>施設ストリップを拡大＋文字を大きく <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>高速施設ストリップが小さく読みづらい指摘に対応。<b>幅を「高速道路切り替え」ボタンと同じ248pxに拡大</b>し、<b>施設名14→18px・距離13→17px・バッジも拡大</b>。最寄り施設は引き続き最下段。<span class="note">v0.3.5。</span></p></div>
+    <div class="card done"><h3>傾斜計の背景を速度計と同幅＋数値拡大 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>傾斜メーターの背景幅を<b>下の速度計と同じ140pxに統一</b>し、<b>傾斜数値のフォントを拡大</b>。縦サイズ（タップしやすさ）は維持。<span class="note">v0.3.6。</span></p></div>
+    <div class="card done"><h3>前回の地図表示(位置+縮尺)を記憶 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>「前回の縮尺を覚えてほしい」要望に対応。<b>地図の移動/ズームを記憶し、起動時に前回の中心+縮尺で復元</b>（<code>crm_mapview</code>）。走行開始/現在地センタリングの初回ズームも記憶値を使用。<span class="note">v0.3.7→0.3.8。当初はズームのみ復元だったが「開いただけでは戻らない」ため中心+縮尺の復元に拡張。</span></p></div>
+    <div class="card done"><h3>「高速道路切り替え」を「HW切替」に短縮 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>文言が長く目障りな指摘に対応。<b>「🛣 HW切替」に短縮し、ボタン幅を248→約176pxにコンパクト化</b>。フォントサイズと縦の大きさ（タップしやすさ）は維持。<span class="note">v0.3.9。</span></p></div>
+    <div class="card done"><h3>地図の文字を大きく（テスト・2倍拡大） <span class="badge S">S</span> <span class="tag warn">テスト中</span></h3><p>「地名が小さい」件のテスト対応。地図の種類は変えず<b>OSMタイルを2倍拡大表示(tileSize512/zoomOffset-1)</b>して地名を読みやすく。<b>設定→「地図の文字（テスト）」でON/OFF</b>（既定ON）、OFFで通常の精細地図に即復帰。<span class="note">v0.3.10。引き換えに細かいラベルが減り<b>やや滲む</b>ため、明日のテスト走行で見極め（既定の扱い/撤去を判断）。くっきり大きくはベクタータイル/GSIが必要だが地図種別は変えない方針で見送り。</span></p></div>
+    <div class="card done"><h3>走行検証ツールの拡充（sim専用） <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>実機なしで走行を確認するため、<b>経路に沿って自走する経路追従ドライブ</b>（simは本来直進で道路カーブを無視するのを解消）＋<b>URLだけで指定区間を自動走行(autodrive)</b>＋任意目的地/速度設定を追加。いずれも <code>?sim=drive</code> 時のみで本番は不変。<span class="note">v0.3.3〜0.3.4。</span></p></div>
   </div>
 
   <h2>✅ 最近実装した改善（v0.2.0〜0.2.7・提案リスト外を含む）</h2>
@@ -99,7 +105,7 @@
     <div class="card done"><h3>データ最終更新日の表示 <span class="badge done">✅</span></h3><p>いつ時点のデータかを画面に明示（収集時に自動で日付を記録）。</p></div>
     <div class="card done"><h3>バージョン表示 <span class="badge done">✅</span></h3><p>設定パネルに「バージョン ・ ビルド日時(JST)」。PWA更新の確認に。</p></div>
     <div class="card done"><h3>データ更新パイプライン整備 <span class="badge done">✅</span></h3><p>手順書 <code>UPDATING.md</code> ＋ 差分レポート <code>diff.py</code>（新規/閉店疑い/評価変動/改名）。再収集→レビュー→公開の運用が可能に。</p></div>
-    <div class="card done"><h3>走行シミュレーション（開発・テスト用） <span class="badge done">✅</span></h3><p><code>?sim=drive</code> で擬似GPS走行。←/→で90°ターン、↑/↓で加減速。実機なしで追従・表示を確認。</p></div>
+    <div class="card done"><h3>走行シミュレーション（開発・テスト用） <span class="badge done">✅</span></h3><p><code>?sim=drive</code> で擬似GPS走行。←/→で90°ターン、↑/↓で加減速。実機なしで追従・表示を確認。<b>経路追従ドライブ（道なりに自走）・URLだけで自動走行(autodrive)・任意目的地/速度設定</b>を追加（v0.3.3〜0.3.4・sim時のみ・本番不変）。</p></div>
   </div>
 
   <h2>① ドライブ・ナビ強化</h2>
@@ -131,10 +137,11 @@
 
   <h2>④ 地図・表示</h2>
   <div class="grid">
-    <div class="card"><h3>地図ラベル拡大オプション <span class="badge S">S</span> <span class="tag">比較済み</span></h3><p>GSI標準/淡色への切替で地名を大きく（以前お見せした比較）。設定でON/OFF。</p></div>
+    <div class="card done"><h3>地図の文字拡大（OSM 2倍） <span class="badge S">S</span> <span class="tag warn">テスト中</span></h3><p>v0.3.10で<b>「文字を大きく」トグルを設定に追加</b>（OSMタイルを2倍拡大・既定ON・OFFで通常へ即復帰）。地名は読みやすいが細かいラベルが減り滲むため<b>テスト中</b>。<b>地図の種類は変えない方針</b>（GSI/ベクター切替＝見た目変更は見送り）。<span class="note">明日のテスト走行で既定の扱い/撤去を見極め。</span></p></div>
+    <div class="card done"><h3>前回の地図表示を記憶 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>地図の位置・縮尺を記憶し、起動時に前回の表示で復元（v0.3.8, <code>crm_mapview</code>）。</p></div>
     <div class="card"><h3>クラスタ強調 <span class="badge S">S</span></h3><p>高評価が密集するエリアのクラスタを色/サイズで目立たせる。</p></div>
     <div class="card"><h3>凡例の任意表示 <span class="badge S">S</span></h3><p>外したピン凡例を“設定でON”に。スケールと両立。</p></div>
-    <div class="card"><h3>UI/フォントサイズ設定 <span class="badge S">S</span></h3><p>運転中の視認性に合わせて全体の文字サイズを調整。</p></div>
+    <div class="card"><h3>UI/フォントサイズ設定 <span class="badge S">S</span> <span class="tag">一部実装</span></h3><p>運転中の視認性に合わせて全体の文字サイズを調整。<span class="note">残り距離/ETA・目的地名・施設ストリップ・傾斜数値・ナビボタン等の主要文字は順次拡大済み。全体一括の設定は今後。</span></p></div>
   </div>
 
   <h2>⑤ オフライン・基盤</h2>
