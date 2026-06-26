@@ -1,0 +1,57 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+<title>地図ラベル比較（現状 vs 2倍拡大）</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #000; }
+  .wrap { display: flex; height: 100vh; }
+  .pane { flex: 1; position: relative; }
+  .pane + .pane { border-left: 3px solid #fff; }
+  .map { position: absolute; inset: 0; }
+  .cap {
+    position: absolute; top: 10px; left: 10px; z-index: 1000;
+    background: rgba(0,0,0,.85); color: #fff;
+    font: 800 18px "Hiragino Sans", sans-serif; padding: 8px 14px; border-radius: 10px;
+  }
+  .note {
+    position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 1000;
+    background: rgba(0,0,0,.8); color: #fff;
+    font: 600 12px "Hiragino Sans", sans-serif; padding: 6px 10px; border-radius: 8px;
+  }
+  /* スマホ等の縦長画面では上下に積む（各地図を広く） */
+  @media (max-width: 700px) {
+    .wrap { flex-direction: column; }
+    .pane + .pane { border-left: 0; border-top: 3px solid #fff; }
+  }
+</style>
+<div class="wrap">
+  <div class="pane"><div id="a" class="map"></div><div class="cap">現状（標準の文字）</div></div>
+  <div class="pane">
+    <div id="b" class="map"></div>
+    <div class="cap">2倍拡大（案A）</div>
+    <div class="note">同じOSMタイルを2倍表示。文字は大きく読みやすいが、細かいラベルは減り、やや滲む。左右はパン/ズーム同期。</div>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  var c = [35.6128, 140.1132], z = 15; // 千葉駅周辺
+  var a = L.map("a", { center: c, zoom: z, zoomControl: true, attributionControl: false });
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(a);
+  var b = L.map("b", { center: c, zoom: z, zoomControl: false, attributionControl: false });
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    tileSize: 512, zoomOffset: -1, maxZoom: 19,
+  }).addTo(b);
+  // 左右の表示を同期（片方を動かすともう片方も同じ範囲に）
+  var syncing = false;
+  function link(src, dst) {
+    src.on("move zoom", function () {
+      if (syncing) return;
+      syncing = true;
+      dst.setView(src.getCenter(), src.getZoom(), { animate: false });
+      syncing = false;
+    });
+  }
+  link(a, b);
+  link(b, a);
+</script>
