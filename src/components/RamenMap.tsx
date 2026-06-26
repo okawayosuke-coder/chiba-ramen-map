@@ -1664,6 +1664,9 @@ function FreeGradeLayer({
       updateGradeMeter(box, grade, null);
     };
 
+    // マウント直後から（高速モードでなければ）即表示。GPS取得前/計測不可は「—」＝常時表示。
+    render(lastGrade);
+
     const onPos = (p: GeolocationPosition) => {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
       const sp = p.coords.speed;
@@ -1682,8 +1685,8 @@ function FreeGradeLayer({
         box.style.display = "none";
         return;
       }
-      if (lastHeading == null) return; // 未発進(方位不明)はまだ出さない
-      render(lastGrade); // 走行中は常時表示（取得前/計測不可は「—」、それ以外は前回値）
+      render(lastGrade); // 高速以外は常時表示（未発進/計測不可は「—」、計測済みは前回値）
+      if (lastHeading == null) return; // 方位不明(未発進)は表示だけ出し、勾配の計測はまだしない
       if (lastUpdatePos && haversineKm(here, lastUpdatePos) < MIN_MOVE_KM) return; // 50mスロットル（表示は維持）
       lastUpdatePos = here;
       const ahead = pointAhead(here, lastHeading, AHEAD_M);
