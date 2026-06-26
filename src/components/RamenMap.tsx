@@ -1502,7 +1502,7 @@ function ensureGradeMeter(box: HTMLElement): GradeMeter {
     '<circle cx="67" cy="54" r="5.2" fill="#181b20" stroke="#e8e6e1" stroke-width="1.8"/>' +
     '<circle cx="103" cy="54" r="5.2" fill="#181b20" stroke="#e8e6e1" stroke-width="1.8"/>' +
     "</g></g>" +
-    '<text class="gm-label" x="85" y="90" text-anchor="middle" font-size="20" font-weight="700" fill="#cdd3da">0%</text>' +
+    '<text class="gm-label" x="85" y="91" text-anchor="middle" font-size="30" font-weight="800" fill="#cdd3da">0%</text>' +
     "</svg>" +
     '<div class="grade-warn" style="display:none"></div>';
   const m: GradeMeter = {
