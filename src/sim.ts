@@ -110,6 +110,11 @@ if (enabled) {
       return target;
     },
     pos: () => [lat, lng, heading],
+    // 速度をkm/hちょうどで設定（↑/↓は10km/h刻みで100等に届かないため検証用）
+    speed: (kmh: number) => {
+      speedMs = Math.max(0, Math.min(41.7, kmh / 3.6));
+      return Math.round(speedMs * 3.6);
+    },
   };
 
   // ←/→ で90°ずつ曲がる、↑/↓ で±10km/h

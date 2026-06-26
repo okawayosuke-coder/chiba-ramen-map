@@ -78,13 +78,123 @@ const userIcon = L.divIcon({
   iconAnchor: [11, 11],
 });
 
-/** デバッグ時のみ地図インスタンスを window に露出（?debug=1） */
+/** デバッグ/走行シミュ時に地図インスタンスを window に露出（?debug=1 または ?sim=drive）。
+ *  sim時にも出すことで、速度計を消すdebugを使わずに eval から経路へ自車を載せて検証できる。 */
 function DebugExpose() {
   const map = useMap();
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("debug") === "1") {
-      (window as unknown as { __map?: unknown }).__map = map;
-    }
+    const q = new URLSearchParams(window.location.search);
+    if (!(q.get("debug") === "1" || q.get("sim") === "drive")) return;
+    const w = window as unknown as Record<string, unknown>;
+    w.__map = map;
+    if (q.get("sim") !== "drive") return;
+
+    // 経路追従ドライブ（テスト用）。simは本来「進行方位へ直進」で道路カーブを無視するため、
+    // 自車を現在の経路ポリライン（=高速本線にスナップ済み）に沿って進ませ、指定区間を
+    // 「キチンと道なりに走行する状況」を再現・確認できるようにする。
+    const Rm = 6371000;
+    type LL = { lat: number; lng: number };
+    const hav = (a: LL, b: LL) => {
+      const dLat = ((b.lat - a.lat) * Math.PI) / 180,
+        dLng = ((b.lng - a.lng) * Math.PI) / 180,
+        la1 = (a.lat * Math.PI) / 180,
+        la2 = (b.lat * Math.PI) / 180;
+      const h =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+      return 2 * Rm * Math.asin(Math.sqrt(h));
+    };
+    const brg = (a: LL, b: LL) => {
+      const y = Math.sin(((b.lng - a.lng) * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180);
+      const x =
+        Math.cos((a.lat * Math.PI) / 180) * Math.sin((b.lat * Math.PI) / 180) -
+        Math.sin((a.lat * Math.PI) / 180) *
+          Math.cos((b.lat * Math.PI) / 180) *
+          Math.cos(((b.lng - a.lng) * Math.PI) / 180);
+      return (Math.atan2(y, x) * 180) / Math.PI;
+    };
+    let path: LL[] = [],
+      cum: number[] = [],
+      total = 0,
+      posM = 0,
+      timer: number | null = null;
+    const sim = () => w.__sim as { set: (a: number, b: number, c?: number) => void; speed: (k: number) => number } | undefined;
+    const findLine = (): LL[] | null => {
+      let pts: LL[] | null = null;
+      map.eachLayer((l: unknown) => {
+        const ly = l as { options?: { color?: string }; getLatLngs?: () => LL[] };
+        if (ly.options && ly.options.color === "#0b57d0" && ly.getLatLngs) pts = ly.getLatLngs();
+      });
+      return pts;
+    };
+    const load = () => {
+      const pts = findLine();
+      if (!pts || pts.length < 2) return false;
+      // 経路全体を確定保存（走行中はトリムで表示線が縮むため、満線をここで取り込む）
+      path = pts.map((p) => ({ lat: p.lat, lng: p.lng }));
+      cum = [0];
+      total = 0;
+      for (let i = 1; i < path.length; i++) {
+        total += hav(path[i - 1], path[i]);
+        cum.push(total);
+      }
+      posM = 0;
+      return true;
+    };
+    const at = (m: number) => {
+      m = Math.max(0, Math.min(total, m));
+      let i = 1;
+      while (i < cum.length && cum[i] < m) i++;
+      const p0 = path[i - 1],
+        p1 = path[i] || path[i - 1];
+      const seg = cum[i] - cum[i - 1] || 1,
+        t = (m - cum[i - 1]) / seg;
+      return { lat: p0.lat + (p1.lat - p0.lat) * t, lng: p0.lng + (p1.lng - p0.lng) * t, hd: (brg(p0, p1) + 360) % 360 };
+    };
+    const apply = (m: number, speedKmh: number) => {
+      const a = at(m);
+      const s = sim();
+      if (s) {
+        s.speed(speedKmh);
+        s.set(a.lat, a.lng, a.hd);
+      }
+      return a;
+    };
+    w.__driveRoute = {
+      // 現在の経路を取り込む（走行開始前に1回）。区間長(km)を返す。
+      load: () => (load() ? +(total / 1000).toFixed(2) : "no route line"),
+      lengthKm: () => +(total / 1000).toFixed(2),
+      // 区間の指定km地点へジャンプ（静止確認用）。speedKmhは速度計表示用。
+      seekKm: (km: number, speedKmh = 100) => {
+        if (!path.length && !load()) return "no route";
+        posM = km * 1000;
+        const a = apply(posM, speedKmh);
+        return { km: +(posM / 1000).toFixed(2), lat: +a.lat.toFixed(5), lng: +a.lng.toFixed(5), hd: Math.round(a.hd) };
+      },
+      // 経路に沿って自動走行（ブラウザ前面でなめらかに動く。指定速度km/h）。
+      start: (speedKmh = 100, fps = 8) => {
+        if (!path.length && !load()) return "no route";
+        const stepM = speedKmh / 3.6 / fps;
+        if (timer) window.clearInterval(timer);
+        timer = window.setInterval(() => {
+          posM += stepM;
+          if (posM >= total) {
+            posM = total;
+            if (timer) window.clearInterval(timer);
+            timer = null;
+          }
+          apply(posM, speedKmh);
+        }, 1000 / fps);
+        return `driving ${speedKmh}km/h（停止: __driveRoute.stop()）`;
+      },
+      stop: () => {
+        if (timer) {
+          window.clearInterval(timer);
+          timer = null;
+        }
+        return "stopped";
+      },
+    };
   }, [map]);
   return null;
 }
