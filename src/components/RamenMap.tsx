@@ -231,32 +231,49 @@ function FocusController({ focus }: { focus: Shop | null }) {
   return null;
 }
 
-// 地図の縮尺(ズーム)を記憶。前回使用時のズームを次回の自車センタリング時に復元する。
-const ZOOM_KEY = "crm_mapzoom";
-function getSavedZoom(): number | null {
+// 地図の表示状態(中心+縮尺)を記憶。アプリを開いた時に前回の表示で復元する。
+const VIEW_KEY = "crm_mapview";
+type SavedView = { center: [number, number]; zoom: number };
+function getSavedView(): SavedView | null {
   try {
-    const v = parseFloat(localStorage.getItem(ZOOM_KEY) || "");
-    return isFinite(v) && v >= 3 && v <= 19 ? v : null;
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY) || "null");
+    if (
+      v &&
+      isFinite(v.lat) &&
+      isFinite(v.lng) &&
+      isFinite(v.z) &&
+      v.z >= 3 &&
+      v.z <= 19
+    )
+      return { center: [v.lat, v.lng], zoom: v.z };
   } catch {
-    return null;
+    /* 破損値は無視 */
   }
+  return null;
 }
-function saveZoom(z: number): void {
+function getSavedZoom(): number | null {
+  return getSavedView()?.zoom ?? null;
+}
+function saveView(map: L.Map): void {
   try {
-    localStorage.setItem(ZOOM_KEY, String(z));
+    const c = map.getCenter();
+    localStorage.setItem(
+      VIEW_KEY,
+      JSON.stringify({ lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5), z: map.getZoom() })
+    );
   } catch {
     /* 容量超過等は無視 */
   }
 }
 
-/** ユーザー操作によるズーム変更を記憶（次回起動時に復元）。 */
-function ZoomMemory() {
+/** ユーザー操作による地図の移動/ズームを記憶（次回起動時に位置+縮尺を復元）。 */
+function ViewMemory() {
   const map = useMap();
   useEffect(() => {
-    const onZoom = () => saveZoom(map.getZoom());
-    map.on("zoomend", onZoom);
+    const save = () => saveView(map);
+    map.on("moveend zoomend", save);
     return () => {
-      map.off("zoomend", onZoom);
+      map.off("moveend zoomend", save);
     };
   }, [map]);
   return null;
@@ -2118,11 +2135,14 @@ function RamenMap({
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   };
 
+  // 前回使用時の表示(中心+縮尺)を起動時に復元（無ければ千葉県全域 zoom10）
+  const initView = useMemo(() => getSavedView(), []);
+
   return (
     <MapContainer
       className="map"
-      center={[35.55, 140.18]}
-      zoom={10}
+      center={initView ? initView.center : [35.55, 140.18]}
+      zoom={initView ? initView.zoom : 10}
       scrollWheelZoom
       zoomSnap={0.5}
       zoomDelta={0.5}
@@ -2145,7 +2165,7 @@ function RamenMap({
       <HighwayToggle active={follow} mode={hwOverride} onCycle={onCycleHwOverride} />
       <ClearDestControl active={!!dest} onClear={onClearDest} />
       <DebugExpose />
-      <ZoomMemory />
+      <ViewMemory />
 
       {userPos && !follow && (
         <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />
