@@ -29,6 +29,8 @@ interface Props {
   setThemePref: (p: ThemePref) => void;
   showTrack: boolean;
   setShowTrack: (v: boolean) => void;
+  bigLabels: boolean;
+  setBigLabels: (v: boolean) => void;
   showPoi: boolean;
   setShowPoi: (v: boolean) => void;
   poiKinds: PoiKind[];
@@ -46,6 +48,8 @@ export default function Settings({
   setThemePref,
   showTrack,
   setShowTrack,
+  bigLabels,
+  setBigLabels,
   showPoi,
   setShowPoi,
   poiKinds,
@@ -168,6 +172,21 @@ export default function Settings({
             <strong>コンビニ/GS</strong>は端末内データで表示（関東一円・
             {poiDate || "—"}時点・オフライン可）。
             駐車場/EV/トイレはネット取得（件数が多いため必要な時だけONを推奨）。
+          </p>
+        </section>
+
+        <section className="set-sec">
+          <h3>地図の文字（テスト）</h3>
+          <div className="set-row">
+            <button
+              className={`chip${bigLabels ? " chip--on" : ""}`}
+              onClick={() => setBigLabels(!bigLabels)}
+            >
+              文字を大きく {bigLabels ? "ON" : "OFF"}
+            </button>
+          </div>
+          <p className="modal__small">
+            OSMの地図を2倍に拡大して地名を大きく表示します（テスト）。読みやすくなる反面、細かいラベルが減り、やや滲みます。OFFで通常の地図に戻ります。
           </p>
         </section>
 

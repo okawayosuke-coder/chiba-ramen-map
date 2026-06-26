@@ -31,6 +31,7 @@ import {
 } from "./nav";
 import {
   shopKey,
+  useBigLabels,
   useFavorites,
   useHwOverride,
   useNavApp,
@@ -103,6 +104,7 @@ export default function App() {
   const [poiKinds, setPoiKinds] = usePoiKinds(); // 表示する種類（既定: コンビニ・GS）
   const [dest, setDest] = useState<Dest | null>(null); // 目的地（店 or 周辺POI）
   const [showTrack, setShowTrack] = useShowTrack();
+  const [bigLabels, setBigLabels] = useBigLabels();
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Dest | null>(null);
@@ -709,6 +711,7 @@ export default function App() {
             paneHidden={paneHidden}
             poiKinds={activePoiKinds}
             showTrack={showTrack}
+            bigLabels={bigLabels}
             hwOverride={hwOverride}
             onCycleHwOverride={cycleHwOverride}
             dest={dest}
@@ -767,6 +770,8 @@ export default function App() {
           setThemePref={theme.setPref}
           showTrack={showTrack}
           setShowTrack={setShowTrack}
+          bigLabels={bigLabels}
+          setBigLabels={setBigLabels}
           showPoi={showPoi}
           setShowPoi={setShowPoi}
           poiKinds={poiKinds}

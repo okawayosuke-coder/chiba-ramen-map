@@ -2072,6 +2072,7 @@ interface Props {
   paneHidden: boolean;
   poiKinds: PoiKind[];
   showTrack: boolean;
+  bigLabels: boolean;
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -2092,6 +2093,7 @@ function RamenMap({
   paneHidden,
   poiKinds,
   showTrack,
+  bigLabels,
   hwOverride,
   onCycleHwOverride,
   dest,
@@ -2147,7 +2149,16 @@ function RamenMap({
       zoomSnap={0.5}
       zoomDelta={0.5}
     >
-      <TileLayer attribution={tile.attribution} url={tile.url} maxZoom={19} />
+      {/* 文字を大きく(テスト)＝同じOSMタイルを2倍拡大(tileSize512/zoomOffset-1)。
+          key切替でトグル時にレイヤーを作り直す。OFFで通常(256/0)に即戻る。 */}
+      <TileLayer
+        key={bigLabels ? "lbl2x" : "lbl1x"}
+        attribution={tile.attribution}
+        url={tile.url}
+        maxZoom={19}
+        tileSize={bigLabels ? 512 : 256}
+        zoomOffset={bigLabels ? -1 : 0}
+      />
       <FocusController focus={focus} />
       <UserFocus pos={userPos} />
       <ElevationProbe />

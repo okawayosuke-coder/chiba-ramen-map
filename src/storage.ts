@@ -12,6 +12,7 @@ const K = {
   showTrack: "crm_showtrack",
   poiKinds: "crm_poikinds", // 表示する周辺POIの種類
   hwOverride: "crm_hwoverride", // 高速道路切り替え: auto | on | off
+  bigLabels: "crm_biglabels", // 地図の文字を大きく（テスト・2倍拡大）
 };
 
 export type HwOverride = "auto" | "on" | "off";
@@ -109,6 +110,17 @@ export function useShowTrack(): [boolean, (v: boolean) => void] {
   const set = useCallback((v: boolean) => {
     setOn(v);
     write(K.showTrack, v);
+  }, []);
+  return [on, set];
+}
+
+/** 地図の文字を大きく（テスト・OSMタイルを2倍拡大表示）。粗くなるが地名が読みやすい。
+ *  既定ON＝テスト中。設定でOFFにすれば即、通常の精細な地図に戻る。 */
+export function useBigLabels(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => read<boolean>(K.bigLabels, true));
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    write(K.bigLabels, v);
   }, []);
   return [on, set];
 }
