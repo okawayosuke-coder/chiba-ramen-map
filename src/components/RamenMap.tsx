@@ -1345,7 +1345,9 @@ function RouteLayer({
         }
       }
       if (curGrade === null) {
-        gradeBox.style.display = "none";
+        // 高速以外は計測不可でも非表示にせず「—」で常時表示（ユーザー要望）
+        gradeBox.style.display = "";
+        updateGradeMeter(gradeBox, null, null);
         return;
       }
       // この先(cur〜end)で最も急なペアを探す
@@ -1571,10 +1573,19 @@ function ensureGradeMeter(box: HTMLElement): GradeMeter {
 /** 勾配メーターを更新。grade=現在勾配(%)、warn=この先の急勾配(任意・ルート時のみ)。 */
 function updateGradeMeter(
   box: HTMLElement,
-  grade: number,
+  grade: number | null,
   warn: { grade: number; distM: number } | null
 ) {
   const m = ensureGradeMeter(box);
+  if (grade === null) {
+    // 計測不可（標高取得失敗/海上/ノイズ/方位不明）。高速以外では非表示にせず「—」で常時表示。
+    m.tilt.setAttribute("transform", "rotate(0 85 56)");
+    m.road.setAttribute("stroke", "#9aa0a6");
+    m.label.textContent = "—";
+    m.label.setAttribute("fill", "#cdd3da");
+    m.warn.style.display = "none";
+    return;
+  }
   const flat = Math.abs(grade) < GRADE_FLAT;
   const col = flat ? "#9aa0a6" : grade > 0 ? "#EF9F27" : "#378ADD"; // 平坦灰/上り琥珀/下り青
   const labelCol = flat ? "#cdd3da" : grade > 0 ? "#FAC775" : "#85B7EB";
@@ -1648,9 +1659,11 @@ function FreeGradeLayer({
     let lastUpdatePos: Pt | null = null;
     let prevPos: Pt | null = null; // 移動方向から方位を出すフォールバック用（GPS heading非対応端末向け）
     let reqId = 0;
+    let lastGrade: number | null = null; // 直近の計測値（取得前/不可は null＝「—」表示）
 
+    // 高速道路でなければ常時表示（計測不可でもメーターは出す＝ユーザー要望）。高速のみ非表示。
     const render = (grade: number | null) => {
-      if (effHighway() || grade === null) {
+      if (effHighway()) {
         box.style.display = "none";
         return;
       }
@@ -1673,11 +1686,12 @@ function FreeGradeLayer({
       }
       updateHighwayState(sp != null && sp >= 0 ? sp * 3.6 : null);
       if (effHighway()) {
-        render(null);
+        box.style.display = "none";
         return;
       }
-      if (lastHeading == null) return; // 方位不明(停止中)は更新せず前回表示を維持
-      if (lastUpdatePos && haversineKm(here, lastUpdatePos) < MIN_MOVE_KM) return; // 50mスロットル
+      if (lastHeading == null) return; // 未発進(方位不明)はまだ出さない
+      render(lastGrade); // 走行中は常時表示（取得前/計測不可は「—」、それ以外は前回値）
+      if (lastUpdatePos && haversineKm(here, lastUpdatePos) < MIN_MOVE_KM) return; // 50mスロットル（表示は維持）
       lastUpdatePos = here;
       const ahead = pointAhead(here, lastHeading, AHEAD_M);
       const id = ++reqId;
@@ -1685,9 +1699,14 @@ function FreeGradeLayer({
         fetchElevationNum(here.lat, here.lng),
         fetchElevationNum(ahead.lat, ahead.lng),
       ]).then(([e0, e1]) => {
-        if (aborted || id !== reqId || e0 == null || e1 == null) return;
-        const grade = ((e1 - e0) / AHEAD_M) * 100; // 前方80m先との標高差＝先読み勾配
-        render(Math.abs(grade) <= GRADE_MAX_PLAUSIBLE ? grade : null);
+        if (aborted || id !== reqId) return;
+        let g: number | null = null;
+        if (e0 != null && e1 != null) {
+          const gv = ((e1 - e0) / AHEAD_M) * 100; // 前方80m先との標高差＝先読み勾配
+          if (Math.abs(gv) <= GRADE_MAX_PLAUSIBLE) g = gv;
+        }
+        lastGrade = g;
+        render(g);
       });
     };
 
