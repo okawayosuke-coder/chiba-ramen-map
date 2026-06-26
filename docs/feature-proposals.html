@@ -34,7 +34,7 @@
 </style>
 <div class="wrap">
   <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
-  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&道なり残距離/到着予定時刻(リアルタイム)・走行済みルート自動消去・勾配計/この先急勾配予告・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-26 / v0.2.46 時点）</p>
+  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&道なり残距離/到着予定時刻(リアルタイム)・走行済みルート自動消去・勾配メーター(軽バン)/この先急勾配予告・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-26 / v0.2.46 時点）</p>
 
   <div class="top">
     <b>⭐ おすすめ優先（コスパ順）</b>
@@ -102,9 +102,10 @@
   <h2>① ドライブ・ナビ強化</h2>
   <div class="grid">
     <div class="card done"><h3>駐車場/EV/トイレ POI <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>Overpassで <code>amenity=parking / charging_station / toilets</code> を表示。設定の「周辺POIの表示」で種類を選択（既定はコンビニ/GS）、🏪ボタンで一括ON/OFF。種類別ラウンドロビンで表示上限を配分。<span class="note">※「道の駅」は未対応（必要なら追加可）。</span></p></div>
-    <div class="card done"><h3>目的地セット＆残り距離 <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>店の🎯から目的地を設定すると、走行モードで残り直線距離・方位矢印・到着間近を表示。外部ナビに頼らず軽量。</p></div>
+    <div class="card done"><h3>目的地セット＆道なり残距離/ETA <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>店の🎯から目的地を設定すると、<b>道なり経路線＋残り距離(km)・到着予定時刻・目的地方向の矢印</b>を表示（旧・直線距離はv0.2.13で廃止）。走行済み区間は即消去、逸脱で再ルート。外部ナビに頼らず軽量。</p></div>
+    <div class="card done"><h3>勾配メーター＋この先急勾配予告 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>走行中、左下に<b>軽バンが坂に乗って傾く傾斜計メーター</b>で現在勾配を表示（上り琥珀／下り青／平坦0%）。前方に8%以上の坂があれば「⚠ この先 ↓◯%」を予告。国土地理院DEMで算出、高速走行中は非表示。<span class="note">詳細は「今日の進捗」参照。</span></p></div>
     <div class="card"><h3>ルート沿いの高評価店ハイライト <span class="badge M">M</span> <span class="tag">次の候補</span></h3><p>現在地→目的地の経路“近く”の店を強調。<span class="note">道なりルート(OpenRouteService)を実装済みなので、その経路ジオメトリのバッファ内の店を抽出すれば実現可能（OSMベースで規約クリア）。</span></p></div>
-    <div class="card done"><h3>走行軌跡ログ <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>走行中 約20m毎にGPSトラックを記録（端末内・上限約400km）。進行方向の三角＋速度別色で地図表示、設定で表示ON/OFF・GPX書き出し・消去。</p></div>
+    <div class="card done"><h3>走行軌跡ログ <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>走行中 約50m毎にGPSトラックを記録（端末内・上限約1000km分＝2万点）。進行方向の三角＋速度別色で地図表示、設定で表示ON/OFF・GPX書き出し・消去。</p></div>
     <div class="card"><h3>休憩リマインド <span class="badge S">S</span></h3><p>走行モードで連続運転○分を超えたら休憩を提案（コンビニ表示と連携可）。</p></div>
   </div>
 
@@ -135,7 +136,7 @@
 
   <h2>⑤ オフライン・基盤</h2>
   <div class="grid">
-    <div class="card"><h3>ルート/エリア事前DL <span class="badge L">L</span> <span class="tag hot">通信大幅減</span></h3><p>WiFiで地図を先に保存→走行中ほぼ通信ゼロ。<span class="note">GSIタイル化が前提（OSM公式は一括DL規約NG）。以前の保留案件。</span></p></div>
+    <div class="card"><h3>ルート/エリア事前DL <span class="badge L">L</span> <span class="tag warn">保留</span></h3><p>WiFiで地図を先に保存→走行中ほぼ通信ゼロ。<span class="note">セルラー運用(iPad mini)で月約0.5GB＝現状維持で実害小と判断し<b>保留</b>。GSIタイル化が前提（OSM公式は一括DL規約NG＝見た目変更を伴う）。容量目安 千葉県z16まで約0.6GB（GSI淡色0.4GB前後）。実走で「毎回地図が消える区間」が出たら再検討。</span></p></div>
     <div class="card done"><h3>POIキャッシュ <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>コンビニ/GSを<b>事前取得して端末内に同梱</b>（関東一円 約24,000地点）。走行中はOverpass取得ゼロ＝即時表示・オフライン可。「削減」どころか<b>完全同梱</b>に。<span class="note">v0.2.12。月次自動更新＋手動収集。詳細は上の「今日の進捗」参照。</span></p></div>
     <div class="card done"><h3>PWA更新通知 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>新バージョン検知で「更新する」ボタンを表示（<code>UpdatePrompt</code>）。</p></div>
     <div class="card"><h3>ストレージ管理 <span class="badge S">S</span></h3><p>端末のキャッシュ使用量を表示・クリア。</p></div>
