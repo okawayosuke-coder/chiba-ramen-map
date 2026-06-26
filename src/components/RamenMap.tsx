@@ -195,6 +195,27 @@ function DebugExpose() {
         return "stopped";
       },
     };
+
+    // URLだけで自動走行（コンソール不要で「動いている状態」を観察）。
+    // 例: ?sim=drive&simstart=35.6877,140.2410&driveto=35.7822,140.3518&speed=100&autodrive=1
+    if (q.get("autodrive") === "1") {
+      const dt = (q.get("driveto") || "").split(",").map(Number);
+      const sp = Math.max(20, Math.min(150, Number(q.get("speed")) || 100));
+      const dr = w.__driveRoute as { load: () => number | string; start: (k: number) => unknown };
+      window.setTimeout(() => {
+        if (dt.length === 2 && isFinite(dt[0]) && isFinite(dt[1])) {
+          const sd = w.__setDest as ((a: number, b: number, c?: string) => void) | undefined;
+          if (sd) sd(dt[0], dt[1], "自動走行");
+        }
+        const iv = window.setInterval(() => {
+          if (typeof dr.load() === "number") {
+            window.clearInterval(iv);
+            dr.start(sp);
+          }
+        }, 600);
+        window.setTimeout(() => window.clearInterval(iv), 20000);
+      }, 3000); // アプリ初期化＋走行モード移行を待つ
+    }
   }, [map]);
   return null;
 }
