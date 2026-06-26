@@ -231,14 +231,49 @@ function FocusController({ focus }: { focus: Shop | null }) {
   return null;
 }
 
-/** 現在地が取得/更新されたら地図をそこへ移動 */
-function UserFocus({ pos }: { pos: Pt | null }) {
+// 地図の縮尺(ズーム)を記憶。前回使用時のズームを次回の自車センタリング時に復元する。
+const ZOOM_KEY = "crm_mapzoom";
+function getSavedZoom(): number | null {
+  try {
+    const v = parseFloat(localStorage.getItem(ZOOM_KEY) || "");
+    return isFinite(v) && v >= 3 && v <= 19 ? v : null;
+  } catch {
+    return null;
+  }
+}
+function saveZoom(z: number): void {
+  try {
+    localStorage.setItem(ZOOM_KEY, String(z));
+  } catch {
+    /* 容量超過等は無視 */
+  }
+}
+
+/** ユーザー操作によるズーム変更を記憶（次回起動時に復元）。 */
+function ZoomMemory() {
   const map = useMap();
   useEffect(() => {
-    if (pos)
-      map.flyTo([pos.lat, pos.lng], Math.max(map.getZoom(), 13), {
-        duration: 0.6,
-      });
+    const onZoom = () => saveZoom(map.getZoom());
+    map.on("zoomend", onZoom);
+    return () => {
+      map.off("zoomend", onZoom);
+    };
+  }, [map]);
+  return null;
+}
+
+/** 現在地が取得/更新されたら地図をそこへ移動。初回センタリングは前回の縮尺を復元。 */
+function UserFocus({ pos }: { pos: Pt | null }) {
+  const map = useMap();
+  const firstRef = useRef(true);
+  useEffect(() => {
+    if (!pos) return;
+    // 初回は記憶した縮尺を復元（無ければ最低13）。2回目以降は現在のズームを維持。
+    const z = firstRef.current
+      ? getSavedZoom() ?? Math.max(map.getZoom(), 13)
+      : Math.max(map.getZoom(), 13);
+    firstRef.current = false;
+    map.flyTo([pos.lat, pos.lng], z, { duration: 0.6 });
   }, [pos, map]);
   return null;
 }
@@ -688,7 +723,8 @@ function FollowController({
       lastCarLng = longitude;
       lastCarHd = gpsMoving ? gpsHeading : null;
       if (first) {
-        map.setView([latitude, longitude], 16, { animate: true });
+        // 走行開始時の初回センタリング。前回使用時の縮尺を復元（無ければ16）。
+        map.setView([latitude, longitude], getSavedZoom() ?? 16, { animate: true });
         first = false;
       } else if (following && (gpsMoving || haversineKm(map.getCenter(), here) > 0.02)) {
         // 追従中のみカメラを動かす。前方を広く見せる中心点（cameraTarget）へ滑らかに。
@@ -2109,6 +2145,7 @@ function RamenMap({
       <HighwayToggle active={follow} mode={hwOverride} onCycle={onCycleHwOverride} />
       <ClearDestControl active={!!dest} onClear={onClearDest} />
       <DebugExpose />
+      <ZoomMemory />
 
       {userPos && !follow && (
         <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} />
