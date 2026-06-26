@@ -207,7 +207,35 @@ function ElevationProbe() {
       }
     };
 
+    // 地図上のボタン/UIの上＋周囲 DEAD_MARGIN px は標高プローブを発火させない「不感エリア」。
+    // ボタン操作のタップが地図に貫通してその地点の標高が誤表示されるのを防ぐ。
+    const DEAD_MARGIN = 16;
+    const UI_SELECTOR =
+      ".leaflet-control,.recenter-btn,.clear-dest-btn,.hw-toggle,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.poi-hint";
+    const overUI = (cx: number, cy: number): boolean => {
+      const cont = map.getContainer();
+      const cr = cont.getBoundingClientRect();
+      const els = cont.querySelectorAll(UI_SELECTOR);
+      for (let i = 0; i < els.length; i++) {
+        const r = els[i].getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue; // 非表示要素はスキップ
+        if (
+          cx >= r.left - cr.left - DEAD_MARGIN &&
+          cx <= r.right - cr.left + DEAD_MARGIN &&
+          cy >= r.top - cr.top - DEAD_MARGIN &&
+          cy <= r.bottom - cr.top + DEAD_MARGIN
+        )
+          return true;
+      }
+      return false;
+    };
+
     const onMove = (e: L.LeafletMouseEvent) => {
+      // 不感エリア（ボタン上/周囲）では標高を出さない
+      if (overUI(e.containerPoint.x, e.containerPoint.y)) {
+        hide();
+        return;
+      }
       place(e.containerPoint.x, e.containerPoint.y);
       box.style.display = "";
       if (!box.textContent) box.textContent = "標高 計測中…";
