@@ -1761,7 +1761,7 @@ function HighwayToggle({
     const label = mode === "on" ? "高速" : mode === "off" ? "一般道" : "自動";
     btn.className = `hw-toggle hw-toggle--${mode}`;
     btn.innerHTML =
-      `<span class="hw-toggle__t">🛣 高速道路切り替え</span>` +
+      `<span class="hw-toggle__t">🛣 HW切替</span>` +
       `<span class="hw-toggle__v">${label}</span>`;
   }, [map, mode, active]);
   return null;

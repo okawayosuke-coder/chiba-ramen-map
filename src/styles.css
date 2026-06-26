@@ -1084,10 +1084,9 @@ body {
   z-index: 700;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  width: 248px; /* 施設ストリップ(.hw-strip)と同じ幅 */
-  box-sizing: border-box;
+  /* 幅は内容（🛣 HW切替＋値）に合わせて自動＝短文ぶんだけコンパクトに。
+     縦サイズ(min-height/padding)とフォントは維持してタップしやすさを保つ。 */
   background: rgba(18, 20, 24, 0.9);
   color: #fff;
   border: 2px solid #6b7280;
