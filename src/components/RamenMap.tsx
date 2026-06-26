@@ -1073,6 +1073,7 @@ function RouteLayer({ to }: { to: Pt | null }) {
     };
 
     let lastHeading: number | null = null; // 自車の進行方位（リルートを走行方向優先にする）
+    let headingPrevPos: Pt | null = null; // GPS heading非対応端末向け: 移動方向から方位を算出するフォールバック用
     const route = (from: Pt) => {
       lastRouteAt = Date.now(); // 取得開始時刻でガード（再入防止＋throttle基準）
       if (!rCoords) box.textContent = "🛣 経路を計算中…";
@@ -1107,7 +1108,15 @@ function RouteLayer({ to }: { to: Pt | null }) {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
       const sp = p.coords.speed;
       const hd = p.coords.heading;
-      if (hd != null && isFinite(hd) && sp != null && sp > 1) lastHeading = hd; // 移動中のみ進行方位を更新
+      const gpsHeadingOk = hd != null && isFinite(hd) && hd >= 0;
+      if (gpsHeadingOk) lastHeading = hd; // GPS提供の進行方位（優先）
+      // フォールバック: heading非対応端末は20m移動ごとに移動方向から方位を算出
+      if (!headingPrevPos) {
+        headingPrevPos = here;
+      } else if (haversineKm(headingPrevPos, here) >= 0.02) {
+        if (!gpsHeadingOk) lastHeading = bearingDeg(headingPrevPos, here);
+        headingPrevPos = here;
+      }
       updateHighwayState(sp != null && sp >= 0 ? sp * 3.6 : null);
       if (!rCoords) {
         // まだ経路がない: 間隔を空けて初回取得（失敗時はこの間隔で自動リトライ）
@@ -1254,6 +1263,7 @@ function FreeGradeLayer({ active }: { active: boolean }) {
     const MIN_MOVE_KM = 0.05;
     let lastHeading: number | null = null;
     let lastUpdatePos: Pt | null = null;
+    let prevPos: Pt | null = null; // 移動方向から方位を出すフォールバック用（GPS heading非対応端末向け）
     let reqId = 0;
 
     const render = (grade: number | null) => {
@@ -1269,7 +1279,15 @@ function FreeGradeLayer({ active }: { active: boolean }) {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
       const sp = p.coords.speed;
       const hd = p.coords.heading;
-      if (hd != null && isFinite(hd) && sp != null && sp > 1) lastHeading = hd; // 移動中のみ進行方位を更新
+      const gpsHeadingOk = hd != null && isFinite(hd) && hd >= 0;
+      if (gpsHeadingOk) lastHeading = hd; // GPS提供の進行方位（優先）
+      // フォールバック: heading非対応/取得不可の端末は、20m移動するごとに移動方向から方位を算出
+      if (!prevPos) {
+        prevPos = here;
+      } else if (haversineKm(prevPos, here) >= 0.02) {
+        if (!gpsHeadingOk) lastHeading = bearingDeg(prevPos, here);
+        prevPos = here;
+      }
       updateHighwayState(sp != null && sp >= 0 ? sp * 3.6 : null);
       if (onHighway) {
         render(null);

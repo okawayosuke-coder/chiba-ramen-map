@@ -41,6 +41,9 @@ if (enabled) {
     lng += (distM * Math.sin(rad)) / (111320 * Math.cos((lat * Math.PI) / 180));
   };
 
+  // ?nohead=1 で coords.heading を null に（GPS方位非対応端末の検証用）
+  const noHead =
+    new URLSearchParams(window.location.search).get("nohead") === "1";
   const makePos = (): GeolocationPosition =>
     ({
       coords: {
@@ -49,7 +52,7 @@ if (enabled) {
         accuracy: 6,
         altitude: null,
         altitudeAccuracy: null,
-        heading,
+        heading: noHead ? null : heading,
         speed: speedMs,
       },
       timestamp: Date.now(),
