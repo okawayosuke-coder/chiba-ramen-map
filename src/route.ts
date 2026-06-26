@@ -6,6 +6,9 @@ export interface RouteResult {
   coords: [number, number][]; // [lat, lng] の点列（道路にスナップされた道なり経路）
   km: number; // 道路距離
   min: number; // 所要(分・渋滞なしの理論値)
+  // 高速/有料区間の頂点インデックス範囲 [from,to]（ORS waycategory由来）。
+  // 高速判定を速度でなく経路ベースで行うために使う（渋滞・低速でも確実）。GET/OSRM時は undefined。
+  hwRanges?: [number, number][];
 }
 
 // Vite の環境変数（VITE_ 接頭辞のみクライアントへ露出）。.env.local / CIシークレットで設定。
@@ -82,6 +85,7 @@ async function fetchORSPost(pts: Pt[], forward: boolean): Promise<RouteResult | 
       headers: { Authorization: ORS_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({
         coordinates: pts.map((p) => [p.lng, p.lat]),
+        extra_info: ["waycategory"], // 高速/有料区間の判定用（経路ベースの高速判定）
         ...(forward ? { continue_straight: true } : {}),
       }),
     });
@@ -92,22 +96,35 @@ async function fetchORSPost(pts: Pt[], forward: boolean): Promise<RouteResult | 
   }
 }
 
+// ORS waycategory のビット: 1=Highway(高速) / 2=Tollway(有料)。どちらかなら高速扱い。
+const WAYCAT_HIGHWAY = 1 | 2;
+
 function parseORS(j: unknown): RouteResult | null {
   const f = (
     j as {
       features?: {
         geometry?: { coordinates?: number[][] };
-        properties?: { summary?: { distance?: number; duration?: number } };
+        properties?: {
+          summary?: { distance?: number; duration?: number };
+          extras?: { waycategory?: { values?: number[][] } };
+        };
       }[];
     }
   )?.features?.[0];
   const co = f?.geometry?.coordinates;
   if (!Array.isArray(co)) return null;
   const s = f?.properties?.summary ?? {};
+  const vals = f?.properties?.extras?.waycategory?.values;
+  const hwRanges = Array.isArray(vals)
+    ? vals
+        .filter((v) => (v[2] & WAYCAT_HIGHWAY) !== 0)
+        .map((v) => [v[0], v[1]] as [number, number])
+    : undefined;
   return {
     coords: co.map((c: number[]) => [c[1], c[0]] as [number, number]),
     km: (s.distance ?? 0) / 1000,
     min: Math.round((s.duration ?? 0) / 60),
+    hwRanges,
   };
 }
 

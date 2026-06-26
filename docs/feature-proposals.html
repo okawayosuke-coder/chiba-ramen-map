@@ -34,7 +34,7 @@
 </style>
 <div class="wrap">
   <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
-  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&道なり残距離/到着予定時刻(リアルタイム)・走行済みルート自動消去・勾配メーター(軽バン)/この先急勾配予告・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-26 / v0.2.46 時点）</p>
+  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&道なり残距離/到着予定時刻(リアルタイム)・走行済みルート自動消去・勾配メーター(軽バン)/この先急勾配予告・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ハイウェイモード〔前方SA/PA/IC/JCTストリップ・SA/PA設備アイコン/ブランド画像〕・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-26 / v0.2.47 時点）</p>
 
   <div class="top">
     <b>⭐ おすすめ優先（コスパ順）</b>
@@ -187,15 +187,14 @@
   </div>
 
   <div class="top" style="border-color:#2f9e44">
-    <b>🛣 ハイウェイモード（高速道路モード）— v0.3 の目玉</b>
-    <p style="margin:6px 0 0;font-size:13.5px;color:#3f433b">高速走行時、画面右に前方の <b>JCT/IC/SA/PA を縦ストリップ表示</b>（↑＋名称＋分/km、SA/PAは設備アイコン P/⛽/🍴/☕、下端に現在地・「○○JCT 通過」）。日本のカーナビ定番UI。</p>
+    <b>🛣 ハイウェイモード（高速道路モード） <span class="badge done">✅ 実装済み</span></b>
+    <p style="margin:6px 0 0;font-size:13.5px;color:#3f433b">高速走行/高速ルート時、画面右に前方の <b>JCT/IC/SA/PA を縦ストリップ表示</b>（<b>下＝最寄りで積み上げ</b>・名称＋km＋分、通過した施設は消え先が追加）。<b>SA/PAは中の設備をアイコン表示</b>：コンビニ/GSは地図POIと同じ<b>ブランド画像</b>（ローソン円・ENEOSバッジ等）、飲食🍴/カフェ☕/売店🛍️/トイレ🚻/EV⚡は絵文字。日本のカーナビ定番UI。<span class="note">v0.2.47。</span></p>
     <ul style="margin:8px 0 0;padding-left:20px;font-size:13px;color:#3f433b">
-      <li><b>データ</b>：OSM <code>motorway_junction</code>(IC/JCT)・<code>highway=services</code>(SA)・<code>rest_area</code>(PA)・<code>motorway</code>(本線) を Overpass取得（既存POI方式・規約OK）</li>
-      <li><b>認識① ルート連動（確実）</b>：道なりルートの ORS <code>waytype</code>=高速で判定し、ルート沿いに前方施設を整列</li>
-      <li><b>認識② フリー走行</b>：速度＋最寄り motorway で自動判定。並走道路の誤認対策に <b>「🛣 高速⇄一般道」切替トグル</b>（市販ナビ標準・選択を記憶）。複数候補時は道路選択UI</li>
+      <li><b>データ</b>：OSMのIC/JCT/SA/PAを <code>scripts/fetch-highway.mjs</code> で収集→<code>public/highway.json</code> に同梱（全角/半角の重複統合で370施設）。設備は <code>scripts/enrich-highway-amenities.mjs</code> でSA/PAポリゴン内の amenity/shop を付与（53施設に設備・ブランド名／コンビニ・GSのブランドは <code>poiIconFile</code> で画像化）。走行中はOverpass非依存・オフライン可。データ元OSM(ODbL)。</li>
+      <li><b>高速判定</b>：①ルートのORS <code>waycategory</code>(高速/有料)＝確実 ②フリー走行は速度(65km/h以上・軽/渋滞に配慮)＋ヒステリシス ③手動「<b>🛣 高速道路切り替え</b>」トグル（自動/高速/一般道・記憶）</li>
       <li><b>距離/時間</b>：km＝沿線距離（正確）／分＝推定（渋滞非反映）</li>
-      <li><b>段階</b>：①SA/PA/IC地図表示 <span class="badge M">M</span> → ②高速モード判定 <span class="badge M">M</span> → ③右ストリップUI <span class="badge L">L</span> → ④フリー走行＋切替トグル <span class="badge L">L</span></li>
-      <li><b>制約</b>：生GPS＋OSMのマップマッチは市販ナビ未満／SA設備はOSM整備依存／iOS前面のみ・渋滞非反映</li>
+      <li><b>段階</b>：①地図表示 → ②判定 → ③右ストリップ → ④フリー走行＋切替 → <b>⑤設備アイコン＋ブランド画像</b> いずれも <span class="badge done">✅</span></li>
+      <li><b>残差</b>：「○○通過」明示は未実装／SA設備はOSM整備依存(53/63)／生GPSのマップマッチは市販ナビ未満・渋滞非反映。<span class="note">SA表示の検証は本エリアのORSルーティング癖により sim専用フック(<code>?sim=drive</code>)で強制ルートして実施。</span></li>
     </ul>
   </div>
 

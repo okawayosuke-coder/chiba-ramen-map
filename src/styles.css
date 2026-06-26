@@ -966,6 +966,156 @@ body {
   font-size: 13px;
   font-weight: 700;
 }
+
+/* ハイウェイモード: 画面右・この先の高速施設を近い順に縦表示（提案書⑧）。高速走行中のみ */
+.hw-strip {
+  position: absolute;
+  right: 10px;
+  bottom: calc(50% + 14px); /* 下アンカー: 自車に近い施設を固定の下端に置き、上へ積み上がる */
+  z-index: 645;
+  pointer-events: none;
+  width: 168px;
+  max-height: calc(50% - 28px);
+  display: flex;
+  flex-direction: column-reverse; /* 近い順を下から上へ（自車に近い施設が一番下＝実車ナビと同じ） */
+  gap: 4px;
+  overflow: hidden;
+}
+.hw-row {
+  background: rgba(20, 22, 26, 0.85);
+  border-radius: 9px;
+  border-left: 4px solid #888;
+  padding: 5px 9px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.hw-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hw-badge {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #fff;
+  background: #6b7280;
+  border-radius: 5px;
+  padding: 1px 5px;
+  min-width: 28px;
+  text-align: center;
+}
+.hw-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hw-dist {
+  margin-top: 1px;
+  text-align: right;
+  color: #cdd3da;
+  font-size: 13px;
+  font-weight: 800;
+}
+.hw-dist small {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+/* SA/PA内の設備（コンビニ/GS＝ブランド画像／飲食・カフェ・売店・トイレ・EV＝絵文字）。
+   地図POIと同じ見た目で見分けられるよう、コンビニ＝白縁の円・GS＝白角丸バッジ。 */
+.hw-amen {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.hw-amen-ic {
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  display: block;
+  background: #fff;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.hw-amen-conv {
+  border-radius: 50%;
+  object-fit: cover;
+}
+.hw-amen-gs {
+  border-radius: 6px;
+  object-fit: contain;
+  padding: 1px;
+}
+.hw-amen-em {
+  font-size: 20px;
+  line-height: 1;
+}
+.hw-row.hw-sa {
+  border-left-color: #1d9e75;
+}
+.hw-row.hw-sa .hw-badge {
+  background: #1d9e75;
+}
+.hw-row.hw-pa {
+  border-left-color: #378add;
+}
+.hw-row.hw-pa .hw-badge {
+  background: #378add;
+}
+.hw-row.hw-jct {
+  border-left-color: #ef9f27;
+}
+.hw-row.hw-jct .hw-badge {
+  background: #ef9f27;
+}
+
+/* 高速道路切り替え（手動）。走行中に画面右へ。タップで 自動→高速→一般道 を循環 */
+.hw-toggle {
+  position: absolute;
+  right: 12px;
+  top: calc(50% + 100px);
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 20, 24, 0.9);
+  color: #fff;
+  border: 2px solid #6b7280;
+  border-radius: 999px;
+  padding: 7px 12px;
+  min-height: 40px;
+  cursor: pointer;
+  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.4);
+}
+.hw-toggle__t {
+  font-size: 11.5px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+.hw-toggle__v {
+  font-size: 13px;
+  font-weight: 800;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: #6b7280;
+  color: #fff;
+}
+.hw-toggle--on {
+  border-color: #1d9e75;
+}
+.hw-toggle--on .hw-toggle__v {
+  background: #1d9e75;
+}
+.hw-toggle--off .hw-toggle__v {
+  background: #555;
+}
 /* 目的地解除ボタン（画面右・現在位置ボタンの少し下）。目的地セット中のみ表示 */
 .clear-dest-btn {
   position: absolute;

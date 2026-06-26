@@ -32,6 +32,7 @@ import {
 import {
   shopKey,
   useFavorites,
+  useHwOverride,
   useNavApp,
   usePoiKinds,
   useSafetyAck,
@@ -102,6 +103,7 @@ export default function App() {
   const [poiKinds, setPoiKinds] = usePoiKinds(); // 表示する種類（既定: コンビニ・GS）
   const [dest, setDest] = useState<Dest | null>(null); // 目的地（店 or 周辺POI）
   const [showTrack, setShowTrack] = useShowTrack();
+  const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Dest | null>(null);
   const [pickerFor, setPickerFor] = useState<Dest | null>(null);
@@ -308,6 +310,20 @@ export default function App() {
   const onClearDest = useCallback(() => {
     setDest(null);
     setToast("目的地を解除しました");
+  }, []);
+
+  // テスト用フック（?sim=drive のときだけ）。eval から任意座標を目的地に設定でき、
+  // 店舗位置に縛られず特定の高速区間（例: 館山道の市原SA）を通るルートを検証できる。
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("sim") !== "drive") return;
+    (window as unknown as Record<string, unknown>).__setDest = (
+      lat: number,
+      lng: number,
+      name = "テスト目的地"
+    ) => {
+      setDest({ lat, lng, name });
+      return { lat, lng, name };
+    };
   }, []);
 
   const distanceTo = useCallback(
@@ -693,6 +709,8 @@ export default function App() {
             paneHidden={paneHidden}
             poiKinds={activePoiKinds}
             showTrack={showTrack}
+            hwOverride={hwOverride}
+            onCycleHwOverride={cycleHwOverride}
             dest={dest}
             onSetDest={onSetDest}
             onClearDest={onClearDest}

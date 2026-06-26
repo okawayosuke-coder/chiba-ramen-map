@@ -11,7 +11,26 @@ const K = {
   theme: "crm_theme", // "light" | "dark" | "auto"
   showTrack: "crm_showtrack",
   poiKinds: "crm_poikinds", // 表示する周辺POIの種類
+  hwOverride: "crm_hwoverride", // 高速道路切り替え: auto | on | off
 };
+
+export type HwOverride = "auto" | "on" | "off";
+
+/** 高速道路切り替え（手動）。auto=自動判定／on=高速固定／off=一般道固定。タップで自動→高速→一般道を循環。 */
+export function useHwOverride(): [HwOverride, () => void] {
+  const [mode, setMode] = useState<HwOverride>(() => {
+    const v = read<HwOverride>(K.hwOverride, "auto");
+    return v === "on" || v === "off" || v === "auto" ? v : "auto";
+  });
+  const cycle = useCallback(() => {
+    setMode((prev) => {
+      const next: HwOverride = prev === "auto" ? "on" : prev === "on" ? "off" : "auto";
+      write(K.hwOverride, next);
+      return next;
+    });
+  }, []);
+  return [mode, cycle];
+}
 
 /** 並び順が変わっても壊れない安定キー（placeId優先、無ければ座標丸め） */
 export function shopKey(s: Shop): string {

@@ -21,6 +21,8 @@ import {
   type LocalPoiData,
 } from "../poiData";
 import { fetchRoute, routeProvider } from "../route";
+import { loadHighway, type HwKind, type HwFacility } from "../highwayData";
+import type { HwOverride } from "../storage";
 import {
   addTrackPoint,
   getTrackPoints,
@@ -904,7 +906,13 @@ function buildMarks(coords: [number, number][], spacingKm: number): Pt[] {
   return marks;
 }
 
-function RouteLayer({ to }: { to: Pt | null }) {
+function RouteLayer({
+  to,
+  hwOverrideRef,
+}: {
+  to: Pt | null;
+  hwOverrideRef: React.MutableRefObject<HwOverride>;
+}) {
   const map = useMap();
   const toKey = to ? `${to.lat.toFixed(5)},${to.lng.toFixed(5)}` : "";
   useEffect(() => {
@@ -931,6 +939,12 @@ function RouteLayer({ to }: { to: Pt | null }) {
     gradeBox.style.display = "none";
     map.getContainer().appendChild(gradeBox);
 
+    // ハイウェイモード: この先の高速施設(SA/PA/IC/JCT)を近い順に出す右ストリップ（提案書⑧）。
+    // 高速走行中(onHighway)＋経路沿いに施設がある時だけ表示。
+    const hwStrip = L.DomUtil.create("div", "hw-strip");
+    hwStrip.style.display = "none";
+    map.getContainer().appendChild(hwStrip);
+
     // 取得済み経路（残り距離・ETAのリアルタイム計算用）
     let rCoords: [number, number][] | null = null;
     let rSuffix: number[] = [];
@@ -942,17 +956,15 @@ function RouteLayer({ to }: { to: Pt | null }) {
     let lastGradePos: Pt | null = null; // 前回勾配を更新した地点（移動量スロットル用）
     let gradeReqId = 0; // 標高取得の競合排除
 
-    // 高速道路判定（案1）: 高速は設計上ゆるやか(おおむね≤5%)なので、高速上で出る急勾配は
-    // ほぼDEMノイズ(トンネル=山の地表/高架=谷底)。高速走行中は「この先急勾配」警告を抑制する。
-    // ヒステリシス: 連続8フィックス(約8秒)≥80km/hで高速ON、連続20フィックス(約20秒)<60km/hでOFF。
-    // トンネルでGPSが切れるとフィックスが来ない=状態は凍結され、抜けるまで高速判定が維持される。
+    // 高速道路の自動判定（速度ベース・フォールバック用）。ルート時は下記 waycategory を優先。
+    // 軽自動車の低速巡航に合わせ ON≥65km/h、渋滞で誤OFFしないよう OFF は <50km/h が長く続いた時だけ。
     let onHighway = false;
-    let fastCount = 0; // 連続で80km/h以上のフィックス数
-    let slowCount = 0; // 連続で60km/h未満のフィックス数
-    const HW_ENTER_KMH = 80;
-    const HW_EXIT_KMH = 60;
-    const HW_ENTER_FIXES = 8;
-    const HW_EXIT_FIXES = 20;
+    let fastCount = 0; // 連続で65km/h以上のフィックス数
+    let slowCount = 0; // 連続で50km/h未満のフィックス数
+    const HW_ENTER_KMH = 65;
+    const HW_EXIT_KMH = 50;
+    const HW_ENTER_FIXES = 8; // 約8秒
+    const HW_EXIT_FIXES = 60; // 約60秒（渋滞・低速でも維持＝stickyに解除）
     const updateHighwayState = (speedKmh: number | null) => {
       if (speedKmh == null || !isFinite(speedKmh)) return; // 速度不明(トンネル等)=現状維持
       if (speedKmh >= HW_ENTER_KMH) {
@@ -964,14 +976,146 @@ function RouteLayer({ to }: { to: Pt | null }) {
         fastCount = 0;
         if (slowCount >= HW_EXIT_FIXES) onHighway = false;
       } else {
-        fastCount = 0; // 60〜80km/hの中間帯は現状維持（ヒステリシス）
+        fastCount = 0; // 50〜65km/hの中間帯は現状維持（ヒステリシス）
         slowCount = 0;
       }
     };
 
+    // ルートの高速/有料区間（ORS waycategory由来）。経路ベース判定で渋滞・低速でも確実。
+    let hwRanges: [number, number][] = [];
+    const isHwSeg = (segIdx: number) =>
+      hwRanges.some(([a, b]) => segIdx >= a && segIdx < b);
+    // 実効的な高速判定: 手動切替＞経路waycategory＞速度の優先順。renderGrade/updateHwStripが参照。
+    let effHighway = false;
+    const computeEffHighway = (segIdx: number) => {
+      const ov = hwOverrideRef.current;
+      if (ov === "on") return true;
+      if (ov === "off") return false;
+      if (hwRanges.length > 0) return isHwSeg(segIdx); // 経路に高速情報あり=速度無関係
+      return onHighway; // フォールバック（GET/OSRM等で waycategory 無し）
+    };
+
+    // ===== ハイウェイモード: この先の高速施設を近い順に表示 =====
+    const HW_SNAP_KM = 0.3; // 経路から300m以内の施設を「経路上」とみなす（SA/PAは施設中心が道から後退しがち）
+    const HW_LOOK = 6; // 先の施設を最大6件表示
+    const HW_BADGE: Record<HwKind, string> = { sa: "SA", pa: "PA", ic: "IC", jct: "JCT" };
+    // SA/PA内の設備アイコン（提案書⑧「SA/PAは設備アイコン P/⛽/🍴/☕」）。OSM由来の種別→絵文字。
+    const AMEN_EMOJI: Record<string, string> = {
+      conv: "🏪",
+      fuel: "⛽",
+      food: "🍴",
+      cafe: "☕",
+      shop: "🛍️",
+      toilet: "🚻",
+      ev: "⚡",
+    };
+    // コンビニ/GSは地図POIと同じブランド画像で見た目判別（poiIconFileを再利用）。他は絵文字。
+    const HW_ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
+    const amenIconHtml = (a: string, f: HwFacility): string => {
+      if (a === "conv") {
+        const file = poiIconFile("conv", f.convBrand || ""); // 円形ブランド or generic.png
+        return `<img class="hw-amen-ic hw-amen-conv" src="${HW_ICON_BASE}${file}" alt="コンビニ">`;
+      }
+      if (a === "fuel") {
+        const file = poiIconFile("fuel", f.fuelBrand || ""); // gs-*.png（主要のみ）/ 未一致はnull
+        if (file) return `<img class="hw-amen-ic hw-amen-gs" src="${HW_ICON_BASE}${file}" alt="GS">`;
+      }
+      return `<span class="hw-amen-em">${AMEN_EMOJI[a] || ""}</span>`;
+    };
+    let hwFacilities: HwFacility[] | null = null;
+    // 経路にスナップした施設（始点からの道なり距離つき・昇順）
+    let routeFacilities: { f: HwFacility; distKm: number }[] = [];
+    const esc = (s: string) =>
+      s.replace(/[&<>]/g, (c) => (c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"));
+
+    // 同梱の高速施設を経路に投影し、経路沿い(200m以内)のものを始点距離つきで昇順に整列。
+    const computeRouteFacilities = () => {
+      routeFacilities = [];
+      if (!rCoords || !hwFacilities || rKm <= 0) return;
+      let s = 90, w = 180, n = -90, e = -180;
+      for (const c of rCoords) {
+        if (c[0] < s) s = c[0];
+        if (c[0] > n) n = c[0];
+        if (c[1] < w) w = c[1];
+        if (c[1] > e) e = c[1];
+      }
+      const M = 0.01; // bbox余白
+      for (const f of hwFacilities) {
+        if (f.lat < s - M || f.lat > n + M || f.lng < w - M || f.lng > e + M) continue;
+        const pr = projectOnRoute(rCoords, rSuffix, { lat: f.lat, lng: f.lng });
+        if (pr.devKm > HW_SNAP_KM) continue; // 経路から離れすぎ＝この経路の施設でない
+        routeFacilities.push({ f, distKm: rKm - pr.remKm });
+      }
+      routeFacilities.sort((a, b) => a.distKm - b.distKm);
+      // 同名施設は最寄り1件に集約。全角/半角・括弧・空白・方向(上り/下り)の表記ゆれを吸収して同一視。
+      const baseName = (n: string) =>
+        n
+          .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) =>
+            String.fromCharCode(c.charCodeAt(0) - 0xfee0)
+          ) // 全角英数→半角
+          .replace(/[\s（）()]/g, "") // 空白・全半角括弧を除去
+          .replace(/(上り|下り|内回り|外回り)$/, ""); // 末尾の方向表記を除去
+      const nameSeen = new Set<string>();
+      routeFacilities = routeFacilities.filter((rf) => {
+        const k = `${rf.f.kind}:${baseName(rf.f.name)}`;
+        if (nameSeen.has(k)) return false;
+        nameSeen.add(k);
+        return true;
+      });
+    };
+
+    // 自車の始点距離(carDistKm)を基に、前方の施設を近い順にストリップ表示。高速走行中のみ。
+    const updateHwStrip = (carDistKm: number) => {
+      if (!effHighway || routeFacilities.length === 0) {
+        hwStrip.style.display = "none";
+        return;
+      }
+      const ahead = routeFacilities
+        .filter((rf) => rf.distKm >= carDistKm - 0.1)
+        .slice(0, HW_LOOK);
+      if (ahead.length === 0) {
+        hwStrip.style.display = "none";
+        return;
+      }
+      hwStrip.style.display = "";
+      hwStrip.innerHTML = ahead
+        .map((rf) => {
+          const remKm = Math.max(0, rf.distKm - carDistKm);
+          const remMin = rKm > 0 ? Math.round(rMin * (remKm / rKm)) : 0;
+          const dist = remKm < 10 ? remKm.toFixed(1) : Math.round(remKm).toString();
+          // SA/PAは中の設備をアイコン列で（OSMにデータがある施設のみ）。IC/JCTは無し。
+          const am = rf.f.amenities;
+          const amenRow =
+            (rf.f.kind === "sa" || rf.f.kind === "pa") && am && am.length
+              ? `<div class="hw-amen">${am
+                  .map((a) => amenIconHtml(a, rf.f))
+                  .join("")}</div>`
+              : "";
+          return (
+            `<div class="hw-row hw-${rf.f.kind}">` +
+            `<div class="hw-top"><span class="hw-badge">${HW_BADGE[rf.f.kind]}</span>` +
+            `<span class="hw-name">${esc(rf.f.name)}</span></div>` +
+            amenRow +
+            `<div class="hw-dist">${dist}<small>km</small> ・ ${remMin}<small>分</small></div>` +
+            `</div>`
+          );
+        })
+        .join("");
+    };
+
+    // 同梱データを読み込み（一度だけ）。経路が既にあれば施設を再計算。
+    loadHighway()
+      .then((d) => {
+        hwFacilities = d.facilities;
+        if (rCoords) computeRouteFacilities();
+      })
+      .catch(() => {
+        /* highway.json 無し/失敗時はストリップ非表示のまま（機能オフ） */
+      });
+
     // 既知の標高から現在勾配＋この先の急勾配を算出して gradeBox を更新。
     const renderGrade = (cur: number, end: number, distFromStartKm: number) => {
-      if (onHighway) {
+      if (effHighway) {
         // 高速道路走行中は勾配を表示しない（トンネル=山の地表/高架=谷底でDEMが道路と乖離するため）
         gradeBox.style.display = "none";
         return;
@@ -1064,11 +1208,17 @@ function RouteLayer({ to }: { to: Pt | null }) {
         [pr.proj.lat, pr.proj.lng],
         ...rCoords.slice(pr.segIdx + 1),
       ]);
-      // 勾配計の更新（50m以上移動した時だけ＝過剰な標高取得を抑制）
+      // 実効的な高速判定を更新（手動＞経路waycategory＞速度）。勾配抑制・施設ストリップが参照。
+      const newEff = computeEffHighway(pr.segIdx);
+      if (newEff !== effHighway) lastGradePos = null; // 高速状態の変化は勾配へ即反映（throttle無視）
+      effHighway = newEff;
+      // 勾配計の更新（50m以上移動 or 高速状態変化時）
       if (!lastGradePos || haversineKm(here, lastGradePos) > 0.05) {
         lastGradePos = here;
         updateGrade(rKm - pr.remKm);
       }
+      // ハイウェイモード: この先の高速施設を近い順に更新
+      updateHwStrip(rKm - pr.remKm);
       return pr;
     };
 
@@ -1087,6 +1237,7 @@ function RouteLayer({ to }: { to: Pt | null }) {
         rCoords = r.coords;
         rKm = r.km;
         rMin = r.min;
+        hwRanges = r.hwRanges ?? []; // 経路の高速/有料区間（waycategory）
         // 各頂点→終点の道路距離（残り距離の高速算出用に後方累積）
         rSuffix = new Array(r.coords.length).fill(0);
         for (let i = r.coords.length - 2; i >= 0; i--) {
@@ -1101,6 +1252,8 @@ function RouteLayer({ to }: { to: Pt | null }) {
         marks = buildMarks(r.coords, GRADE_SPACING_KM);
         eleAtMark = new Array(marks.length);
         lastGradePos = null;
+        // ハイウェイモード: 新しい経路に沿った高速施設を再計算
+        computeRouteFacilities();
         refresh(from);
       });
     };
@@ -1152,6 +1305,7 @@ function RouteLayer({ to }: { to: Pt | null }) {
       line.remove();
       box.remove();
       gradeBox.remove();
+      hwStrip.remove();
     };
   }, [toKey, map]);
   return null;
@@ -1233,7 +1387,13 @@ function updateGradeMeter(
  *  ※急カーブ/つづら折れでは直線前方が道から外れ過大評価することがある（直線〜緩カーブは正確）。
  *  高速道路走行中は表示しない（DEMが道路と乖離するため。RouteLayerと同じヒステリシス判定）。
  *  ルート設定中は RouteLayer が経路に沿った先読み＋この先予告を出すので、こちらは無効（active=false）。 */
-function FreeGradeLayer({ active }: { active: boolean }) {
+function FreeGradeLayer({
+  active,
+  hwOverrideRef,
+}: {
+  active: boolean;
+  hwOverrideRef: React.MutableRefObject<HwOverride>;
+}) {
   const map = useMap();
   useEffect(() => {
     if (!active) return;
@@ -1243,24 +1403,30 @@ function FreeGradeLayer({ active }: { active: boolean }) {
     box.style.display = "none";
     map.getContainer().appendChild(box);
 
-    // 高速道路判定（RouteLayerと同じヒステリシス）。高速は表示しない。
+    // 高速道路の自動判定（速度ベース）。軽の低速巡航に合わせ ON≥65km/h、渋滞で誤OFFしないよう
+    // OFF は <50km/h が約60秒続いた時だけ（sticky）。ルート無しなので waycategory は使えず速度＋手動切替。
     let onHighway = false;
     let fastCount = 0;
     let slowCount = 0;
     const updateHighwayState = (kmh: number | null) => {
       if (kmh == null || !isFinite(kmh)) return;
-      if (kmh >= 80) {
+      if (kmh >= 65) {
         fastCount++;
         slowCount = 0;
         if (fastCount >= 8) onHighway = true;
-      } else if (kmh < 60) {
+      } else if (kmh < 50) {
         slowCount++;
         fastCount = 0;
-        if (slowCount >= 20) onHighway = false;
+        if (slowCount >= 60) onHighway = false;
       } else {
         fastCount = 0;
         slowCount = 0;
       }
+    };
+    // 実効的な高速判定: 手動切替＞速度。高速なら勾配を非表示。
+    const effHighway = () => {
+      const ov = hwOverrideRef.current;
+      return ov === "on" ? true : ov === "off" ? false : onHighway;
     };
 
     // 先読み設定: 進行方位の前方この距離(m)のDEMで勾配を算出。50m移動ごとに更新。
@@ -1272,7 +1438,7 @@ function FreeGradeLayer({ active }: { active: boolean }) {
     let reqId = 0;
 
     const render = (grade: number | null) => {
-      if (onHighway || grade === null) {
+      if (effHighway() || grade === null) {
         box.style.display = "none";
         return;
       }
@@ -1294,7 +1460,7 @@ function FreeGradeLayer({ active }: { active: boolean }) {
         prevPos = here;
       }
       updateHighwayState(sp != null && sp >= 0 ? sp * 3.6 : null);
-      if (onHighway) {
+      if (effHighway()) {
         render(null);
         return;
       }
@@ -1350,6 +1516,42 @@ function ClearDestControl({
       btn.remove();
     };
   }, [active, map, onClear]);
+  return null;
+}
+
+/** 高速道路切り替え（手動）ボタン。走行中に表示。タップで 自動→高速→一般道 を循環。
+ *  自動が外す場面（軽の低速巡航・並走一般道・渋滞）で確実に高速判定を上書きするための手段。 */
+function HighwayToggle({
+  active,
+  mode,
+  onCycle,
+}: {
+  active: boolean;
+  mode: HwOverride;
+  onCycle: () => void;
+}) {
+  const map = useMap();
+  const cycleRef = useRef(onCycle);
+  cycleRef.current = onCycle;
+  useEffect(() => {
+    if (!active) return;
+    const btn = L.DomUtil.create("div", "hw-toggle");
+    map.getContainer().appendChild(btn);
+    L.DomEvent.disableClickPropagation(btn);
+    L.DomEvent.on(btn, "click", () => cycleRef.current());
+    return () => {
+      btn.remove();
+    };
+  }, [active, map]);
+  useEffect(() => {
+    const btn = map.getContainer().querySelector(".hw-toggle") as HTMLElement | null;
+    if (!btn) return;
+    const label = mode === "on" ? "高速" : mode === "off" ? "一般道" : "自動";
+    btn.className = `hw-toggle hw-toggle--${mode}`;
+    btn.innerHTML =
+      `<span class="hw-toggle__t">🛣 高速道路切り替え</span>` +
+      `<span class="hw-toggle__v">${label}</span>`;
+  }, [map, mode, active]);
   return null;
 }
 
@@ -1658,6 +1860,8 @@ interface Props {
   paneHidden: boolean;
   poiKinds: PoiKind[];
   showTrack: boolean;
+  hwOverride: HwOverride;
+  onCycleHwOverride: () => void;
   dest: Dest | null;
   onSetDest: (s: Dest) => void;
   onClearDest: () => void;
@@ -1676,6 +1880,8 @@ function RamenMap({
   paneHidden,
   poiKinds,
   showTrack,
+  hwOverride,
+  onCycleHwOverride,
   dest,
   onSetDest,
   onClearDest,
@@ -1693,6 +1899,12 @@ function RamenMap({
       ? { lat: dest.lat, lng: dest.lng, name: dest.name }
       : null;
   }, [dest]);
+
+  // 高速道路切り替え（手動）も走行中の高頻度判定で読むため ref で渡す。
+  const hwOverrideRef = useRef<HwOverride>(hwOverride);
+  useEffect(() => {
+    hwOverrideRef.current = hwOverride;
+  }, [hwOverride]);
 
   const icons = useMemo(() => {
     const cache = new Map<string, L.DivIcon>();
@@ -1730,8 +1942,12 @@ function RamenMap({
       <TrackLayer show={showTrack} />
       <DemoFit />
       <DestMarker dest={dest ? { lat: dest.lat, lng: dest.lng } : null} />
-      <RouteLayer to={dest ? { lat: dest.lat, lng: dest.lng } : null} />
-      <FreeGradeLayer active={!dest} />
+      <RouteLayer
+        to={dest ? { lat: dest.lat, lng: dest.lng } : null}
+        hwOverrideRef={hwOverrideRef}
+      />
+      <FreeGradeLayer active={!dest} hwOverrideRef={hwOverrideRef} />
+      <HighwayToggle active={follow} mode={hwOverride} onCycle={onCycleHwOverride} />
       <ClearDestControl active={!!dest} onClear={onClearDest} />
       <DebugExpose />
 
