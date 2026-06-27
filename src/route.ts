@@ -1,6 +1,6 @@
 // 道なりルート取得。OSMベースのルーティングAPIから経路ジオメトリと距離/所要を取得する。
 // 既定は OpenRouteService（要無料APIキー・安定）。キー未設定なら OSRM 公開デモにフォールバック（試作用）。
-import type { Pt } from "./nav";
+import { haversineKm, type Pt } from "./nav";
 
 export interface RouteResult {
   coords: [number, number][]; // [lat, lng] の点列（道路にスナップされた道なり経路）
@@ -152,4 +152,56 @@ export async function fetchRoute(
     if (r) return r;
   }
   return fetchOSRM([from, to], false);
+}
+
+/** 現在地 here の経路上への投影結果（残り距離・最近接セグメント・投影点・逸脱距離）。 */
+export interface RouteProjection {
+  remKm: number; // 投影点から終点までの道なり残り距離(km)
+  segIdx: number; // 投影が乗るセグメント coords[segIdx]→coords[segIdx+1] の始点インデックス
+  proj: Pt; // 経路上の最近接点（自車の道なり現在位置）
+  devKm: number; // 自車から経路線への垂直距離(km)。逸脱検知に使用
+}
+
+/** 現在地 here を経路 coords([lat,lng]) に投影し、残り距離・最近接セグメント・投影点・逸脱距離を返す。
+ *  suffix[i] = 頂点i から終点までの道路距離(km, 事前計算)。経度は cos(緯度) でスケールして平面近似。
+ *  地図エンジン非依存（Leaflet版 RamenMap.tsx と同一ロジック）。 */
+export function projectOnRoute(
+  coords: [number, number][],
+  suffix: number[],
+  here: Pt
+): RouteProjection {
+  if (coords.length < 2) {
+    const proj = coords[0] ? { lat: coords[0][0], lng: coords[0][1] } : here;
+    return { remKm: 0, segIdx: 0, proj, devKm: haversineKm(here, proj) };
+  }
+  const cosLat = Math.cos((here.lat * Math.PI) / 180) || 1;
+  const px = here.lng * cosLat;
+  const py = here.lat;
+  let best = Infinity;
+  let bestRem = 0;
+  let bestIdx = 0;
+  let bestProj: Pt = here;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const ax = coords[i][1] * cosLat;
+    const ay = coords[i][0];
+    const bx = coords[i + 1][1] * cosLat;
+    const by = coords[i + 1][0];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const cx = ax + t * dx;
+    const cy = ay + t * dy;
+    const d2 = (px - cx) * (px - cx) + (py - cy) * (py - cy);
+    if (d2 < best) {
+      best = d2;
+      const proj = { lat: cy, lng: cx / cosLat };
+      const segEnd = { lat: coords[i + 1][0], lng: coords[i + 1][1] };
+      bestRem = haversineKm(proj, segEnd) + suffix[i + 1];
+      bestIdx = i;
+      bestProj = proj;
+    }
+  }
+  return { remKm: bestRem, segIdx: bestIdx, proj: bestProj, devKm: haversineKm(here, bestProj) };
 }

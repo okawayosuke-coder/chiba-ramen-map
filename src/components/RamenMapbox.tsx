@@ -2,7 +2,8 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { Shop } from "../types";
-import { fmtDistance, roughMinutes, type Pt, type Dest } from "../nav";
+import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
+import { fetchRoute, projectOnRoute } from "../route";
 import { fetchPois, poiBrandStyle, poiIconFile, type Poi, type PoiKind, type BBox } from "../poi";
 import {
   loadLocalPois,
@@ -148,6 +149,11 @@ function RamenMapbox(props: Props) {
   const [mapReady, setMapReady] = useState(false); // POIなど「地図準備後に貼る」effectのトリガ
   // POI種類の集合が変わった時だけ再取得（配列の同一性に依存しない）
   const poiKindsKey = useMemo(() => [...props.poiKinds].sort().join(","), [props.poiKinds]);
+  // 目的地が変わった時だけ経路を貼り直す
+  const destKey = useMemo(
+    () => (props.dest ? `${props.dest.lat.toFixed(5)},${props.dest.lng.toFixed(5)}` : ""),
+    [props.dest]
+  );
 
   // imperative ハンドラから常に最新の props を読むための ref
   const propsRef = useRef(props);
@@ -511,6 +517,163 @@ function RamenMapbox(props: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, poiKindsKey]);
+
+  // 経路案内（Stage 2a）: 目的地マーカー＋道なり経路線＋残距離/ETA＋走行済みトリム＋逸脱リルート。
+  // 勾配計・高速ストリップ・走行追従(follow)は別エフェクト/別段で追加（2c/2b）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !props.dest) return;
+    const to: Pt = { lat: props.dest.lat, lng: props.dest.lng };
+    let aborted = false;
+    let watchId: number | null = null;
+    let lastRouteAt = 0;
+    const REROUTE_DEV_KM = 0.05; // 約50m逸脱で再ルート
+    const REROUTE_MIN_INTERVAL = 10000; // 連続再ルートの最小間隔(ms)
+
+    // 目的地マーカー（🎯）
+    const destEl = document.createElement("div");
+    destEl.className = "dest-pin";
+    destEl.textContent = "🎯";
+    const destMarker = new mapboxgl.Marker({ element: destEl, anchor: "bottom" })
+      .setLngLat([to.lng, to.lat])
+      .addTo(map);
+
+    // 経路線（GeoJSON。店舗ピン/クラスタの下に置く）
+    const lineData = (coords: [number, number][]): GeoJSON.Feature<GeoJSON.LineString> => ({
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates: coords.map((c) => [c[1], c[0]]) },
+    });
+    if (!map.getSource("route")) {
+      map.addSource("route", { type: "geojson", data: lineData([]) });
+      const before = map.getLayer("clusters") ? "clusters" : undefined;
+      map.addLayer(
+        {
+          id: "route-line",
+          type: "line",
+          source: "route",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#0b57d0", "line-width": 7, "line-opacity": 0.95 },
+        },
+        before
+      );
+    }
+    const setLine = (coords: [number, number][]) => {
+      (map.getSource("route") as mapboxgl.GeoJSONSource | undefined)?.setData(lineData(coords));
+    };
+
+    // 残距離/ETA ボックス（左上・既存CSS .route-box）
+    const box = document.createElement("div");
+    box.className = "route-box";
+    box.textContent = "🛣 現在地を取得中…";
+    map.getContainer().appendChild(box);
+
+    // ルート解除ボタン
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.textContent = "✕ ルート解除";
+    clearBtn.setAttribute(
+      "style",
+      "position:absolute;top:64px;left:12px;z-index:600;padding:8px 12px;border-radius:8px;border:0;background:rgba(20,20,20,.82);color:#fff;font-size:14px;font-weight:700;"
+    );
+    clearBtn.onclick = () => propsRef.current.onClearDest();
+    map.getContainer().appendChild(clearBtn);
+
+    let rCoords: [number, number][] | null = null;
+    let rSuffix: number[] = [];
+    let rKm = 0;
+    let rMin = 0;
+    let lastHeading: number | null = null;
+    let headingPrevPos: Pt | null = null;
+
+    const fmtEta = (min: number) =>
+      new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" })
+        .format(new Date(Date.now() + Math.max(0, min) * 60000));
+
+    const refresh = (here: Pt) => {
+      if (!rCoords || rKm <= 0) return null;
+      const pr = projectOnRoute(rCoords, rSuffix, here);
+      if (pr.remKm < 0.08) {
+        box.textContent = "🛣 まもなく到着";
+      } else {
+        const remMin = rMin * (pr.remKm / rKm);
+        const dist = pr.remKm < 10 ? pr.remKm.toFixed(1) : Math.round(pr.remKm).toString();
+        box.textContent = `🛣 残り ${dist}km ・ ${fmtEta(remMin)}着`;
+      }
+      // 走行済み区間を消す（投影点→以降の頂点）
+      setLine([[pr.proj.lat, pr.proj.lng], ...rCoords.slice(pr.segIdx + 1)]);
+      return pr;
+    };
+
+    const route = (from: Pt) => {
+      lastRouteAt = Date.now();
+      if (!rCoords) box.textContent = "🛣 経路を計算中…";
+      fetchRoute(from, to, lastHeading).then((r) => {
+        if (aborted) return;
+        if (!r) {
+          if (!rCoords) box.textContent = "🛣 経路を取得できませんでした";
+          return;
+        }
+        setLine(r.coords);
+        rCoords = r.coords;
+        rKm = r.km;
+        rMin = r.min;
+        rSuffix = new Array(r.coords.length).fill(0);
+        for (let i = r.coords.length - 2; i >= 0; i--) {
+          rSuffix[i] =
+            rSuffix[i + 1] +
+            haversineKm(
+              { lat: r.coords[i][0], lng: r.coords[i][1] },
+              { lat: r.coords[i + 1][0], lng: r.coords[i + 1][1] }
+            );
+        }
+        refresh(from);
+      });
+    };
+
+    const onPos = (p: GeolocationPosition) => {
+      const here: Pt = { lat: p.coords.latitude, lng: p.coords.longitude };
+      const hd = p.coords.heading;
+      const gpsHeadingOk = hd != null && isFinite(hd) && hd >= 0;
+      if (gpsHeadingOk) lastHeading = hd;
+      if (!headingPrevPos) headingPrevPos = here;
+      else if (haversineKm(headingPrevPos, here) >= 0.02) {
+        if (!gpsHeadingOk) lastHeading = bearingDeg(headingPrevPos, here);
+        headingPrevPos = here;
+      }
+      if (!rCoords) {
+        if (Date.now() - lastRouteAt > REROUTE_MIN_INTERVAL) route(here);
+        return;
+      }
+      const pr = refresh(here);
+      if (pr && pr.devKm > REROUTE_DEV_KM && Date.now() - lastRouteAt > REROUTE_MIN_INTERVAL) {
+        route(here);
+      }
+    };
+
+    if ("geolocation" in navigator && window.isSecureContext) {
+      watchId = navigator.geolocation.watchPosition(
+        onPos,
+        () => {
+          if (!aborted && !rCoords) box.textContent = "🛣 現在地を取得できませんでした";
+        },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+      );
+    } else {
+      box.textContent = "🛣 現在地が使えません（HTTPSが必要）";
+    }
+
+    return () => {
+      aborted = true;
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      destMarker.remove();
+      box.remove();
+      clearBtn.remove();
+      if (map.getLayer("route-line")) map.removeLayer("route-line");
+      if (map.getSource("route")) map.removeSource("route");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, destKey]);
 
   // ---- 以下はクロージャ内ヘルパ（関数宣言＝巻き上げ済み。propsRef で最新値を読む） ----
 
