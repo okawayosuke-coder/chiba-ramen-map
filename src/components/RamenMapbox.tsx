@@ -675,6 +675,110 @@ function RamenMapbox(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, destKey]);
 
+  // 走行追従モード（Stage 2b）: ヘディングアップ回転＋3Dピッチ＋自車マーカー＋速度計＋Wake Lock。
+  // Mapboxはカメラを進行方位へ回せるので、自車矢印は常に上向き（Leaflet版のコンパス補正は不要）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !props.follow) return;
+    let aborted = false;
+    let watchId: number | null = null;
+    let first = true;
+    let lastBearing = map.getBearing();
+    const DRIVE_ZOOM = 16.5;
+    const DRIVE_PITCH = 55;
+    const MOVE_KMH = 3; // これ以上で進行方位を採用（停車時のふらつきで地図が回らないように）
+
+    // 自車マーカー（上向きナビ矢印。地図がヘディングアップで回るので回転不要）
+    const carEl = document.createElement("div");
+    carEl.innerHTML =
+      '<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">' +
+      '<circle cx="20" cy="20" r="15" fill="#1c7ed6" stroke="#fff" stroke-width="3"/>' +
+      '<path d="M20 9 L28 27 L20 22 L12 27 Z" fill="#fff"/></svg>';
+    carEl.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,.45))";
+    const carMarker = new mapboxgl.Marker({ element: carEl, anchor: "center" });
+    if (propsRef.current.userPos) {
+      carMarker.setLngLat([propsRef.current.userPos.lng, propsRef.current.userPos.lat]).addTo(map);
+    }
+
+    // 速度計（左下）
+    const speedo = document.createElement("div");
+    speedo.setAttribute(
+      "style",
+      "position:absolute;left:12px;bottom:16px;z-index:600;background:rgba(20,20,20,.82);color:#fff;border-radius:16px;padding:8px 16px;text-align:center;min-width:88px;"
+    );
+    speedo.innerHTML =
+      '<div class="mb-speedo-num" style="font-size:32px;font-weight:800;line-height:1">–</div>' +
+      '<div style="font-size:11px;opacity:.8;margin-top:2px">km/h</div>';
+    map.getContainer().appendChild(speedo);
+    const numEl = speedo.querySelector(".mb-speedo-num") as HTMLElement | null;
+
+    // 走行中は通常の現在地ドットを隠す
+    userMarkerRef.current?.remove();
+    userMarkerRef.current = null;
+
+    const onFix = (p: GeolocationPosition) => {
+      if (aborted) return;
+      const here: [number, number] = [p.coords.longitude, p.coords.latitude];
+      carMarker.setLngLat(here).addTo(map);
+      const sp = p.coords.speed; // m/s
+      const kmh = sp != null && sp >= 0 ? sp * 3.6 : null;
+      if (numEl) numEl.textContent = kmh == null ? "–" : String(Math.round(kmh));
+      const hd = p.coords.heading;
+      if (kmh != null && kmh > MOVE_KMH && hd != null && isFinite(hd) && hd >= 0) lastBearing = hd;
+      if (first) {
+        first = false;
+        map.easeTo({ center: here, bearing: lastBearing, pitch: DRIVE_PITCH, zoom: DRIVE_ZOOM, duration: 800 });
+      } else {
+        map.easeTo({ center: here, bearing: lastBearing, duration: 800 });
+      }
+    };
+
+    // Wake Lock（画面を消さない）
+    const nav = navigator as unknown as {
+      wakeLock?: { request(type: string): Promise<{ release(): void }> };
+    };
+    let wake: { release(): void } | null = null;
+    const reqWake = () => {
+      nav.wakeLock
+        ?.request("screen")
+        .then((w) => {
+          wake = w;
+        })
+        .catch(() => {
+          /* 取得不可は無視 */
+        });
+    };
+    reqWake();
+    const onVis = () => {
+      if (document.visibilityState === "visible") reqWake();
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    if ("geolocation" in navigator && window.isSecureContext) {
+      watchId = navigator.geolocation.watchPosition(onFix, () => {}, {
+        enableHighAccuracy: true,
+        maximumAge: 2000,
+        timeout: 15000,
+      });
+    }
+
+    return () => {
+      aborted = true;
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      document.removeEventListener("visibilitychange", onVis);
+      try {
+        wake?.release();
+      } catch {
+        /* 無視 */
+      }
+      carMarker.remove();
+      speedo.remove();
+      // ブラウズ表示へ戻す（北向き・水平）
+      map.easeTo({ bearing: 0, pitch: 0, duration: 600 });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, props.follow]);
+
   // ---- 以下はクロージャ内ヘルパ（関数宣言＝巻き上げ済み。propsRef で最新値を読む） ----
 
   function setupLayers(map: mapboxgl.Map) {
@@ -813,6 +917,12 @@ function RamenMapbox(props: Props) {
 
   function placeUser(map: mapboxgl.Map, pos: Pt | null) {
     if (!pos) return;
+    if (propsRef.current.follow) {
+      // 走行追従中は自車矢印（follow effect）が現在地を示すので通常ドットは出さない
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+      return;
+    }
     if (!userMarkerRef.current) {
       const el = document.createElement("div");
       el.className = "userloc";
