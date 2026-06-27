@@ -131,19 +131,29 @@
   }
   function localizeLabels() {
     if (!map) return;
-    var n = 0;
+    var n = 0, skipped = 0;
     Object.keys(origTextField).forEach(function (id) {
+      var raw = origTextField[id];
+      var origStr = (raw == null) ? '' : JSON.stringify(raw);
+      // name系(地名/施設名/道路名)だけ日本語化。ref(国道/県道の路線番号シールド)は触らない＝番号が消えない
+      var refsName = origStr.indexOf('name') !== -1;
+      var refsRef = origStr.indexOf('"ref"') !== -1;
       try {
         if (langJa) {
-          // name_ja(日本語) → name(現地名=日本では大抵日本語) → name_en の順で採用
-          map.setLayoutProperty(id, 'text-field', ['coalesce', ['get', 'name_ja'], ['get', 'name'], ['get', 'name_en']]);
+          if (refsName && !refsRef) {
+            // name_ja(日本語) → name(現地名) → name_en の順で採用
+            map.setLayoutProperty(id, 'text-field', ['coalesce', ['get', 'name_ja'], ['get', 'name'], ['get', 'name_en']]);
+            n++;
+          } else {
+            skipped++; // 路線番号シールドやアイコンのみのレイヤーは対象外
+          }
         } else {
-          map.setLayoutProperty(id, 'text-field', origTextField[id]);
+          map.setLayoutProperty(id, 'text-field', raw);
+          n++;
         }
-        n++;
       } catch (e) {}
     });
-    set('lang', 'ラベル言語', 'ok', (langJa ? '日本語' : '原文') + ' / ' + n + '層');
+    set('lang', 'ラベル言語', 'ok', (langJa ? '日本語' : '原文') + ' / ' + n + '層(除外' + skipped + ')');
   }
   function onStyleReady() {
     captureOriginals();
