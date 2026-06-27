@@ -58,6 +58,7 @@
         <button id="bPitch">3D傾き</button>
       </div>
       <div class="row">
+        <button id="bLang" class="on">日本語</button>
         <button id="bLoc">現在地</button>
       </div>
     </div>
@@ -74,7 +75,7 @@
     render();
   }
   function render() {
-    var order = ['webgl', 'lib', 'token', 'map', 'rotate', 'pitch', 'label', 'geo'];
+    var order = ['webgl', 'lib', 'token', 'map', 'rotate', 'pitch', 'label', 'lang', 'geo'];
     var html = '';
     order.forEach(function (k) {
       var l = lines[k];
@@ -103,9 +104,10 @@
     out: 'mapbox://styles/mapbox/outdoors-v12'
   };
   var map = null, curStyle = 'street', labelFactor = 1.0, pitched = false;
+  var langJa = true, origTextField = {};
 
   function applyLabelScale() {
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map) return;
     var layers = map.getStyle().layers || [];
     var n = 0;
     layers.forEach(function (ly) {
@@ -118,6 +120,39 @@
       } catch (e) {}
     });
     set('label', 'ベクターラベル拡大', n > 0 ? 'ok' : 'warn', n + '層 ×' + labelFactor.toFixed(1));
+  }
+
+  function captureOriginals() {
+    origTextField = {};
+    (map.getStyle().layers || []).forEach(function (ly) {
+      if (ly.type !== 'symbol') return;
+      try { origTextField[ly.id] = map.getLayoutProperty(ly.id, 'text-field'); } catch (e) {}
+    });
+  }
+  function localizeLabels() {
+    if (!map) return;
+    var n = 0;
+    Object.keys(origTextField).forEach(function (id) {
+      try {
+        if (langJa) {
+          // name_ja(日本語) → name(現地名=日本では大抵日本語) → name_en の順で採用
+          map.setLayoutProperty(id, 'text-field', ['coalesce', ['get', 'name_ja'], ['get', 'name'], ['get', 'name_en']]);
+        } else {
+          map.setLayoutProperty(id, 'text-field', origTextField[id]);
+        }
+        n++;
+      } catch (e) {}
+    });
+    set('lang', 'ラベル言語', 'ok', (langJa ? '日本語' : '原文') + ' / ' + n + '層');
+  }
+  function onStyleReady() {
+    captureOriginals();
+    localizeLabels();
+    applyLabelScale();
+    set('token', 'トークン適用', 'ok', '有効');
+    set('map', '地図の実描画', 'ok', 'スタイル読込OK');
+    document.getElementById('ctrls').classList.remove('hide');
+    document.getElementById('lblrow').classList.remove('hide');
   }
 
   function buildMap(token) {
@@ -142,6 +177,8 @@
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
     map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: 'metric' }));
     map.touchZoomRotate.enableRotation(); // 2本指回転を明示有効化
+    window.__pocMap = map; // 検証/デバッグ用
+    map.on('style.load', onStyleReady); // 初期もスタイル切替も網羅（fullロード待ちにしない）
 
     var rendered = false;
     map.on('render', function () {
@@ -154,9 +191,6 @@
       set('token', 'トークン適用', 'ok', '有効');
       set('map', '地図の実描画', 'ok', 'load完了');
       set('rotate', '回転(ヘディングアップ可否)', 'ok', '2本指で回せます');
-      applyLabelScale();
-      document.getElementById('ctrls').classList.remove('hide');
-      document.getElementById('lblrow').classList.remove('hide');
     });
     map.on('error', function (e) {
       var msg = (e && e.error && e.error.message) ? e.error.message : 'unknown';
@@ -178,7 +212,7 @@
     if (!map) return;
     curStyle = name;
     map.setStyle(STYLES[name]);
-    map.once('style.load', applyLabelScale);
+    // onStyleReady は map.on('style.load') で自動実行されるため個別登録は不要
     ['bStreet', 'bDark', 'bOut'].forEach(function (id) { document.getElementById(id).classList.remove('on'); });
     document.getElementById(name === 'street' ? 'bStreet' : name === 'dark' ? 'bDark' : 'bOut').classList.add('on');
   }
@@ -208,6 +242,13 @@
     }, function (err) {
       set('geo', '現在地(GPS)', 'ng', err.message.slice(0, 40));
     }, { enableHighAccuracy: true, timeout: 8000 });
+  };
+
+  document.getElementById('bLang').onclick = function () {
+    langJa = !langJa;
+    localizeLabels();
+    this.classList.toggle('on', langJa);
+    this.textContent = langJa ? '日本語' : '原文';
   };
 
   var lbl = document.getElementById('lbl');
