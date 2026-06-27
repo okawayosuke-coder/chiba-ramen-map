@@ -44,8 +44,9 @@ const LEAFLET_VIEW_KEY = "crm_mapview"; // 互換: Leaflet 版の保存位置を
 
 type View = { lng: number; lat: number; zoom: number; bearing: number; pitch: number };
 
-/** トークン解決: ビルド時 env(VITE_MAPBOX_TOKEN) → なければ localStorage(mapbox_poc_token)。
- *  PoC ページ(/mapbox-poc.html)と同一オリジンなので、PoC で入力済みのトークンを流用できる。 */
+/** トークン解決: ビルド時 env(VITE_MAPBOX_TOKEN＝GitHub Actions secret から注入) を最優先、
+ *  なければ localStorage(mapbox_poc_token)、どちらも無ければ null（→アプリ内の入力欄を表示）。
+ *  secret を設定すればビルド成果物にだけ埋め込まれ、端末ごとの入力が不要になる（ソースには残さない）。 */
 function resolveToken(): string | null {
   const env = (import.meta.env as Record<string, string | undefined>).VITE_MAPBOX_TOKEN;
   if (env && /^pk\./.test(env)) return env;
@@ -176,6 +177,12 @@ function RamenMapbox(props: Props) {
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
     map.touchZoomRotate.enableRotation(); // 2本指回転（ヘディングアップの素地）
 
+    // コンテナのサイズ変化（左ペイン開閉・画面回転・ウィンドウリサイズ）で地図を再計測。
+    // Mapboxはコンテナのサイズ変化を自動検知しないため、これが無いとペインを閉じた時に
+    // 右側が空白のまま（旧サイズで描画され続ける）になる。
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(containerRef.current);
+
     map.on("style.load", () => {
       // style.load は full 'load' より早く確実に発火する（ヘッドレス検証でも動く・実機でも堅牢）。
       // 再 setStyle 時の二重登録を防ぐため source 有無で初期化をガード。
@@ -212,6 +219,7 @@ function RamenMapbox(props: Props) {
     map.on("moveend", save);
 
     return () => {
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
       readyRef.current = false;

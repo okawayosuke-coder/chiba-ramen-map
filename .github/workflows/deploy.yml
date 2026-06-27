@@ -22,6 +22,8 @@ jobs:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       # 道なりルート用 OpenRouteService キー（GitHub Secrets。未設定ならOSRMデモにフォールバック）
       VITE_ORS_KEY: ${{ secrets.VITE_ORS_KEY }}
+      # Mapbox公開トークン（GitHub Secrets。未設定なら地図画面でトークン入力欄を表示）
+      VITE_MAPBOX_TOKEN: ${{ secrets.VITE_MAPBOX_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
