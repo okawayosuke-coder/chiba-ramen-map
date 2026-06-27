@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
 import { fetchRoute, projectOnRoute } from "../route";
+import { loadHighway, type HwFacility, type HwKind } from "../highwayData";
 import { fetchPois, poiBrandStyle, poiIconFile, type Poi, type PoiKind, type BBox } from "../poi";
 import {
   loadLocalPois,
@@ -387,6 +388,7 @@ function RamenMapbox(props: Props) {
   // followeffectが自車位置/向きに使う。経路案内中だけ新鮮（at が近い）。
   const routeSnapRef = useRef<{ proj: Pt; bearing: number; at: number } | null>(null);
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
+  const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
   // 日本語化した name 系レイヤーの元 text-size を保持（bigLabels トグルで戻せるように）
   const labelOrigRef = useRef<Record<string, unknown>>({});
   const [tokenMissing, setTokenMissing] = useState(false);
@@ -944,6 +946,150 @@ function RamenMapbox(props: Props) {
     let rMin = 0;
     let lastHeading: number | null = null;
     let headingPrevPos: Pt | null = null;
+    let lastHereHw: Pt | null = null;
+
+    // ===== ハイウェイモード: この先のSA/PA/IC/JCTを近い順に右ストリップ表示（Leaflet版移植） =====
+    const hwStrip = document.createElement("div");
+    hwStrip.className = "hw-strip";
+    hwStrip.style.display = "none";
+    map.getContainer().appendChild(hwStrip);
+    const hwToggle = document.createElement("button");
+    hwToggle.type = "button";
+    hwToggle.setAttribute(
+      "style",
+      "position:absolute;top:112px;right:12px;z-index:600;padding:8px 10px;border-radius:8px;border:0;background:rgba(20,20,20,.82);color:#fff;font-size:12px;font-weight:700;"
+    );
+    const hwLabel = () =>
+      propsRef.current.hwOverride === "on" ? "🛣 高速:ON" : propsRef.current.hwOverride === "off" ? "🛣 高速:OFF" : "🛣 高速:自動";
+    hwToggle.textContent = hwLabel();
+    hwToggle.onclick = () => propsRef.current.onCycleHwOverride();
+    map.getContainer().appendChild(hwToggle);
+
+    let hwRanges: [number, number][] = [];
+    const isHwSeg = (segIdx: number) => hwRanges.some(([a, b]) => segIdx >= a && segIdx < b);
+    let onHighway = false;
+    let fastCount = 0;
+    let slowCount = 0;
+    const updateHighwayState = (kmh: number | null) => {
+      if (kmh == null || !isFinite(kmh)) return;
+      if (kmh >= 65) {
+        fastCount++;
+        slowCount = 0;
+        if (fastCount >= 8) onHighway = true;
+      } else if (kmh < 50) {
+        slowCount++;
+        fastCount = 0;
+        if (slowCount >= 60) onHighway = false;
+      } else {
+        fastCount = 0;
+        slowCount = 0;
+      }
+    };
+    let effHighway = false;
+    const computeEffHighway = (segIdx: number) => {
+      const ov = propsRef.current.hwOverride;
+      if (ov === "on") return true;
+      if (ov === "off") return false;
+      if (hwRanges.length > 0) return isHwSeg(segIdx);
+      return onHighway;
+    };
+
+    const HW_SNAP_KM = 0.3;
+    const HW_LOOK = 6;
+    const HW_BADGE: Record<HwKind, string> = { sa: "SA", pa: "PA", ic: "IC", jct: "JCT" };
+    const AMEN_EMOJI: Record<string, string> = { conv: "🏪", fuel: "⛽", food: "🍴", cafe: "☕", shop: "🛍️", toilet: "🚻", ev: "⚡" };
+    const HW_ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
+    const amenIconHtml = (a: string, f: HwFacility): string => {
+      if (a === "conv") {
+        const file = poiIconFile("conv", f.convBrand || "");
+        return `<img class="hw-amen-ic hw-amen-conv" src="${HW_ICON_BASE}${file}" alt="コンビニ">`;
+      }
+      if (a === "fuel") {
+        const file = poiIconFile("fuel", f.fuelBrand || "");
+        if (file) return `<img class="hw-amen-ic hw-amen-gs" src="${HW_ICON_BASE}${file}" alt="GS">`;
+      }
+      return `<span class="hw-amen-em">${AMEN_EMOJI[a] || ""}</span>`;
+    };
+    let hwFacilities: HwFacility[] | null = null;
+    let routeFacilities: { f: HwFacility; distKm: number }[] = [];
+    const escHtml = (s: string) => s.replace(/[&<>]/g, (c) => (c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"));
+    const computeRouteFacilities = () => {
+      routeFacilities = [];
+      if (!rCoords || !hwFacilities || rKm <= 0) return;
+      let s = 90,
+        w = 180,
+        n = -90,
+        e = -180;
+      for (const c of rCoords) {
+        if (c[0] < s) s = c[0];
+        if (c[0] > n) n = c[0];
+        if (c[1] < w) w = c[1];
+        if (c[1] > e) e = c[1];
+      }
+      const M = 0.01;
+      for (const f of hwFacilities) {
+        if (f.lat < s - M || f.lat > n + M || f.lng < w - M || f.lng > e + M) continue;
+        const prj = projectOnRoute(rCoords, rSuffix, { lat: f.lat, lng: f.lng });
+        if (prj.devKm > HW_SNAP_KM) continue;
+        routeFacilities.push({ f, distKm: rKm - prj.remKm });
+      }
+      routeFacilities.sort((a, b) => a.distKm - b.distKm);
+      const baseName = (nm: string) =>
+        nm
+          .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+          .replace(/[\s（）()]/g, "")
+          .replace(/(上り|下り|内回り|外回り)$/, "");
+      const seen = new Set<string>();
+      routeFacilities = routeFacilities.filter((rf) => {
+        const k = `${rf.f.kind}:${baseName(rf.f.name)}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    };
+    const updateHwStrip = (carDistKm: number) => {
+      if (!effHighway || routeFacilities.length === 0) {
+        hwStrip.style.display = "none";
+        return;
+      }
+      const ahead = routeFacilities.filter((rf) => rf.distKm >= carDistKm - 0.1).slice(0, HW_LOOK);
+      if (ahead.length === 0) {
+        hwStrip.style.display = "none";
+        return;
+      }
+      hwStrip.style.display = "";
+      hwStrip.innerHTML = ahead
+        .map((rf) => {
+          const remKm = Math.max(0, rf.distKm - carDistKm);
+          const remMin = rKm > 0 ? Math.round(rMin * (remKm / rKm)) : 0;
+          const dist = remKm < 10 ? remKm.toFixed(1) : Math.round(remKm).toString();
+          const am = rf.f.amenities;
+          const amenRow =
+            (rf.f.kind === "sa" || rf.f.kind === "pa") && am && am.length
+              ? `<div class="hw-amen">${am.map((a) => amenIconHtml(a, rf.f)).join("")}</div>`
+              : "";
+          return (
+            `<div class="hw-row hw-${rf.f.kind}"><div class="hw-top"><span class="hw-badge">${HW_BADGE[rf.f.kind]}</span>` +
+            `<span class="hw-name">${escHtml(rf.f.name)}</span></div>${amenRow}` +
+            `<div class="hw-dist">${dist}<small>km</small> ・ ${remMin}<small>分</small></div></div>`
+          );
+        })
+        .join("");
+    };
+    loadHighway()
+      .then((d) => {
+        if (aborted) return;
+        hwFacilities = d.facilities;
+        if (rCoords) computeRouteFacilities();
+      })
+      .catch(() => {
+        /* highway.json 無し時はストリップ非表示のまま */
+      });
+    // 高速切替を次のGPS取得を待たず即反映（ラベル＋ストリップ）
+    routeReapplyRef.current = () => {
+      hwToggle.textContent = hwLabel();
+      if (lastHereHw && rCoords) refresh(lastHereHw);
+    };
 
     const fmtEta = (min: number) =>
       new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" })
@@ -969,6 +1115,9 @@ function RamenMapbox(props: Props) {
         segBearing = bearingDeg({ lat: a[0], lng: a[1] }, { lat: b[0], lng: b[1] });
       }
       routeSnapRef.current = { proj: pr.proj, bearing: segBearing, at: Date.now() };
+      // 高速判定（手動＞経路waycategory＞速度）＋この先の高速施設ストリップ更新
+      effHighway = computeEffHighway(pr.segIdx);
+      updateHwStrip(rKm - pr.remKm);
       return pr;
     };
 
@@ -994,12 +1143,17 @@ function RamenMapbox(props: Props) {
               { lat: r.coords[i + 1][0], lng: r.coords[i + 1][1] }
             );
         }
+        hwRanges = r.hwRanges ?? []; // 経路の高速/有料区間（ORS waycategory）
+        computeRouteFacilities(); // 経路沿いの高速施設を再計算
         refresh(from);
       });
     };
 
     const onPos = (p: GeolocationPosition) => {
       const here: Pt = { lat: p.coords.latitude, lng: p.coords.longitude };
+      lastHereHw = here;
+      const spk = p.coords.speed;
+      updateHighwayState(spk != null && spk >= 0 ? spk * 3.6 : null);
       const hd = p.coords.heading;
       const gpsHeadingOk = hd != null && isFinite(hd) && hd >= 0;
       if (gpsHeadingOk) lastHeading = hd;
@@ -1036,12 +1190,20 @@ function RamenMapbox(props: Props) {
       destMarker.remove();
       box.remove();
       clearBtn.remove();
+      hwStrip.remove();
+      hwToggle.remove();
       routeSnapRef.current = null;
+      routeReapplyRef.current = null;
       if (map.getLayer("route-line")) map.removeLayer("route-line");
       if (map.getSource("route")) map.removeSource("route");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, destKey]);
+
+  // 高速道路切替(自動/高速/一般道)を次のGPS取得を待たず即、ストリップ＆トグル表示へ反映
+  useEffect(() => {
+    routeReapplyRef.current?.();
+  }, [props.hwOverride]);
 
   // 走行追従モード（Stage 2b）: ヘディングアップ回転＋3Dピッチ＋自車マーカー＋速度計＋Wake Lock。
   // Mapboxはカメラを進行方位へ回せるので、自車矢印は常に上向き（Leaflet版のコンパス補正は不要）。
