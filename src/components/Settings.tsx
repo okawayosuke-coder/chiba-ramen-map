@@ -242,6 +242,15 @@ export default function Settings({
             走行モード中に自動で記録（端末内のみ保存）。
             記録 {stats.count.toLocaleString()}点 ・ 約{stats.km.toFixed(1)}km
             {stats.durMin > 0 ? ` ・ 約${stats.durMin}分` : ""}
+            {stats.count > 0
+              ? ` ・ 容量 約${
+                  stats.bytes >= 1024 * 1024
+                    ? (stats.bytes / 1024 / 1024).toFixed(1) + "MB"
+                    : Math.max(1, Math.round(stats.bytes / 1024)) + "KB"
+                }（上限の${Math.round(
+                  (stats.count / stats.maxCount) * 100
+                )}%）`
+              : ""}
           </p>
         </section>
 

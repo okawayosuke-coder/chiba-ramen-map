@@ -99,7 +99,15 @@ export function trackStats() {
   for (let i = 1; i < points.length; i++) km += haversineKm(points[i - 1], points[i]);
   const durMs =
     points.length >= 2 ? points[points.length - 1].t - points[0].t : 0;
-  return { count: points.length, km, durMin: Math.round(durMs / 60000) };
+  // localStorageに保存される実バイト数（保存形式 JSON.stringify と同じ。容量の目安表示用）
+  const bytes = points.length ? JSON.stringify(points).length : 0;
+  return {
+    count: points.length,
+    km,
+    durMin: Math.round(durMs / 60000),
+    bytes,
+    maxCount: MAX, // 上限点数（容量の目安: 何%使っているか）
+  };
 }
 
 /** GPXファイルとしてダウンロード */
