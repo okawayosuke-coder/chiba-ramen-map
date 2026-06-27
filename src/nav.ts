@@ -112,13 +112,20 @@ export async function shareNav(
   }
 }
 
-// iOSは方位センサー利用に許可が必要。必ずユーザー操作(タップ)内で呼ぶこと
+// iOSは方位/モーションセンサー利用に許可が必要。必ずユーザー操作(タップ)内で呼ぶこと
 export function requestOrientationPermission() {
   const DOE = window.DeviceOrientationEvent as unknown as {
     requestPermission?: () => Promise<string>;
   };
   if (DOE && typeof DOE.requestPermission === "function") {
     DOE.requestPermission().catch(() => {});
+  }
+  // 傾斜メーターのジャイロ補正(重力ベクトル)用に DeviceMotion 許可も同時に要求（iOSは別API）
+  const DME = window.DeviceMotionEvent as unknown as {
+    requestPermission?: () => Promise<string>;
+  };
+  if (DME && typeof DME.requestPermission === "function") {
+    DME.requestPermission().catch(() => {});
   }
 }
 
