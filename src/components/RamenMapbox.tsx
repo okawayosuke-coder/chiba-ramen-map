@@ -12,6 +12,7 @@ import {
   LOCAL_KINDS,
   type LocalPoiData,
 } from "../poiData";
+import { fetchWeather, wmo, type Weather } from "../weather";
 import type { HwOverride } from "../storage";
 
 /** Props は Leaflet 版 RamenMap と完全に同一（ドロップイン差し替え用）。
@@ -304,6 +305,44 @@ function teardropImageData(color: string, scale: number): ImageData {
   return ctx.getImageData(0, 0, w, h);
 }
 
+/** 天気バーの中身HTML（Leaflet版と同一）。通常は当日のみ、.expanded で7日間。 */
+function weatherBarHTML(wx: Weather): string {
+  const c = wmo(wx.current.code);
+  const WD = ["日", "月", "火", "水", "木", "金", "土"];
+  const cur =
+    `<div class="wx-cur">` +
+    `<span class="wx-emoji">${c.emoji}</span>` +
+    `<span class="wx-temp">${Math.round(wx.current.temp)}°</span>` +
+    `<span class="wx-cur-sub">${c.label}<br>${
+      wx.current.precip > 0 ? `☔${wx.current.precip}mm ・ ` : ""
+    }💨${Math.round(wx.current.wind)}</span>` +
+    `</div>`;
+  const days = wx.daily
+    .map((d, i) => {
+      const w = wmo(d.code);
+      const name = i === 0 ? "今日" : i === 1 ? "明日" : WD[new Date(d.date).getUTCDay()];
+      return (
+        `<div class="wx-day">` +
+        `<span class="wx-day-name">${name}</span>` +
+        `<span class="wx-day-emoji">${w.emoji}</span>` +
+        `<span class="wx-day-pop">☔${d.pop ?? 0}%</span>` +
+        `<span class="wx-day-temp"><b>${Math.round(d.tmax)}</b>/<span class="wx-lo">${Math.round(d.tmin)}</span></span>` +
+        `</div>`
+      );
+    })
+    .join("");
+  const t = wx.daily[0];
+  const today = t
+    ? `<div class="wx-today"><span class="wx-day-pop">☔${t.pop ?? 0}%</span>` +
+      `<span class="wx-day-temp"><b>${Math.round(t.tmax)}</b>/<span class="wx-lo">${Math.round(t.tmin)}</span></span></div>`
+    : "";
+  return (
+    `<div class="wx-label">📍 天気</div>${cur}${today}` +
+    `<div class="wx-days">${days}</div>` +
+    `<span class="wx-toggle" aria-hidden="true">▾</span>`
+  );
+}
+
 function RamenMapbox(props: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -314,6 +353,7 @@ function RamenMapbox(props: Props) {
   // 経路スナップ（無料のリアルタイムmap matching）: 経路effectが投影点＋道路方位を書き、
   // followeffectが自車位置/向きに使う。経路案内中だけ新鮮（at が近い）。
   const routeSnapRef = useRef<{ proj: Pt; bearing: number; at: number } | null>(null);
+  const weatherBoxRef = useRef<HTMLDivElement | null>(null);
   // 日本語化した name 系レイヤーの元 text-size を保持（bigLabels トグルで戻せるように）
   const labelOrigRef = useRef<Record<string, unknown>>({});
   const [tokenMissing, setTokenMissing] = useState(false);
@@ -325,6 +365,11 @@ function RamenMapbox(props: Props) {
   const destKey = useMemo(
     () => (props.dest ? `${props.dest.lat.toFixed(5)},${props.dest.lng.toFixed(5)}` : ""),
     [props.dest]
+  );
+  // 天気の再取得キー（現在地・約1km丸め）
+  const wxPosKey = useMemo(
+    () => (props.userPos ? `${props.userPos.lat.toFixed(2)},${props.userPos.lng.toFixed(2)}` : "center"),
+    [props.userPos]
   );
 
   // imperative ハンドラから常に最新の props を読むための ref
@@ -435,6 +480,42 @@ function RamenMapbox(props: Props) {
     for (const id of Object.keys(labelOrigRef.current)) scaleLabel(map, id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.bigLabels]);
+
+  // 現在地の天気バー（画面下部中央・常時表示・タップで7日間展開）。Open-Meteo（無料）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const box = document.createElement("div");
+    box.className = "weather-bar";
+    box.innerHTML = '<div class="wx-label">📍 天気</div><div class="wx-loading">取得中…</div>';
+    box.addEventListener("click", (e) => {
+      e.stopPropagation();
+      box.classList.toggle("expanded");
+    });
+    map.getContainer().appendChild(box);
+    weatherBoxRef.current = box;
+    return () => {
+      box.remove();
+      weatherBoxRef.current = null;
+    };
+  }, [mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !weatherBoxRef.current) return;
+    const loc = propsRef.current.userPos ?? { lat: map.getCenter().lat, lng: map.getCenter().lng };
+    let cancelled = false;
+    fetchWeather(loc.lat, loc.lng).then((wx) => {
+      if (cancelled || !weatherBoxRef.current) return;
+      weatherBoxRef.current.innerHTML = wx
+        ? weatherBarHTML(wx)
+        : '<div class="wx-label">📍 天気</div><div class="wx-loading">天気を取得できませんでした</div>';
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, wxPosKey]);
 
   // 周辺POI（コンビニ/GS=同梱データ即時, 駐車場/EV/トイレ=ライブOverpass）。
   // z14未満は非表示・BUFFER余白＋bboxキャッシュ＋最小間隔で過剰取得を抑制（Leaflet版PoiLayer移植）。
