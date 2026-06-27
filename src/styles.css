@@ -1052,6 +1052,35 @@ body {
   letter-spacing: 0.2px;
   box-shadow: 0 2px 9px rgba(0, 0, 0, 0.4);
 }
+
+/* ===== Mapbox ズーム(縮尺切替)ボタンを大きく＝走行中もタップしやすく ===== */
+/* 既定29px → 46px。2個積み≒93px+上余白10px=下端約103pxで route-box(top:112) と非重複。 */
+.mapboxgl-ctrl-top-left .mapboxgl-ctrl-group {
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.mapboxgl-ctrl-top-left .mapboxgl-ctrl-group button {
+  width: 46px !important;
+  height: 46px !important;
+}
+/* +/- グリフ（背景SVG）も拡大して視認性を上げる */
+.mapboxgl-ctrl-top-left .mapboxgl-ctrl-group button .mapboxgl-ctrl-icon {
+  background-size: 28px 28px;
+}
+
+/* ===== 縮尺バー（ScaleControl・右下）。実距離が一目で分かるよう大きめ・高コントラスト ===== */
+.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-scale {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.5;
+  padding: 1px 8px 2px;
+  color: #16202c;
+  background: rgba(255, 255, 255, 0.88);
+  border: 2px solid #4a4f57;
+  border-top: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
 /* 勾配計（DEMベース）。左下・速度計の上。ルート案内中に表示 */
 /* 勾配メーター（傾斜計＝車が坂に乗って傾く）。左下・速度計の上。ルート案内中／追従走行中に表示 */
 .grade-box {

@@ -461,7 +461,10 @@ function RamenMapbox(props: Props) {
     mapRef.current = map;
     (window as unknown as Record<string, unknown>).__mbmap = map; // 検証/デバッグ用（試験エンジン時のみ）
     // ズーム+/- は左上（Leaflet版と同じ位置。右側の高速ストリップ/各ボタンと被らない）。コンパスは出さない。
+    // ボタンはCSSで大きく（走行中もタップしやすく）。
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false, showZoom: true }), "top-left");
+    // 縮尺バー（画面上の一定長が実距離で何m/kmか）。右下＝著作権表示の上。走行中の距離感の把握用。
+    map.addControl(new mapboxgl.ScaleControl({ maxWidth: 130, unit: "metric" }), "bottom-right");
     map.touchZoomRotate.enableRotation(); // 2本指回転（ヘディングアップの素地）
 
     // コンテナのサイズ変化（左ペイン開閉・画面回転・ウィンドウリサイズ）で地図を再計測。
