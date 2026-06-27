@@ -1183,7 +1183,9 @@ function projectOnRoute(
 const GRADE_SPACING_KM = 0.08; // 標高サンプル間隔(80m)。現在勾配の基準距離も兼ねる（短い＝瞬間性◎・カーブ◎、ノイズ±0.5%）
 const GRADE_LOOK = 11; // 前方何マーク先まで見るか（80m×11＝約880m先まで予告）
 const GRADE_STEEP = 8; // この先「急勾配」と警告する閾値(%)
-const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」(%)
+const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」に戻す閾値(%)
+const GRADE_SLOPE_ON = 2.2; // 平坦→「坂」表示に切替える閾値(%)。GRADE_FLATとの差がヒステリシス帯＝平坦路の小さな偽勾配・ちらつきを抑制
+const GRADE_MED_N = 3; // 現在勾配のスパイク除去に使う中央値フィルタ窓（直近N点。DEMの孤立した偽勾配を無視）
 const GRADE_MAX_PLAUSIBLE = 25; // これ超の区間勾配はDEM/経路のノイズとして無視（実道路はまず超えない）
 
 /** 経路 coords を距離 spacingKm ごとのマーク点に分割。marks[i] は始点から i*spacingKm の地点。 */
@@ -1638,7 +1640,14 @@ function pointAhead(from: Pt, headingDeg: number, distM: number): Pt {
 }
 
 // ===== 勾配メーター（傾斜計＝車が坂に乗って傾く）。文言表示の代わりに使う共通描画。 =====
-type GradeMeter = { tilt: SVGElement; road: SVGElement; label: SVGElement; warn: HTMLElement };
+type GradeMeter = {
+  tilt: SVGElement;
+  road: SVGElement;
+  label: SVGElement;
+  warn: HTMLElement;
+  hist: number[]; // 直近の生勾配（中央値フィルタ用）
+  flat: boolean; // ヒステリシスの現在状態（平坦表示中か）
+};
 const _gradeMeters = new WeakMap<HTMLElement, GradeMeter>();
 
 /** box 内に傾斜計SVGを一度だけ構築して各パーツの参照を返す（以後は属性更新でなめらかにアニメ）。 */
@@ -1669,6 +1678,8 @@ function ensureGradeMeter(box: HTMLElement): GradeMeter {
     road: box.querySelector(".gm-road") as SVGElement,
     label: box.querySelector(".gm-label") as SVGElement,
     warn: box.querySelector(".grade-warn") as HTMLElement,
+    hist: [],
+    flat: true,
   };
   _gradeMeters.set(box, m);
   return m;
@@ -1683,6 +1694,8 @@ function updateGradeMeter(
   const m = ensureGradeMeter(box);
   if (grade === null) {
     // 計測不可（標高取得失敗/海上/ノイズ/方位不明）。高速以外では非表示にせず「—」で常時表示。
+    m.hist = []; // フィルタ状態をリセット（再開時に古い値を引きずらない）
+    m.flat = true;
     m.tilt.setAttribute("transform", "rotate(0 85 56)");
     m.road.setAttribute("stroke", "#9aa0a6");
     m.label.textContent = "—";
@@ -1690,14 +1703,24 @@ function updateGradeMeter(
     m.warn.style.display = "none";
     return;
   }
-  const flat = Math.abs(grade) < GRADE_FLAT;
-  const col = flat ? "#9aa0a6" : grade > 0 ? "#EF9F27" : "#378ADD"; // 平坦灰/上り琥珀/下り青
-  const labelCol = flat ? "#cdd3da" : grade > 0 ? "#FAC775" : "#85B7EB";
-  const ang = flat ? 0 : Math.max(-34, Math.min(34, grade * 2.2)); // 平坦は0°、それ以外は視認性のため誇張（数値は実値）
+  // Phase1: DEMの平坦路での偽勾配対策。①直近N点の中央値で孤立スパイクを除去 ②平坦/坂をヒステリシス判定
+  m.hist.push(grade);
+  if (m.hist.length > GRADE_MED_N) m.hist.shift();
+  const sorted = [...m.hist].sort((a, b) => a - b);
+  const med = sorted[Math.floor(sorted.length / 2)]; // 中央値（孤立した偽勾配を無視）
+  if (m.flat) {
+    if (Math.abs(med) > GRADE_SLOPE_ON) m.flat = false; // 明確な坂のみ表示開始
+  } else if (Math.abs(med) < GRADE_FLAT) {
+    m.flat = true; // 平坦へ戻す（ヒステリシスでちらつき防止）
+  }
+  const flat = m.flat;
+  const col = flat ? "#9aa0a6" : med > 0 ? "#EF9F27" : "#378ADD"; // 平坦灰/上り琥珀/下り青
+  const labelCol = flat ? "#cdd3da" : med > 0 ? "#FAC775" : "#85B7EB";
+  const ang = flat ? 0 : Math.max(-34, Math.min(34, med * 2.2)); // 平坦は0°、それ以外は視認性のため誇張（数値は実値）
   m.tilt.setAttribute("transform", `rotate(${(-ang).toFixed(1)} 85 56)`);
   m.road.setAttribute("stroke", col);
-  const g = Math.abs(Math.round(grade));
-  m.label.textContent = flat ? "0%" : grade > 0 ? `↗ ${g}%` : `↘ ${g}%`;
+  const g = Math.abs(Math.round(med));
+  m.label.textContent = flat ? "0%" : med > 0 ? `↗ ${g}%` : `↘ ${g}%`;
   m.label.setAttribute("fill", labelCol);
   if (warn) {
     m.warn.style.display = "";
@@ -1761,6 +1784,18 @@ function FreeGradeLayer({
     render(lastGrade);
     // HW切替を次のGPS取得を待たず即反映するための再適用関数（前回値を保ったまま表示/非表示を更新）
     reapplyRef.current = () => render(lastGrade);
+
+    // sim/デバッグ時のみ: 中央値フィルタ＋ヒステリシスを実boxで決定論検証するフック
+    if (new URLSearchParams(window.location.search).get("sim") === "drive" ||
+        new URLSearchParams(window.location.search).get("debug") === "1") {
+      (window as unknown as { __grade?: unknown }).__grade = {
+        feed: (v: number | null) => {
+          updateGradeMeter(box, v, null);
+          return box.querySelector(".gm-label")?.textContent;
+        },
+        label: () => box.querySelector(".gm-label")?.textContent,
+      };
+    }
 
     const onPos = (p: GeolocationPosition) => {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
