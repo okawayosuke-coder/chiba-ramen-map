@@ -19,16 +19,12 @@ export type HwOverride = "auto" | "on" | "off";
 
 /** 高速道路切り替え（手動）。auto=自動判定／on=高速固定／off=一般道固定。タップで自動→高速→一般道を循環。 */
 export function useHwOverride(): [HwOverride, () => void] {
-  const [mode, setMode] = useState<HwOverride>(() => {
-    const v = read<HwOverride>(K.hwOverride, "auto");
-    return v === "on" || v === "off" || v === "auto" ? v : "auto";
-  });
+  // 起動時は必ず "auto"。手動の高速/一般道固定は「そのセッション内だけ」有効で永続化しない。
+  // 理由: 以前は localStorage に保存され、一度「高速固定」にすると次回起動以降もずっと高速扱い＝
+  // 傾斜メーターが表示されないまま、という不具合があったため（永続化を廃止して再発を防ぐ）。
+  const [mode, setMode] = useState<HwOverride>("auto");
   const cycle = useCallback(() => {
-    setMode((prev) => {
-      const next: HwOverride = prev === "auto" ? "on" : prev === "on" ? "off" : "auto";
-      write(K.hwOverride, next);
-      return next;
-    });
+    setMode((prev) => (prev === "auto" ? "on" : prev === "on" ? "off" : "auto"));
   }, []);
   return [mode, cycle];
 }

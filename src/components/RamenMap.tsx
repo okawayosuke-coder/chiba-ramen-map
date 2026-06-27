@@ -1114,17 +1114,21 @@ function buildMarks(coords: [number, number][], spacingKm: number): Pt[] {
 function RouteLayer({
   to,
   hwOverrideRef,
+  hwOverride,
 }: {
   to: Pt | null;
   hwOverrideRef: React.MutableRefObject<HwOverride>;
+  hwOverride: HwOverride;
 }) {
   const map = useMap();
+  const reapplyRef = useRef<(() => void) | null>(null);
   const toKey = to ? `${to.lat.toFixed(5)},${to.lng.toFixed(5)}` : "";
   useEffect(() => {
     if (!to) return;
     let aborted = false;
     let watchId: number | null = null;
     let lastRouteAt = 0; // 直近に経路を取得した時刻(ms)。0=未取得
+    let lastHere: Pt | null = null; // 直近の自車位置（HW切替を次のGPS取得を待たず即反映するため）
     const REROUTE_DEV_KM = 0.05; // 経路線から約50m外れたら再ルート（逸脱検知）
     const REROUTE_MIN_INTERVAL = 10000; // 連続再ルートの最小間隔(ms, API負荷抑制)
     const line = L.polyline([], {
@@ -1466,6 +1470,7 @@ function RouteLayer({
     };
     const onPos = (p: GeolocationPosition) => {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
+      lastHere = here; // HW切替の即時再適用用に保持
       const sp = p.coords.speed;
       const hd = p.coords.heading;
       const gpsHeadingOk = hd != null && isFinite(hd) && hd >= 0;
@@ -1493,6 +1498,10 @@ function RouteLayer({
         route(here);
       }
     };
+    // HW切替を次のGPS取得を待たず即反映（直近位置で再計算＝勾配抑制/施設ストリップを即更新）
+    reapplyRef.current = () => {
+      if (lastHere && rCoords) refresh(lastHere);
+    };
     if ("geolocation" in navigator && window.isSecureContext) {
       watchId = navigator.geolocation.watchPosition(
         onPos,
@@ -1508,6 +1517,7 @@ function RouteLayer({
     return () => {
       aborted = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      reapplyRef.current = null;
       map.attributionControl?.removeAttribution(attr);
       line.remove();
       box.remove();
@@ -1515,6 +1525,10 @@ function RouteLayer({
       hwStrip.remove();
     };
   }, [toKey, map]);
+  // 手動切替(自動/高速/一般道)を次のGPS取得を待たず即座に勾配/施設ストリップへ反映
+  useEffect(() => {
+    reapplyRef.current?.();
+  }, [hwOverride]);
   return null;
 }
 
@@ -1606,11 +1620,14 @@ function updateGradeMeter(
 function FreeGradeLayer({
   active,
   hwOverrideRef,
+  hwOverride,
 }: {
   active: boolean;
   hwOverrideRef: React.MutableRefObject<HwOverride>;
+  hwOverride: HwOverride;
 }) {
   const map = useMap();
+  const reapplyRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!active) return;
     let aborted = false;
@@ -1619,31 +1636,10 @@ function FreeGradeLayer({
     box.style.display = "none";
     map.getContainer().appendChild(box);
 
-    // 高速道路の自動判定（速度ベース）。軽の低速巡航に合わせ ON≥65km/h、渋滞で誤OFFしないよう
-    // OFF は <50km/h が約60秒続いた時だけ（sticky）。ルート無しなので waycategory は使えず速度＋手動切替。
-    let onHighway = false;
-    let fastCount = 0;
-    let slowCount = 0;
-    const updateHighwayState = (kmh: number | null) => {
-      if (kmh == null || !isFinite(kmh)) return;
-      if (kmh >= 65) {
-        fastCount++;
-        slowCount = 0;
-        if (fastCount >= 8) onHighway = true;
-      } else if (kmh < 50) {
-        slowCount++;
-        fastCount = 0;
-        if (slowCount >= 60) onHighway = false;
-      } else {
-        fastCount = 0;
-        slowCount = 0;
-      }
-    };
-    // 実効的な高速判定: 手動切替＞速度。高速なら勾配を非表示。
-    const effHighway = () => {
-      const ov = hwOverrideRef.current;
-      return ov === "on" ? true : ov === "off" ? false : onHighway;
-    };
+    // 実効的な高速判定（フリー走行＝目的地なし）: 速度ベースの自動判定は「流れる一般道」で誤判定し
+    // やすく、隠すと施設ストリップも無い(=画面が空白)ため、フリー走行では速度で傾斜を隠さない。
+    // 手動で「高速」固定した時だけ非表示にする（経路waycategoryはルート無しなので参照不可）。
+    const effHighway = () => hwOverrideRef.current === "on";
 
     // 先読み設定: 進行方位の前方この距離(m)のDEMで勾配を算出。50m移動ごとに更新。
     const AHEAD_M = 80;
@@ -1666,10 +1662,11 @@ function FreeGradeLayer({
 
     // マウント直後から（高速モードでなければ）即表示。GPS取得前/計測不可は「—」＝常時表示。
     render(lastGrade);
+    // HW切替を次のGPS取得を待たず即反映するための再適用関数（前回値を保ったまま表示/非表示を更新）
+    reapplyRef.current = () => render(lastGrade);
 
     const onPos = (p: GeolocationPosition) => {
       const here = { lat: p.coords.latitude, lng: p.coords.longitude };
-      const sp = p.coords.speed;
       const hd = p.coords.heading;
       const gpsHeadingOk = hd != null && isFinite(hd) && hd >= 0;
       if (gpsHeadingOk) lastHeading = hd; // GPS提供の進行方位（優先）
@@ -1680,7 +1677,6 @@ function FreeGradeLayer({
         if (!gpsHeadingOk) lastHeading = bearingDeg(prevPos, here);
         prevPos = here;
       }
-      updateHighwayState(sp != null && sp >= 0 ? sp * 3.6 : null);
       if (effHighway()) {
         box.style.display = "none";
         return;
@@ -1716,9 +1712,14 @@ function FreeGradeLayer({
     return () => {
       aborted = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      reapplyRef.current = null;
       box.remove();
     };
   }, [active, map]);
+  // 手動切替(自動/高速/一般道)を次のGPS取得を待たず即座に表示へ反映
+  useEffect(() => {
+    reapplyRef.current?.();
+  }, [hwOverride]);
   return null;
 }
 
@@ -2130,10 +2131,9 @@ function RamenMap({
   }, [dest]);
 
   // 高速道路切り替え（手動）も走行中の高頻度判定で読むため ref で渡す。
+  // レンダー時に同期＝子の「切替の即時反映」effectが走る前に必ず最新値を保持させる。
   const hwOverrideRef = useRef<HwOverride>(hwOverride);
-  useEffect(() => {
-    hwOverrideRef.current = hwOverride;
-  }, [hwOverride]);
+  hwOverrideRef.current = hwOverride;
 
   const icons = useMemo(() => {
     const cache = new Map<string, L.DivIcon>();
@@ -2186,8 +2186,13 @@ function RamenMap({
       <RouteLayer
         to={dest ? { lat: dest.lat, lng: dest.lng } : null}
         hwOverrideRef={hwOverrideRef}
+        hwOverride={hwOverride}
       />
-      <FreeGradeLayer active={!dest} hwOverrideRef={hwOverrideRef} />
+      <FreeGradeLayer
+        active={!dest}
+        hwOverrideRef={hwOverrideRef}
+        hwOverride={hwOverride}
+      />
       <HighwayToggle active={follow} mode={hwOverride} onCycle={onCycleHwOverride} />
       <ClearDestControl active={!!dest} onClear={onClearDest} />
       <DebugExpose />
