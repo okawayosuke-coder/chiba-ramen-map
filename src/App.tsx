@@ -88,9 +88,20 @@ const SHOP_GENRES = new Map<Shop, string[]>(
   })
 );
 
-// あいまい検索用の正規化キー（店名＋住所）を一度だけ計算
+// あいまい検索用の正規化キー（店名＋読み仮名＋住所＋ジャンル）を一度だけ計算。
+// 読み仮名(reading)で漢字店名を「むさし/musashi」等の読みで引け、ジャンルラベルで
+// 「つけ麺」「豚骨」等の系統名でも引ける。
+const GENRE_LABEL = new Map(GENRE_DEFS.map((g) => [g.key, g.label]));
 const SHOP_SEARCH = new Map<Shop, SearchKey>(
-  ALL_SHOPS.map((s) => [s, buildSearchKey(`${s.name} ${s.address}`)])
+  ALL_SHOPS.map((s) => {
+    const genres = (SHOP_GENRES.get(s) || [])
+      .map((k) => GENRE_LABEL.get(k) || "")
+      .join(" ");
+    return [
+      s,
+      buildSearchKey(`${s.name} ${s.reading ?? ""} ${s.address} ${genres}`),
+    ];
+  })
 );
 
 export default function App() {

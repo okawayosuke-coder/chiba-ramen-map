@@ -68,6 +68,17 @@ python3 scripts/refine.py
 > `scrape.mjs` は shops.json を書かない設計（生成元は refine.py のみ）。
 > なので①〜④の間も既存 shops.json の `reviewsUrl` は保持され、ここで引き継がれる。
 
+### 2-2. 読み仮名の付与（あいまい検索用・必須）
+
+```bash
+node scripts/add-readings.mjs
+```
+
+`refine.py` で shops.json を再生成した**直後に必ず実行**する（refine.py は `reading` を作らないため）。
+各店名を kuromoji（形態素解析）でカタカナ読みに変換し `reading` フィールドを付与する。
+これにより漢字店名を「むさし／musashi」等の**読み（かな・ローマ字）で検索**できる（無いと約9割の漢字店名が読みで引けない）。
+kuromoji 辞書はビルド時のみ使用（`devDependencies`・ユーザーには配信しない）。
+
 ---
 
 ## 3. 口コミ直リンクの解決（任意・推奨）

@@ -12,6 +12,9 @@ export interface Shop {
   reviewsUrl?: string;
   /** エリアキー（refine.py が行政界判定で付与）: tokyo / toukatsu / keiyo / chiba / inba / tosou / boso */
   region: string;
+  /** 店名の読み仮名(カタカナ)。scripts/add-readings.mjs が kuromoji で付与。
+   *  あいまい検索で漢字店名を読み(かな/ローマ字)で引くための検索キーに使う。 */
+  reading?: string;
 }
 
 /** 抽出条件のしきい値（データ収集 scripts/refine.py と一致させること） */
