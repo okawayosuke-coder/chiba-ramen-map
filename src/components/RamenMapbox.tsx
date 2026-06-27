@@ -433,7 +433,8 @@ function RamenMapbox(props: Props) {
     });
     mapRef.current = map;
     (window as unknown as Record<string, unknown>).__mbmap = map; // 検証/デバッグ用（試験エンジン時のみ）
-    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
+    // ズーム+/- は左上（Leaflet版と同じ位置。右側の高速ストリップ/各ボタンと被らない）。コンパスは出さない。
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false, showZoom: true }), "top-left");
     map.touchZoomRotate.enableRotation(); // 2本指回転（ヘディングアップの素地）
 
     // コンテナのサイズ変化（左ペイン開閉・画面回転・ウィンドウリサイズ）で地図を再計測。
@@ -933,11 +934,8 @@ function RamenMapbox(props: Props) {
     // ルート解除ボタン
     const clearBtn = document.createElement("button");
     clearBtn.type = "button";
+    clearBtn.className = "clear-dest-btn"; // 右・中央下（Leaflet版と同じ位置）
     clearBtn.textContent = "✕ ルート解除";
-    clearBtn.setAttribute(
-      "style",
-      "position:absolute;top:64px;left:12px;z-index:600;padding:8px 12px;border-radius:8px;border:0;background:rgba(20,20,20,.82);color:#fff;font-size:14px;font-weight:700;"
-    );
     clearBtn.onclick = () => propsRef.current.onClearDest();
     map.getContainer().appendChild(clearBtn);
 
@@ -956,10 +954,7 @@ function RamenMapbox(props: Props) {
     map.getContainer().appendChild(hwStrip);
     const hwToggle = document.createElement("button");
     hwToggle.type = "button";
-    hwToggle.setAttribute(
-      "style",
-      "position:absolute;top:112px;right:12px;z-index:600;padding:8px 10px;border-radius:8px;border:0;background:rgba(20,20,20,.82);color:#fff;font-size:12px;font-weight:700;"
-    );
+    hwToggle.className = "hw-toggle"; // 右・中央下（Leaflet版と同じ位置）
     const hwLabel = () =>
       propsRef.current.hwOverride === "on" ? "🛣 高速:ON" : propsRef.current.hwOverride === "off" ? "🛣 高速:OFF" : "🛣 高速:自動";
     hwToggle.textContent = hwLabel();
@@ -1249,11 +1244,9 @@ function RamenMapbox(props: Props) {
     // 「現在地」ボタン（手動パンで追従が外れた時だけ表示→タップで自車へ復帰）
     const recBtn = document.createElement("button");
     recBtn.type = "button";
+    recBtn.className = "recenter-btn"; // 右・中央（Leaflet版と同じ位置）
     recBtn.textContent = "📍 現在地";
-    recBtn.setAttribute(
-      "style",
-      "position:absolute;right:12px;bottom:120px;z-index:620;display:none;padding:10px 14px;border-radius:10px;border:0;background:#1a73e8;color:#fff;font-weight:700;font-size:14px;box-shadow:0 1px 4px rgba(0,0,0,.4);"
-    );
+    recBtn.style.display = "none"; // 追従中は非表示（パンで表示）
     const setFollowing = (on: boolean) => {
       following = on;
       carEl.style.display = on ? "" : "none"; // 追従中だけ画面固定の自車

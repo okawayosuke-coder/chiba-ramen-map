@@ -1089,7 +1089,7 @@ body {
 .hw-strip {
   position: absolute;
   right: 12px;
-  bottom: calc(50% + 14px); /* 下アンカー: 自車に近い施設を固定の下端に置き、上へ積み上がる */
+  bottom: calc(50% + 44px); /* 下アンカー: 自車に近い施設を下端に・上へ積む。「現在地」ボタン(中央)と重ならない高さに */
   z-index: 645;
   pointer-events: none;
   width: 248px; /* 「高速道路切り替え」ボタンと同じ幅 */
