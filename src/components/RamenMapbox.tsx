@@ -868,16 +868,20 @@ function RamenMapbox(props: Props) {
     const DRIVE_PITCH = 55;
     const MOVE_KMH = 3; // これ以上で進行方位を採用（停車時のふらつきで地図が回らないように）
 
-    // 自車マーカー（Leaflet版と同じ青矢印＋半透明ハロー。ヘディングアップで地図が回るので常に上向き）
+    // 自車マーカー（画面中央に固定）。1Hz GPSで地理マーカーを setLngLat するとカクつくため、
+    // 自車は画面中央に固定し、カメラ側をフィックス間で線形補間して地図をなめらかに流す（カーナビ標準）。
     const carEl = document.createElement("div");
-    carEl.className = "car";
+    carEl.setAttribute(
+      "style",
+      "position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:600;pointer-events:none;"
+    );
     carEl.innerHTML =
       '<svg class="car-arrow" width="54" height="54" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
       '<circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/>' +
       '<path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
-    const carMarker = new mapboxgl.Marker({ element: carEl, anchor: "center" });
+    map.getContainer().appendChild(carEl);
     if (propsRef.current.userPos) {
-      carMarker.setLngLat([propsRef.current.userPos.lng, propsRef.current.userPos.lat]).addTo(map);
+      map.jumpTo({ center: [propsRef.current.userPos.lng, propsRef.current.userPos.lat] });
     }
 
     // 速度計（左下・Leaflet版と同じリングゲージ：背景トラック＋速度色アーク＋先端ビーズ＋数値）
@@ -955,7 +959,6 @@ function RamenMapbox(props: Props) {
       const here: [number, number] = useSnap
         ? [snap!.proj.lng, snap!.proj.lat]
         : [p.coords.longitude, p.coords.latitude];
-      carMarker.setLngLat(here).addTo(map);
       const hd = p.coords.heading;
       if (kmh != null && kmh > MOVE_KMH) {
         if (useSnap) lastBearing = snap!.bearing;
@@ -965,7 +968,9 @@ function RamenMapbox(props: Props) {
         first = false;
         map.easeTo({ center: here, bearing: lastBearing, pitch: DRIVE_PITCH, zoom: DRIVE_ZOOM, duration: 800 });
       } else {
-        map.easeTo({ center: here, bearing: lastBearing, duration: 800 });
+        // 1Hzフィックス間をなめらかに繋ぐ: 線形イージング＋フィックス間隔より少し長いdurationで
+        // カメラが途切れず動き続け、画面中央固定の自車に対し地図がスーッと流れる。
+        map.easeTo({ center: here, bearing: lastBearing, duration: 1100, easing: (t) => t });
       }
     };
 
@@ -1007,7 +1012,7 @@ function RamenMapbox(props: Props) {
       } catch {
         /* 無視 */
       }
-      carMarker.remove();
+      carEl.remove();
       box.remove();
       window.clearInterval(speedoAnim);
       // ブラウズ表示へ戻す（北向き・水平）
