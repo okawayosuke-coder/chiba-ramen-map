@@ -1123,6 +1123,47 @@ function DemoFit() {
   return null;
 }
 
+/** ベクター地図（テスト）。文字が生テキストの OpenFreeMap(MapLibre) を、全ラベル維持のまま
+ *  text-size を1.5倍にして表示する。MapLibre一式はトグルON時のみ動的importしメインバンドルに含めない。 */
+function VectorBasemap({ active }: { active: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    let layer: L.Layer | null = null;
+    (async () => {
+      try {
+        await import("maplibre-gl/dist/maplibre-gl.css");
+        await import("@maplibre/maplibre-gl-leaflet"); // L.maplibreGL を生やす（内部でmaplibre-glを取り込む）
+        const style = await fetch(
+          "https://tiles.openfreemap.org/styles/liberty"
+        ).then((r) => r.json());
+        // 全symbol(文字)レイヤーの text-size を1.5倍（ラベルを減らさず大きく）
+        for (const ly of style.layers || []) {
+          if (ly.type === "symbol" && ly.layout && ly.layout["text-size"] != null)
+            ly.layout["text-size"] = ["*", ly.layout["text-size"], 1.5];
+        }
+        if (cancelled) return;
+        layer = (
+          L as unknown as { maplibreGL: (o: unknown) => L.Layer }
+        ).maplibreGL({
+          style,
+          attribution:
+            '© <a href="https://openfreemap.org">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap',
+        });
+        layer.addTo(map);
+      } catch {
+        /* 読込失敗時は何もしない（ベクターが出ないのでトグルOFFで復帰） */
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (layer) map.removeLayer(layer);
+    };
+  }, [active, map]);
+  return null;
+}
+
 /** 目的地マーカー（🎯）。imperative でクラスタ再描画を避ける */
 function DestMarker({ dest }: { dest: Pt | null }) {
   const map = useMap();
@@ -2304,6 +2345,7 @@ interface Props {
   showTrack: boolean;
   bigLabels: boolean;
   gyroGrade: boolean;
+  vectorMap: boolean;
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -2326,6 +2368,7 @@ function RamenMap({
   showTrack,
   bigLabels,
   gyroGrade,
+  vectorMap,
   hwOverride,
   onCycleHwOverride,
   dest,
@@ -2378,20 +2421,24 @@ function RamenMap({
       className="map"
       center={initView ? initView.center : [35.55, 140.18]}
       zoom={initView ? initView.zoom : 10}
+      maxZoom={19}
       scrollWheelZoom
       zoomSnap={0.5}
       zoomDelta={0.5}
     >
       {/* 文字を大きく(テスト)＝同じOSMタイルを2倍拡大(tileSize512/zoomOffset-1)。
           key切替でトグル時にレイヤーを作り直す。OFFで通常(256/0)に即戻る。 */}
-      <TileLayer
-        key={bigLabels ? "lbl2x" : "lbl1x"}
-        attribution={tile.attribution}
-        url={tile.url}
-        maxZoom={19}
-        tileSize={bigLabels ? 512 : 256}
-        zoomOffset={bigLabels ? -1 : 0}
-      />
+      {!vectorMap && (
+        <TileLayer
+          key={bigLabels ? "lbl2x" : "lbl1x"}
+          attribution={tile.attribution}
+          url={tile.url}
+          maxZoom={19}
+          tileSize={bigLabels ? 512 : 256}
+          zoomOffset={bigLabels ? -1 : 0}
+        />
+      )}
+      <VectorBasemap active={vectorMap} />
       <FocusController focus={focus} />
       <UserFocus pos={userPos} />
       <ElevationProbe />

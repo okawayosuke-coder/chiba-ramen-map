@@ -14,6 +14,7 @@ const K = {
   hwOverride: "crm_hwoverride", // 高速道路切り替え: auto | on | off
   bigLabels: "crm_biglabels", // 地図の文字を大きく（テスト・2倍拡大）
   gyroGrade: "crm_gyrograde", // 傾斜メーター: ジャイロで平坦路の偽勾配を抑制（テスト）
+  vectorMap: "crm_vectormap", // 地図をベクター表示（全ラベル維持で1.5倍・くっきり／テスト）
 };
 
 export type HwOverride = "auto" | "on" | "off";
@@ -131,6 +132,18 @@ export function useGyroGrade(): [boolean, (v: boolean) => void] {
   const set = useCallback((v: boolean) => {
     setOn(v);
     write(K.gyroGrade, v);
+  }, []);
+  return [on, set];
+}
+
+/** 地図をベクター表示（テスト・既定OFF）。文字が生テキストのベクタータイル(OpenFreeMap)で、
+ *  全ラベルを維持したまま1.5倍＋くっきり表示する。ラスタの「2倍＝ラベル減」を回避する狙い。
+ *  ONにすると MapLibre をオンデマンド読込し外部(openfreemap.org)から地図を取得する。 */
+export function useVectorMap(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => read<boolean>(K.vectorMap, false));
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    write(K.vectorMap, v);
   }, []);
   return [on, set];
 }

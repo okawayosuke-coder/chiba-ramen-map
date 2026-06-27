@@ -41,6 +41,9 @@ export default defineConfig(({ command }) => ({
         // アプリシェル＋データをプリキャッシュ。pois.json(同梱POI)も含めオフライン表示可。
         // 地図タイルは外部のためオフライン不可。
         globPatterns: ["**/*.{js,css,html,png,svg,woff2,json}"],
+        // ベクター地図(maplibre)はテスト機能で重い(約1MB)。ON時のみ動的importで取得すれば良く、
+        // 全ユーザーのPWAプリキャッシュを膨らませないよう除外する。
+        globIgnores: ["**/*maplibre*"],
         // pois.json は大きめ(~1MB)なのでプリキャッシュ上限を引き上げる
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: null,
