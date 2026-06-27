@@ -595,11 +595,19 @@ function FollowController({
     let lastFixPerf = 0;
     let settled = false; // 区間到達後の毎フレーム再描画を止める（停車時の省電力）
     let rafId = 0;
+    // GPSロス時の推測走行（トンネル等）: 直前速度×経過×コンパス方位で前進し、GPS復帰で実位置へ補正。
+    let lastGoodSpeed = 0; // 直前の有効速度(m/s)
+    let drMode = false; // 推測走行中か
+    let drLastPerf = 0; // 推測前進の前回時刻
+    let drLastPan = 0; // 推測中の地図追従パンのスロットル基準
 
     const norm = (d: number) => ((d % 360) + 360) % 360;
     const angDiff = (a: number, b: number) => (((a - b + 540) % 360) - 180); // a-b を[-180,180)
 
     const chooseHeading = (): number | null => {
+      // 推測走行(トンネル)中はGPS方位が止まるので、ジャイロ+地磁気のコンパス(較正済み)で向きを追従
+      if (drMode && rawCompass != null)
+        return offset != null ? norm(rawCompass + offset) : rawCompass;
       if (gpsMoving && gpsHeading != null) return gpsHeading;
       if (rawCompass != null)
         return offset != null ? norm(rawCompass + offset) : rawCompass;
@@ -628,6 +636,25 @@ function FollowController({
       return map.unproject(aheadPt, z);
     };
 
+    // 推測走行: dtSec秒ぶん、直前速度×コンパス方位で自車位置を前進させる（GPSロス中の継続表示）
+    const drAdvance = (dtSec: number) => {
+      const hd = chooseHeading();
+      if (hd == null || lastGoodSpeed <= 0.5) return;
+      const distKm = (lastGoodSpeed * dtSec) / 1000;
+      const rad = (hd * Math.PI) / 180;
+      dispLat += (distKm / 111.32) * Math.cos(rad);
+      dispLng +=
+        (distKm / (111.32 * Math.cos((dispLat * Math.PI) / 180))) * Math.sin(rad);
+      marker.setLatLng([dispLat, dispLng]);
+    };
+    // 推測走行中の見た目: 自車矢印を半透明ゴースト＋速度計ステータスに「推定走行中」を表示
+    const setDrUi = (on: boolean) => {
+      const a = marker.getElement()?.querySelector(".car-arrow") as HTMLElement | null;
+      if (a) a.classList.toggle("car-arrow--dr", on);
+      if (on && statusEl)
+        statusEl.textContent = "📡 推定走行中（GPS弱・トンネル？）";
+    };
+
     const DEBUG =
       new URLSearchParams(window.location.search).get("debug") === "1";
     const dbg = () => {
@@ -642,6 +669,11 @@ function FollowController({
       const { latitude, longitude, heading, speed, accuracy } = p.coords;
       // 自車位置はフィックスを「区間の終点」に設定し、rAFで補間して滑らかに動かす
       const nowPerf = performance.now();
+      if (drMode) {
+        // GPS復帰: 推測走行を解除（区間補間が現在の推定位置→実フィックスを滑らかに補正）
+        drMode = false;
+        setDrUi(false);
+      }
       if (!haveFix) {
         haveFix = true;
         dispLat = fromLat = toLat = latitude;
@@ -693,6 +725,7 @@ function FollowController({
         });
       }
       const sp = speed != null && !Number.isNaN(speed) ? speed : null;
+      if (sp != null) lastGoodSpeed = sp; // 推測走行(GPSロス時)に使う直前速度
       gpsMoving = sp != null && sp > 1.5;
       if (gpsMoving && heading != null && !Number.isNaN(heading)) {
         gpsHeading = heading;
@@ -761,6 +794,24 @@ function FollowController({
     // marker.setLatLng は地図イベントを発火しないので POI/軌跡レイヤーには影響しない。
     // ※ watchPosition より前に定義する（コールバックが同期的に呼ばれてもTDZにならないように）。
     const animateMarker = () => {
+      if (drMode) {
+        // 推測走行: 直前速度×経過で前進し、向きはコンパス、地図は追従（パンはスロットル）
+        const now = performance.now();
+        const dt = Math.min(0.5, (now - drLastPerf) / 1000); // タブ復帰時の暴走防止に上限
+        drLastPerf = now;
+        drAdvance(dt);
+        applyRotation();
+        const hd = chooseHeading();
+        if (following && hd != null && now - drLastPan > 700) {
+          drLastPan = now;
+          map.panTo(cameraTarget(dispLat, dispLng, hd), {
+            animate: true,
+            duration: 0.7,
+          });
+        }
+        rafId = requestAnimationFrame(animateMarker);
+        return;
+      }
       if (settled) {
         rafId = 0; // 区間到達後はループ自体を停止（停車時の省電力）。次フィックスで再起動
         return;
@@ -786,6 +837,51 @@ function FollowController({
       maximumAge: 1000,
       timeout: 20000,
     });
+
+    // GPSが一定時間途切れたら（トンネル等）推測走行へ移行。直前まで走行していた時のみ。
+    const GPS_STALE_MS = 4000;
+    const staleTimer = window.setInterval(() => {
+      if (!haveFix || drMode) return;
+      if (
+        performance.now() - lastFixPerf > GPS_STALE_MS &&
+        lastGoodSpeed > 1.5
+      ) {
+        drMode = true;
+        drLastPerf = performance.now();
+        drLastPan = 0;
+        settled = false;
+        setDrUi(true);
+        if (!rafId) rafId = requestAnimationFrame(animateMarker);
+      }
+    }, 1000);
+
+    // sim/デバッグ時のみ: 推測走行の決定論的検証フック（rAF/タイマーのスロットルに依存せず確認できる）
+    const SIM =
+      new URLSearchParams(window.location.search).get("sim") === "drive";
+    if (SIM || DEBUG) {
+      (window as unknown as { __follow?: unknown }).__follow = {
+        state: () => ({
+          drMode,
+          dispLat,
+          dispLng,
+          heading: chooseHeading(),
+          lastGoodSpeed,
+          sinceFixMs: Math.round(performance.now() - lastFixPerf),
+        }),
+        enterDr: () => {
+          drMode = true;
+          drLastPerf = performance.now();
+          drLastPan = 0;
+          settled = false;
+          setDrUi(true);
+          if (!rafId) rafId = requestAnimationFrame(animateMarker);
+        },
+        drStep: (ms: number) => {
+          drAdvance(ms / 1000);
+          return [dispLat, dispLng];
+        },
+      };
+    }
 
     // 画面右の「現在位置」ボタン（手動パン中だけ表示。タップで自車へ復帰＝追従再開）
     const recBtn = L.DomUtil.create("div", "recenter-btn");
@@ -854,6 +950,7 @@ function FollowController({
       navigator.geolocation.clearWatch(watchId);
       cancelAnimationFrame(rafId);
       window.clearInterval(speedoAnim);
+      window.clearInterval(staleTimer);
       map.off("dragstart", onUserPan);
       recBtn.remove();
       marker.remove();

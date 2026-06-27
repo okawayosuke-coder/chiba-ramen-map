@@ -839,6 +839,10 @@ body {
   transform-origin: 50% 50%;
   transition: transform 0.3s ease;
 }
+/* 推測走行(トンネル/GPSロス)中は自車矢印を半透明ゴーストにして「推定」を明示 */
+.car-arrow--dr {
+  opacity: 0.45;
+}
 .follow-box {
   position: absolute;
   left: 10px;
