@@ -85,7 +85,7 @@ function shopsGeoJSON(shops: Shop[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
     features: shops.map((s, i) => ({
       type: "Feature",
       geometry: { type: "Point", coordinates: [s.lng, s.lat] },
-      properties: { idx: i, rating: s.rating, ratingText: s.rating.toFixed(1) },
+      properties: { idx: i, rating: s.rating, ratingText: s.rating.toFixed(1), tier: tierOf(s.rating) },
     })),
   };
 }
@@ -264,6 +264,43 @@ function updateGradeMeter(
   } else {
     m.warn.style.display = "none";
   }
+}
+
+// 評価ティアの色（Leaflet rawTierColor と同じ）。tier 0:<4.1 / 1:4.1+ / 2:4.3+
+const TIER_COLORS = ["#1c7ed6", "#e8590c", "#d6336c"];
+function tierOf(r: number): number {
+  return r >= 4.3 ? 2 : r >= 4.1 ? 1 : 0;
+}
+
+/** 速度→色（走行軌跡・速度計で共通）。<10赤 / <30黄 / <50緑 / ≥50青。 */
+function kmhColor(kmh: number): string {
+  if (kmh < 10) return "#e03131";
+  if (kmh < 30) return "#f5b800";
+  if (kmh < 50) return "#2f9e44";
+  return "#1c7ed6";
+}
+
+/** 評価ピン（しずく型＋白円）の画像を生成。Leaflet版 pinIcon と同形状（rating数値は別途textレイヤー）。 */
+function teardropImageData(color: string, scale: number): ImageData {
+  const w = 34 * scale;
+  const h = 44 * scale;
+  const cv = document.createElement("canvas");
+  cv.width = w;
+  cv.height = h;
+  const ctx = cv.getContext("2d")!;
+  ctx.scale(scale, scale);
+  const p = new Path2D("M17 1C8.7 1 2 7.7 2 16c0 10.5 15 27 15 27s15-16.5 15-27C32 7.7 25.3 1 17 1z");
+  ctx.fillStyle = color;
+  ctx.fill(p);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#fff";
+  ctx.stroke(p);
+  ctx.beginPath();
+  ctx.arc(17, 16, 11, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  return ctx.getImageData(0, 0, w, h);
 }
 
 function RamenMapbox(props: Props) {
@@ -831,29 +868,76 @@ function RamenMapbox(props: Props) {
     const DRIVE_PITCH = 55;
     const MOVE_KMH = 3; // これ以上で進行方位を採用（停車時のふらつきで地図が回らないように）
 
-    // 自車マーカー（上向きナビ矢印。地図がヘディングアップで回るので回転不要）
+    // 自車マーカー（Leaflet版と同じ青矢印＋半透明ハロー。ヘディングアップで地図が回るので常に上向き）
     const carEl = document.createElement("div");
+    carEl.className = "car";
     carEl.innerHTML =
-      '<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">' +
-      '<circle cx="20" cy="20" r="15" fill="#1c7ed6" stroke="#fff" stroke-width="3"/>' +
-      '<path d="M20 9 L28 27 L20 22 L12 27 Z" fill="#fff"/></svg>';
-    carEl.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,.45))";
+      '<svg class="car-arrow" width="54" height="54" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
+      '<circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/>' +
+      '<path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
     const carMarker = new mapboxgl.Marker({ element: carEl, anchor: "center" });
     if (propsRef.current.userPos) {
       carMarker.setLngLat([propsRef.current.userPos.lng, propsRef.current.userPos.lat]).addTo(map);
     }
 
-    // 速度計（左下）
-    const speedo = document.createElement("div");
-    speedo.setAttribute(
-      "style",
-      "position:absolute;left:12px;bottom:16px;z-index:600;background:rgba(20,20,20,.82);color:#fff;border-radius:16px;padding:8px 16px;text-align:center;min-width:88px;"
-    );
-    speedo.innerHTML =
-      '<div class="mb-speedo-num" style="font-size:32px;font-weight:800;line-height:1">–</div>' +
-      '<div style="font-size:11px;opacity:.8;margin-top:2px">km/h</div>';
-    map.getContainer().appendChild(speedo);
-    const numEl = speedo.querySelector(".mb-speedo-num") as HTMLElement | null;
+    // 速度計（左下・Leaflet版と同じリングゲージ：背景トラック＋速度色アーク＋先端ビーズ＋数値）
+    const box = document.createElement("div");
+    box.className = "follow-box";
+    const CX = 50;
+    const CY = 52;
+    const MAXKMH = 120;
+    const R_ARC = 44;
+    const angOf = (kmh: number) => -120 + (Math.min(Math.max(kmh, 0), MAXKMH) / MAXKMH) * 240;
+    const speedColor = (kmh: number) => (kmh < 1 ? "#868e96" : kmhColor(kmh));
+    const arcPath = (kmh: number) => {
+      const a0 = ((angOf(0) - 90) * Math.PI) / 180;
+      const a1 = ((angOf(kmh) - 90) * Math.PI) / 180;
+      const p0 = `${(CX + R_ARC * Math.cos(a0)).toFixed(2)} ${(CY + R_ARC * Math.sin(a0)).toFixed(2)}`;
+      const p1 = `${(CX + R_ARC * Math.cos(a1)).toFixed(2)} ${(CY + R_ARC * Math.sin(a1)).toFixed(2)}`;
+      const large = angOf(kmh) - angOf(0) > 180 ? 1 : 0;
+      return `M ${p0} A ${R_ARC} ${R_ARC} 0 ${large} 1 ${p1}`;
+    };
+    const trackD = arcPath(MAXKMH);
+    const startA = ((angOf(0) - 90) * Math.PI) / 180;
+    const tipX0 = (CX + R_ARC * Math.cos(startA)).toFixed(2);
+    const tipY0 = (CY + R_ARC * Math.sin(startA)).toFixed(2);
+    box.innerHTML =
+      '<svg class="speedo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
+      `<path d="${trackD}" fill="none" stroke="#262b34" stroke-width="6" stroke-linecap="round"/>` +
+      '<path class="speedo-arc" d="" fill="none" stroke="#868e96" stroke-width="6" stroke-linecap="round"/>' +
+      `<circle class="speedo-tip" cx="${tipX0}" cy="${tipY0}" r="3.4" fill="#868e96" stroke="#11141a" stroke-width="1.4"/>` +
+      `<text class="speedo-num" x="${CX}" y="59" font-size="33" font-weight="800" fill="#eef1f5" text-anchor="middle">0</text>` +
+      `<text x="${CX}" y="72" font-size="8.5" font-weight="600" fill="#9aa3ae" text-anchor="middle" letter-spacing="1">km/h</text>` +
+      '</svg><div class="speedo-status">測位中…</div>';
+    map.getContainer().appendChild(box);
+    const tipEl = box.querySelector(".speedo-tip");
+    const numEl = box.querySelector(".speedo-num");
+    const arcEl = box.querySelector(".speedo-arc");
+    const statusEl = box.querySelector(".speedo-status");
+    let targetKmh = 0;
+    let dispKmh = 0;
+    const speedoAnim = window.setInterval(() => {
+      dispKmh += (targetKmh - dispKmh) * 0.18;
+      if (Math.abs(targetKmh - dispKmh) < 0.15) dispKmh = targetKmh;
+      const col = speedColor(dispKmh);
+      if (arcEl) {
+        arcEl.setAttribute("d", dispKmh < 0.5 ? "" : arcPath(dispKmh));
+        arcEl.setAttribute("stroke", col);
+      }
+      if (tipEl) {
+        const a = ((angOf(dispKmh) - 90) * Math.PI) / 180;
+        tipEl.setAttribute("cx", (CX + R_ARC * Math.cos(a)).toFixed(2));
+        tipEl.setAttribute("cy", (CY + R_ARC * Math.sin(a)).toFixed(2));
+        tipEl.setAttribute("fill", col);
+      }
+      if (numEl) numEl.textContent = String(Math.round(dispKmh));
+    }, 50);
+    const updateSpeedo = (kmh: number | null, moving: boolean, accuracy: number | null) => {
+      targetKmh = kmh ?? 0;
+      if (statusEl)
+        statusEl.textContent =
+          (moving ? "走行中" : "停車") + (accuracy ? ` ・ ±${Math.round(accuracy)}m` : "");
+    };
 
     // 走行中は通常の現在地ドットを隠す
     userMarkerRef.current?.remove();
@@ -863,7 +947,7 @@ function RamenMapbox(props: Props) {
       if (aborted) return;
       const sp = p.coords.speed; // m/s
       const kmh = sp != null && sp >= 0 ? sp * 3.6 : null;
-      if (numEl) numEl.textContent = kmh == null ? "–" : String(Math.round(kmh));
+      updateSpeedo(kmh, kmh != null && kmh > MOVE_KMH, p.coords.accuracy ?? null);
       // 経路案内中はGPSを経路へスナップ（無料のmap matching）し、向きも道路セグメント方位に。
       // 経路が無い/古い時は生GPS＋GPS進行方位にフォールバック。
       const snap = routeSnapRef.current;
@@ -924,7 +1008,8 @@ function RamenMapbox(props: Props) {
         /* 無視 */
       }
       carMarker.remove();
-      speedo.remove();
+      box.remove();
+      window.clearInterval(speedoAnim);
       // ブラウズ表示へ戻す（北向き・水平）
       map.easeTo({ bearing: 0, pitch: 0, duration: 600 });
     };
@@ -1053,32 +1138,32 @@ function RamenMapbox(props: Props) {
       },
       paint: { "text-color": "#ffffff" },
     });
-    // 個別ピン＝評価で色分けした円（4.3+ ピンク / 4.1+ オレンジ / それ未満 青）
+    // 個別ピン＝しずく型（Leaflet版 pinIcon と同形状）。tier別にしずく画像を生成して登録。
+    for (let i = 0; i < TIER_COLORS.length; i++) {
+      if (!map.hasImage(`pin${i}`)) {
+        map.addImage(`pin${i}`, teardropImageData(TIER_COLORS[i], 2), { pixelRatio: 2 });
+      }
+    }
     map.addLayer({
       id: "shops-pin",
-      type: "circle",
-      source: "shops",
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": ["step", ["get", "rating"], "#1c7ed6", 4.1, "#e8590c", 4.3, "#d6336c"],
-        "circle-radius": 13,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#ffffff",
-      },
-    });
-    // 評価値（白文字）
-    map.addLayer({
-      id: "shops-rating",
       type: "symbol",
       source: "shops",
       filter: ["!", ["has", "point_count"]],
       layout: {
+        "icon-image": ["match", ["get", "tier"], 2, "pin2", 1, "pin1", "pin0"],
+        "icon-anchor": "bottom",
+        "icon-allow-overlap": true,
+        "icon-size": 1,
+        // 評価値をしずく上部の白円に重ねる（数値色は tier 色）
         "text-field": ["get", "ratingText"],
-        "text-size": 11,
-        "text-allow-overlap": true,
         "text-font": ["DIN Offc Pro Bold", "Arial Unicode MS Bold"],
+        "text-size": 11,
+        "text-offset": [0, -2.55],
+        "text-allow-overlap": true,
       },
-      paint: { "text-color": "#ffffff" },
+      paint: {
+        "text-color": ["match", ["get", "tier"], 2, "#d6336c", 1, "#e8590c", "#1c7ed6"],
+      },
     });
   }
 
@@ -1102,8 +1187,7 @@ function RamenMapbox(props: Props) {
       openShopPopup(map, shop, c);
     };
     map.on("click", "shops-pin", openFromFeature);
-    map.on("click", "shops-rating", openFromFeature);
-    for (const ly of ["clusters", "shops-pin", "shops-rating"]) {
+    for (const ly of ["clusters", "shops-pin"]) {
       map.on("mouseenter", ly, () => {
         map.getCanvas().style.cursor = "pointer";
       });
