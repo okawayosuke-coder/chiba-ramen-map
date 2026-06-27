@@ -57,22 +57,24 @@ import metaData from "./data/meta.json";
 // Mapbox 版地図（試験・URL に ?engine=mapbox で有効化）。
 // mapbox-gl(約1MB)は lazy import で別チャンク化し、既定(Leaflet)利用者には読み込ませない。
 const RamenMapbox = lazy(() => import("./components/RamenMapbox"));
-// 地図エンジン選択（試験）。?engine=mapbox で有効化し localStorage に記憶
-// → ホーム画面アイコン（クエリ無し）起動でも Mapbox 版を維持。?engine=leaflet で解除。
+// 地図エンジン選択。【既定=Mapbox】。?engine=leaflet で従来のLeaflet版に切替（記憶）。
+// ?engine=mapbox で既定へ戻す。クエリ無し（ホーム画面アイコン起動含む）は、明示的に
+// leaflet を選んでいない限り Mapbox。iOSのPWAはSafariと別ストレージだが「空＝既定Mapbox」
+// なのでインストール版でもMapboxで起動する。
 const ENGINE_MAPBOX = (() => {
   try {
     const q = new URLSearchParams(window.location.search).get("engine");
-    if (q === "mapbox") {
-      localStorage.setItem("crm_engine", "mapbox");
-      return true;
-    }
     if (q === "leaflet" || q === "off") {
-      localStorage.removeItem("crm_engine");
+      localStorage.setItem("crm_engine", "leaflet");
       return false;
     }
-    return localStorage.getItem("crm_engine") === "mapbox";
+    if (q === "mapbox") {
+      localStorage.removeItem("crm_engine");
+      return true;
+    }
+    return localStorage.getItem("crm_engine") !== "leaflet";
   } catch {
-    return false;
+    return true;
   }
 })();
 
