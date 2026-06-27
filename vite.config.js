@@ -12,6 +12,12 @@ export default defineConfig(function (_a) {
             __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
         },
         base: command === "build" ? "/chiba-ramen-map/" : "/",
+        build: {
+            rollupOptions: {
+                // mapbox-gl(約1MB)を独立チャンク化＝lazy import 時のみ取得。チャンク名固定で PWA 除外も効かせる。
+                output: { manualChunks: { "mapbox-gl": ["mapbox-gl"] } },
+            },
+        },
         plugins: [
             react(),
             VitePWA({
@@ -41,6 +47,8 @@ export default defineConfig(function (_a) {
                     // アプリシェル＋データをプリキャッシュ。pois.json(同梱POI)も含めオフライン表示可。
                     // 地図タイルは外部のためオフライン不可。
                     globPatterns: ["**/*.{js,css,html,png,svg,woff2,json}"],
+                    // mapbox-gl は試験機能・大容量・要ネットワークのためプリキャッシュしない（既定Leafletの負荷を増やさない）
+                    globIgnores: ["**/mapbox-gl-*.js"],
                     // pois.json は大きめ(~1MB)なのでプリキャッシュ上限を引き上げる
                     maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
                     navigateFallback: null,

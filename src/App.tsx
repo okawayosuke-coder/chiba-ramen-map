@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RamenMap from "./components/RamenMap";
 import SafetyGate from "./components/SafetyGate";
 import NavPicker from "./components/NavPicker";
@@ -53,6 +53,17 @@ import {
 import shopsData from "./data/shops.json";
 import genreOverridesData from "./data/genre-overrides.json";
 import metaData from "./data/meta.json";
+
+// Mapbox 版地図（試験・URL に ?engine=mapbox で有効化）。
+// mapbox-gl(約1MB)は lazy import で別チャンク化し、既定(Leaflet)利用者には読み込ませない。
+const RamenMapbox = lazy(() => import("./components/RamenMapbox"));
+const ENGINE_MAPBOX = (() => {
+  try {
+    return new URLSearchParams(window.location.search).get("engine") === "mapbox";
+  } catch {
+    return false;
+  }
+})();
 
 const ALL_SHOPS = shopsData as Shop[];
 // Web調査でジャンルを判定した店（placeId→ジャンルキー）。店名判定とマージする
@@ -730,27 +741,37 @@ export default function App() {
           {paneHidden ? "☰" : "‹"}
         </button>
         <ErrorBoundary label="map" message="地図の表示で問題が発生しました。再読み込みしてください（店舗一覧は引き続き使えます）。">
-          <RamenMap
-            shops={shops}
-            focus={focus}
-            follow={follow}
-            paneHidden={paneHidden}
-            poiKinds={activePoiKinds}
-            showTrack={showTrack}
-            bigLabels={bigLabels}
-            gyroGrade={gyroGrade}
-            hwOverride={hwOverride}
-            onCycleHwOverride={cycleHwOverride}
-            dest={dest}
-            onSetDest={onSetDest}
-            onClearDest={onClearDest}
-            userPos={geo.pos}
-            isFav={isFav}
-            onToggleFav={toggle}
-            onNav={startGoogleNav}
-            onShare={doShare}
-            distanceTo={distanceTo}
-          />
+          {(() => {
+            // 地図 props は1箇所で定義し、Leaflet版/Mapbox版どちらにも同じものを渡す。
+            const mapProps = {
+              shops,
+              focus,
+              follow,
+              paneHidden,
+              poiKinds: activePoiKinds,
+              showTrack,
+              bigLabels,
+              gyroGrade,
+              hwOverride,
+              onCycleHwOverride: cycleHwOverride,
+              dest,
+              onSetDest,
+              onClearDest,
+              userPos: geo.pos,
+              isFav,
+              onToggleFav: toggle,
+              onNav: startGoogleNav,
+              onShare: doShare,
+              distanceTo,
+            };
+            return ENGINE_MAPBOX ? (
+              <Suspense fallback={<div className="map" />}>
+                <RamenMapbox {...mapProps} />
+              </Suspense>
+            ) : (
+              <RamenMap {...mapProps} />
+            );
+          })()}
         </ErrorBoundary>
       </div>
 
