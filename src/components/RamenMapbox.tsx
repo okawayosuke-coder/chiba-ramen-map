@@ -866,26 +866,60 @@ function RamenMapbox(props: Props) {
     let first = true;
     // 地図の向き（ノースアップ=北固定/ヘディングアップ=進行方向上）。変更時は deps で再マウント。
     const headingUp = propsRef.current.headingUp ?? false;
-    let lastBearing = headingUp ? map.getBearing() : 0;
     const DRIVE_ZOOM = 16.5;
     const MOVE_KMH = 3; // これ以上で進行方位を採用（停車時のふらつきで地図が回らないように）
+    const leadPx = () => (headingUp ? map.getContainer().clientHeight * 0.22 : 0);
+    let lastBearing = headingUp ? map.getBearing() : 0;
+    let lastHere: [number, number] | null = null;
+    let following = true;
 
-    // 自車マーカー（画面中央に固定）。1Hz GPSで地理マーカーを setLngLat するとカクつくため、
-    // 自車は画面中央に固定し、カメラ側をフィックス間で線形補間して地図をなめらかに流す（カーナビ標準）。
+    const CAR_SVG =
+      '<svg class="car-arrow" width="54" height="54" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
+      '<circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/>' +
+      '<path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
+    // 追従中の自車＝画面固定オーバーレイ（カメラが自車を中央追従するので地図がなめらかに流れる）。
+    // ヘディングアップは下寄り(72%・前方ワイド)、ノースアップは中央(50%)。
     const carEl = document.createElement("div");
-    // ヘディングアップ時は前方を広く見せるため自車を下寄り(72%)、ノースアップ時は中央(50%)に固定
     carEl.setAttribute(
       "style",
       `position:absolute;left:50%;top:${headingUp ? "72%" : "50%"};transform:translate(-50%,-50%);z-index:600;pointer-events:none;`
     );
-    carEl.innerHTML =
-      '<svg class="car-arrow" width="54" height="54" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
-      '<circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/>' +
-      '<path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
+    carEl.innerHTML = CAR_SVG;
     map.getContainer().appendChild(carEl);
-    if (propsRef.current.userPos) {
-      map.jumpTo({ center: [propsRef.current.userPos.lng, propsRef.current.userPos.lat] });
-    }
+    // 手動パンで追従を外した時の自車＝地理マーカー（実位置に残す）。追従中は非表示。
+    const geoEl = document.createElement("div");
+    geoEl.innerHTML = CAR_SVG;
+    geoEl.style.display = "none";
+    const geoMarker = new mapboxgl.Marker({ element: geoEl, anchor: "center" });
+    const c0 = propsRef.current.userPos ?? { lat: map.getCenter().lat, lng: map.getCenter().lng };
+    geoMarker.setLngLat([c0.lng, c0.lat]).addTo(map);
+
+    // 「現在地」ボタン（手動パンで追従が外れた時だけ表示→タップで自車へ復帰）
+    const recBtn = document.createElement("button");
+    recBtn.type = "button";
+    recBtn.textContent = "📍 現在地";
+    recBtn.setAttribute(
+      "style",
+      "position:absolute;right:12px;bottom:120px;z-index:620;display:none;padding:10px 14px;border-radius:10px;border:0;background:#1a73e8;color:#fff;font-weight:700;font-size:14px;box-shadow:0 1px 4px rgba(0,0,0,.4);"
+    );
+    const setFollowing = (on: boolean) => {
+      following = on;
+      carEl.style.display = on ? "" : "none"; // 追従中だけ画面固定の自車
+      geoEl.style.display = on ? "none" : ""; // パン中だけ地理マーカー（実位置）
+      recBtn.style.display = on ? "none" : "";
+    };
+    recBtn.onclick = () => {
+      setFollowing(true);
+      if (lastHere)
+        map.easeTo({ center: lastHere, bearing: headingUp ? lastBearing : 0, offset: [0, leadPx()], duration: 600 });
+    };
+    map.getContainer().appendChild(recBtn);
+    // ユーザーの手動パンのみで追従解除（easeTo等の自動移動は originalEvent が無いので除外）
+    const onUserPan = (e: { originalEvent?: unknown }) => {
+      if (!following || !e.originalEvent) return;
+      setFollowing(false);
+    };
+    map.on("dragstart", onUserPan);
 
     // 速度計（左下・Leaflet版と同じリングゲージ：背景トラック＋速度色アーク＋先端ビーズ＋数値）
     const box = document.createElement("div");
@@ -956,28 +990,28 @@ function RamenMapbox(props: Props) {
       const kmh = sp != null && sp >= 0 ? sp * 3.6 : null;
       updateSpeedo(kmh, kmh != null && kmh > MOVE_KMH, p.coords.accuracy ?? null);
       // 経路案内中はGPSを経路へスナップ（無料のmap matching）し、向きも道路セグメント方位に。
-      // 経路が無い/古い時は生GPS＋GPS進行方位にフォールバック。
+      // 経路が無い/古い時は生GPS＋GPS進行方位にフォールバック。rAFが tgt へ補間して描画する。
       const snap = routeSnapRef.current;
       const useSnap = !!snap && Date.now() - snap.at < 3000;
       const here: [number, number] = useSnap
         ? [snap!.proj.lng, snap!.proj.lat]
         : [p.coords.longitude, p.coords.latitude];
+      lastHere = here;
+      geoMarker.setLngLat(here); // 地理マーカーは常に実位置（パン中の自車表示用）
       const hd = p.coords.heading;
       // ヘディングアップ時のみ進行方位を採用（ノースアップは常に北＝bearing 0）
       if (headingUp && kmh != null && kmh > MOVE_KMH) {
         if (useSnap) lastBearing = snap!.bearing;
         else if (hd != null && isFinite(hd) && hd >= 0) lastBearing = hd;
       }
-      // ヘディングアップ=進行方向を上＋自車を下寄り(前方ワイド)。ノースアップ=北固定・中央。いずれも平面(pitch0)。
+      if (!following) return; // 手動パン中はカメラを動かさない（自車は地理マーカーで実位置に表示）
       const bearing = headingUp ? lastBearing : 0;
-      const lead = headingUp ? map.getContainer().clientHeight * 0.22 : 0;
       if (first) {
         first = false;
-        map.easeTo({ center: here, bearing, pitch: 0, zoom: DRIVE_ZOOM, offset: [0, lead], duration: 800 });
+        map.easeTo({ center: here, bearing, pitch: 0, zoom: DRIVE_ZOOM, offset: [0, leadPx()], duration: 800 });
       } else {
-        // 1Hzフィックス間をなめらかに繋ぐ: 線形イージング＋フィックス間隔より少し長いdurationで
-        // カメラが途切れず動き続け、自車に対し地図がスーッと流れる。
-        map.easeTo({ center: here, bearing, offset: [0, lead], duration: 1100, easing: (t) => t });
+        // 1Hzフィックス間を線形イージング(間隔より少し長い1100ms)で繋ぎ、画面固定の自車に地図がなめらかに流れる。
+        map.easeTo({ center: here, bearing, offset: [0, leadPx()], duration: 1100, easing: (t) => t });
       }
     };
 
@@ -1019,7 +1053,10 @@ function RamenMapbox(props: Props) {
       } catch {
         /* 無視 */
       }
+      map.off("dragstart", onUserPan);
       carEl.remove();
+      geoMarker.remove();
+      recBtn.remove();
       box.remove();
       window.clearInterval(speedoAnim);
       // ブラウズ表示へ戻す（北向き・水平）
