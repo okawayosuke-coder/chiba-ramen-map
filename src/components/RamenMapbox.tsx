@@ -127,6 +127,7 @@ function RamenMapbox(props: Props) {
   // 日本語化した name 系レイヤーの元 text-size を保持（bigLabels トグルで戻せるように）
   const labelOrigRef = useRef<Record<string, unknown>>({});
   const [tokenMissing, setTokenMissing] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
 
   // imperative ハンドラから常に最新の props を読むための ref
   const propsRef = useRef(props);
@@ -445,21 +446,69 @@ function RamenMapbox(props: Props) {
             inset: 0,
             zIndex: 500,
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
             textAlign: "center",
             padding: "24px",
+            gap: "12px",
             background: "#15171a",
             color: "#e9ecef",
             font: "14px/1.7 -apple-system, sans-serif",
           }}
         >
-          <div>
-            Mapboxトークンが見つかりません。
+          <div style={{ maxWidth: 440 }}>
+            Mapboxの公開トークン（<code>pk.</code> で始まる文字列）を貼り付けてください。
             <br />
-            同じ端末で <code>/mapbox-poc.html</code> を開きトークンを「適用」すると、
-            <br />
-            この地図にも自動で反映されます。
+            一度入力すればこの端末に保存され、次回から自動で読み込まれます。
+          </div>
+          <input
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            placeholder="pk.…"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            style={{
+              width: "min(90%, 440px)",
+              padding: "12px",
+              borderRadius: 8,
+              border: "1px solid #444",
+              background: "#000",
+              color: "#0f0",
+              fontFamily: "ui-monospace, monospace",
+              fontSize: 13,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const t = tokenInput.trim();
+              if (!/^pk\./.test(t)) {
+                alert("「pk.」で始まる公開トークンを貼り付けてください。");
+                return;
+              }
+              try {
+                localStorage.setItem("mapbox_poc_token", t);
+              } catch {
+                /* localStorage 不可 */
+              }
+              window.location.reload();
+            }}
+            style={{
+              padding: "12px 24px",
+              borderRadius: 8,
+              border: 0,
+              background: "#2e7d32",
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: 15,
+            }}
+          >
+            適用して地図を表示
+          </button>
+          <div style={{ fontSize: 12, color: "#9ca3af", maxWidth: 440 }}>
+            ※ 通常（Leaflet）版に戻すには URL 末尾に <code>?engine=leaflet</code>
           </div>
         </div>
       )}
