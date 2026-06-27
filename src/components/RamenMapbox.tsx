@@ -13,6 +13,7 @@ import {
   type LocalPoiData,
 } from "../poiData";
 import { fetchWeather, wmo, type Weather } from "../weather";
+import { reverseAddressNoBanchi } from "../geocode";
 import { addTrackPoint, getTrackPoints, subscribeTrack } from "../track";
 import type { HwOverride } from "../storage";
 
@@ -1107,6 +1108,14 @@ function RamenMapbox(props: Props) {
     };
     map.on("dragstart", onUserPan);
 
+    // 右上: 現在地の住所（番地除く）をリアルタイム表示（約40m移動ごと・GSI逆ジオコーダ）
+    const addrBox = document.createElement("div");
+    addrBox.className = "addr-box";
+    addrBox.textContent = "📍 現在地 測位中…";
+    map.getContainer().appendChild(addrBox);
+    let lastAddrPt: Pt | null = null;
+    let addrReqId = 0;
+
     // 速度計（左下・Leaflet版と同じリングゲージ：背景トラック＋速度色アーク＋先端ビーズ＋数値）
     const box = document.createElement("div");
     box.className = "follow-box";
@@ -1185,6 +1194,15 @@ function RamenMapbox(props: Props) {
         : [p.coords.longitude, p.coords.latitude];
       lastHere = here;
       geoMarker.setLngLat(here); // 地理マーカーは常に実位置（パン中の自車表示用）
+      // 現在地の住所（番地除く）を約40m移動ごとに更新（生GPSで）
+      const rawPt = { lat: p.coords.latitude, lng: p.coords.longitude };
+      if (!lastAddrPt || haversineKm(lastAddrPt, rawPt) > 0.04) {
+        lastAddrPt = rawPt;
+        const aid = ++addrReqId;
+        reverseAddressNoBanchi(rawPt.lat, rawPt.lng).then((a) => {
+          if (aid === addrReqId && !aborted) addrBox.textContent = a ? `📍 ${a}` : "📍 現在地 取得できません";
+        });
+      }
       const hd = p.coords.heading;
       // ヘディングアップ時のみ進行方位を採用（ノースアップは常に北＝bearing 0）
       if (headingUp && kmh != null && kmh > MOVE_KMH) {
@@ -1244,6 +1262,7 @@ function RamenMapbox(props: Props) {
       carEl.remove();
       geoMarker.remove();
       recBtn.remove();
+      addrBox.remove();
       box.remove();
       window.clearInterval(speedoAnim);
       // ブラウズ表示へ戻す（北向き・水平）
