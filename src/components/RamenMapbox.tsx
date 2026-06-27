@@ -13,6 +13,7 @@ import {
   type LocalPoiData,
 } from "../poiData";
 import { fetchWeather, wmo, type Weather } from "../weather";
+import { addTrackPoint, getTrackPoints, subscribeTrack } from "../track";
 import type { HwOverride } from "../storage";
 
 /** Props は Leaflet 版 RamenMap と完全に同一（ドロップイン差し替え用）。
@@ -305,6 +306,37 @@ function teardropImageData(color: string, scale: number): ImageData {
   return ctx.getImageData(0, 0, w, h);
 }
 
+// 走行軌跡の速度別色（kmhColorと同配色）。0:不明/停止 灰, 1:<10 赤, 2:<30 黄, 3:<50 緑, 4:≥50 青
+const TRK_COLORS = ["#868e96", "#e03131", "#f5b800", "#2f9e44", "#1c7ed6"];
+function speedColorIdx(kmh: number | null): number {
+  if (kmh == null) return 0;
+  if (kmh < 10) return 1;
+  if (kmh < 30) return 2;
+  if (kmh < 50) return 3;
+  return 4;
+}
+/** 走行軌跡の方向矢印（上向き三角・北基準。icon-rotateで進行方位へ回す）。Leaflet版 trk-tri と同形状。 */
+function triangleImageData(color: string, scale: number): ImageData {
+  const s = 16 * scale;
+  const cv = document.createElement("canvas");
+  cv.width = s;
+  cv.height = s;
+  const ctx = cv.getContext("2d")!;
+  ctx.scale(scale, scale);
+  ctx.beginPath();
+  ctx.moveTo(8, 1.5);
+  ctx.lineTo(13.5, 14);
+  ctx.lineTo(8, 11);
+  ctx.lineTo(2.5, 14);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#fff";
+  ctx.stroke();
+  return ctx.getImageData(0, 0, s, s);
+}
+
 /** 天気バーの中身HTML（Leaflet版と同一）。通常は当日のみ、.expanded で7日間。 */
 function weatherBarHTML(wx: Weather): string {
   const c = wmo(wx.current.code);
@@ -516,6 +548,79 @@ function RamenMapbox(props: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, wxPosKey]);
+
+  // 走行軌跡（Phase3）: 記録した走行点を速度別色の方向矢印で表示。
+  // symbol＋icon-rotation-alignment:map で地図回転に追従、icon-allow-overlap:false で重なりを自動間引き（Leafletの20px間隔相当）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !props.showTrack) return;
+    for (let i = 0; i < TRK_COLORS.length; i++) {
+      if (!map.hasImage(`trk${i}`)) map.addImage(`trk${i}`, triangleImageData(TRK_COLORS[i], 2), { pixelRatio: 2 });
+    }
+    const buildData = (): GeoJSON.FeatureCollection<GeoJSON.Point> => {
+      const pts = getTrackPoints();
+      const n = pts.length;
+      const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
+      for (let i = 0; i < n; i++) {
+        const p = pts[i];
+        let deg = 0;
+        if (i + 1 < n) deg = bearingDeg(p, pts[i + 1]);
+        else if (i > 0) deg = bearingDeg(pts[i - 1], p);
+        const b = i + 1 < n ? pts[i + 1] : i > 0 ? pts[i - 1] : null;
+        let kmh: number | null = null;
+        if (b) {
+          const dtH = Math.abs(b.t - p.t) / 3600000;
+          if (dtH > 0) kmh = haversineKm(p, b) / dtH;
+        }
+        features.push({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+          properties: { bearing: deg, ci: speedColorIdx(kmh) },
+        });
+      }
+      return { type: "FeatureCollection", features };
+    };
+    if (!map.getSource("track")) {
+      map.addSource("track", { type: "geojson", data: buildData() });
+      const before = map.getLayer("route-line")
+        ? "route-line"
+        : map.getLayer("clusters")
+        ? "clusters"
+        : undefined;
+      map.addLayer(
+        {
+          id: "track-arrows",
+          type: "symbol",
+          source: "track",
+          layout: {
+            "icon-image": ["match", ["get", "ci"], 1, "trk1", 2, "trk2", 3, "trk3", 4, "trk4", "trk0"],
+            "icon-rotate": ["get", "bearing"],
+            "icon-rotation-alignment": "map",
+            "icon-allow-overlap": false,
+            "icon-size": 1,
+          },
+        },
+        before
+      );
+    } else {
+      (map.getSource("track") as mapboxgl.GeoJSONSource).setData(buildData());
+    }
+    let timer: number | undefined;
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        (map.getSource("track") as mapboxgl.GeoJSONSource | undefined)?.setData(buildData());
+      }, 150);
+    };
+    const unsub = subscribeTrack(refresh);
+    return () => {
+      window.clearTimeout(timer);
+      unsub();
+      if (map.getLayer("track-arrows")) map.removeLayer("track-arrows");
+      if (map.getSource("track")) map.removeSource("track");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, props.showTrack]);
 
   // 周辺POI（コンビニ/GS=同梱データ即時, 駐車場/EV/トイレ=ライブOverpass）。
   // z14未満は非表示・BUFFER余白＋bboxキャッシュ＋最小間隔で過剰取得を抑制（Leaflet版PoiLayer移植）。
@@ -1067,6 +1172,7 @@ function RamenMapbox(props: Props) {
 
     const onFix = (p: GeolocationPosition) => {
       if (aborted) return;
+      addTrackPoint(p.coords.latitude, p.coords.longitude, p.timestamp); // 走行軌跡を記録（生GPS）
       const sp = p.coords.speed; // m/s
       const kmh = sp != null && sp >= 0 ? sp * 3.6 : null;
       updateSpeedo(kmh, kmh != null && kmh > MOVE_KMH, p.coords.accuracy ?? null);
