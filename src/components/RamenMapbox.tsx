@@ -135,6 +135,137 @@ const POI_SHAPE: Record<PoiKind, string> = {
   toilet: "poi--toilet",
 };
 
+// ===== 勾配メーター（DEMベース・傾斜計）。Leaflet版 RamenMap.tsx から移植 =====
+const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」
+const GRADE_SLOPE_ON = 2.2; // 平坦→「坂」表示に切替える閾値（ヒステリシス帯でちらつき抑制）
+const GRADE_MED_N = 3; // 中央値フィルタ窓（孤立した偽勾配を無視）
+const GRADE_MAX_PLAUSIBLE = 25; // これ超はDEM/経路ノイズとして無視
+
+/** 標高を数値(m)で返す。GSI高精度DEM→open-meteo概算の順。海域/取得不可は null。セッション内キャッシュ。 */
+const _eleNumCache = new Map<string, number | null>();
+async function fetchElevationNum(lat: number, lng: number): Promise<number | null> {
+  const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  const hit = _eleNumCache.get(key);
+  if (hit !== undefined) return hit;
+  let val: number | null = null;
+  try {
+    const r = await fetch(
+      `https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=${lng}&lat=${lat}&outtype=JSON`
+    );
+    const j = await r.json();
+    if (j && j.elevation !== "-----" && j.elevation != null && !isNaN(Number(j.elevation)))
+      val = Number(j.elevation);
+  } catch {
+    /* GSI失敗時は予備へ */
+  }
+  if (val === null) {
+    try {
+      const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
+      const j = await r.json();
+      if (j && Array.isArray(j.elevation) && j.elevation[0] != null) val = Number(j.elevation[0]);
+    } catch {
+      /* 取得不可 */
+    }
+  }
+  _eleNumCache.set(key, val);
+  return val;
+}
+
+/** from から進行方位 headingDeg(0=北) 方向へ distM メートル進んだ地点。 */
+function pointAhead(from: Pt, headingDeg: number, distM: number): Pt {
+  const rad = (headingDeg * Math.PI) / 180;
+  const dLat = (distM * Math.cos(rad)) / 111320;
+  const dLng = (distM * Math.sin(rad)) / (111320 * Math.cos((from.lat * Math.PI) / 180));
+  return { lat: from.lat + dLat, lng: from.lng + dLng };
+}
+
+type GradeMeter = {
+  tilt: SVGElement;
+  road: SVGElement;
+  label: SVGElement;
+  warn: HTMLElement;
+  hist: number[];
+  flat: boolean;
+};
+const _gradeMeters = new WeakMap<HTMLElement, GradeMeter>();
+
+/** box 内に傾斜計SVGを一度だけ構築（以後は属性更新でなめらかにアニメ）。軽バン側面シルエット。 */
+function ensureGradeMeter(box: HTMLElement): GradeMeter {
+  const cached = _gradeMeters.get(box);
+  if (cached) return cached;
+  box.innerHTML =
+    '<svg class="grade-meter" viewBox="0 0 170 96" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="20" y1="56" x2="150" y2="56" stroke="#3a3f47" stroke-width="2" stroke-dasharray="2 5"/>' +
+    '<g class="gm-tilt">' +
+    '<line class="gm-road" x1="27" y1="56" x2="143" y2="56" stroke="#9aa0a6" stroke-width="6" stroke-linecap="round"/>' +
+    '<g class="gm-car">' +
+    '<path d="M56 53 L56 31 Q56 29 58 29 L105 29 Q109 29 111 33 L114 46 L114 53 Z" fill="#86a980"/>' +
+    '<path d="M63 33 L85 33 L85 43 L63 43 Z" fill="#222a25"/>' +
+    '<path d="M88 33 L104 33 Q106 33 107 36 L107 43 L88 43 Z" fill="#222a25"/>' +
+    '<rect x="56.4" y="33" width="2.6" height="8" rx="0.8" fill="#ff5a5a"/>' +
+    '<circle cx="112" cy="47" r="2.3" fill="#ffe07a"/>' +
+    '<circle cx="67" cy="54" r="5.2" fill="#181b20" stroke="#e8e6e1" stroke-width="1.8"/>' +
+    '<circle cx="103" cy="54" r="5.2" fill="#181b20" stroke="#e8e6e1" stroke-width="1.8"/>' +
+    "</g></g>" +
+    '<text class="gm-label" x="85" y="91" text-anchor="middle" font-size="30" font-weight="800" fill="#cdd3da">0%</text>' +
+    "</svg>" +
+    '<div class="grade-warn" style="display:none"></div>';
+  const m: GradeMeter = {
+    tilt: box.querySelector(".gm-tilt") as SVGElement,
+    road: box.querySelector(".gm-road") as SVGElement,
+    label: box.querySelector(".gm-label") as SVGElement,
+    warn: box.querySelector(".grade-warn") as HTMLElement,
+    hist: [],
+    flat: true,
+  };
+  _gradeMeters.set(box, m);
+  return m;
+}
+
+/** 勾配メーター更新。Phase1の中央値フィルタ＋ヒステリシスで平坦路の偽勾配・ちらつきを抑制。
+ *  （Phase2のジャイロvetoは既定OFF・横向き要再設計のためMapbox版では未移植）。 */
+function updateGradeMeter(
+  box: HTMLElement,
+  grade: number | null,
+  warn: { grade: number; distM: number } | null
+) {
+  const m = ensureGradeMeter(box);
+  if (grade === null) {
+    m.hist = [];
+    m.flat = true;
+    m.tilt.setAttribute("transform", "rotate(0 85 56)");
+    m.road.setAttribute("stroke", "#9aa0a6");
+    m.label.textContent = "—";
+    m.label.setAttribute("fill", "#cdd3da");
+    m.warn.style.display = "none";
+    return;
+  }
+  m.hist.push(grade);
+  if (m.hist.length > GRADE_MED_N) m.hist.shift();
+  const sorted = [...m.hist].sort((a, b) => a - b);
+  const med = sorted[Math.floor(sorted.length / 2)];
+  if (m.flat) {
+    if (Math.abs(med) > GRADE_SLOPE_ON) m.flat = false;
+  } else if (Math.abs(med) < GRADE_FLAT) {
+    m.flat = true;
+  }
+  const flat = m.flat;
+  const col = flat ? "#9aa0a6" : med > 0 ? "#EF9F27" : "#378ADD"; // 平坦灰/上り琥珀/下り青
+  const labelCol = flat ? "#cdd3da" : med > 0 ? "#FAC775" : "#85B7EB";
+  const ang = flat ? 0 : Math.max(-34, Math.min(34, med * 2.2)); // 視認性のため誇張（数値は実値）
+  m.tilt.setAttribute("transform", `rotate(${(-ang).toFixed(1)} 85 56)`);
+  m.road.setAttribute("stroke", col);
+  const g = Math.abs(Math.round(med));
+  m.label.textContent = flat ? "0%" : med > 0 ? `↗ ${g}%` : `↘ ${g}%`;
+  m.label.setAttribute("fill", labelCol);
+  if (warn) {
+    m.warn.style.display = "";
+    m.warn.textContent = `⚠ この先 ${warn.grade > 0 ? "↑" : "↓"}${Math.abs(Math.round(warn.grade))}%・${warn.distM}m`;
+  } else {
+    m.warn.style.display = "none";
+  }
+}
+
 function RamenMapbox(props: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -796,6 +927,92 @@ function RamenMapbox(props: Props) {
       speedo.remove();
       // ブラウズ表示へ戻す（北向き・水平）
       map.easeTo({ bearing: 0, pitch: 0, duration: 600 });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, props.follow]);
+
+  // 標高/勾配メーター（Stage 2c）: 追従走行中、進行方位の前方80mのDEM標高差から勾配を先読み表示。
+  // 経路スナップ中は道路セグメント方位を使うので route/free 両対応。GSI標高API=無料。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !props.follow) return;
+    let aborted = false;
+    let watchId: number | null = null;
+    const AHEAD_M = 80;
+    const MIN_MOVE_KM = 0.05; // 50m移動ごとに勾配を再計測（表示は維持）
+    let lastHeading: number | null = null;
+    let lastUpdatePos: Pt | null = null;
+    let prevPos: Pt | null = null;
+    let reqId = 0;
+    let lastGrade: number | null = null;
+
+    const box = document.createElement("div");
+    box.className = "grade-box";
+    map.getContainer().appendChild(box);
+    const render = (g: number | null) => {
+      box.style.display = "";
+      updateGradeMeter(box, g, null);
+    };
+    render(lastGrade); // マウント直後から「—」で表示
+
+    // sim/debug時のみ: 中央値フィルタ＋ヒステリシスを実boxで決定論検証するフック
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("sim") === "drive" || q.get("debug") === "1") {
+      (window as unknown as Record<string, unknown>).__grade = {
+        feed: (v: number | null) => {
+          updateGradeMeter(box, v, null);
+          return box.querySelector(".gm-label")?.textContent;
+        },
+        label: () => box.querySelector(".gm-label")?.textContent,
+      };
+    }
+
+    const onPos = (p: GeolocationPosition) => {
+      const here: Pt = { lat: p.coords.latitude, lng: p.coords.longitude };
+      // 向き: 経路スナップ中は道路方位、なければGPS進行方位、それも無ければ移動方向
+      const snap = routeSnapRef.current;
+      const useSnap = !!snap && Date.now() - snap.at < 3000;
+      const hd = p.coords.heading;
+      const gpsOk = hd != null && isFinite(hd) && hd >= 0;
+      if (useSnap) lastHeading = snap!.bearing;
+      else if (gpsOk) lastHeading = hd;
+      if (!prevPos) prevPos = here;
+      else if (haversineKm(prevPos, here) >= 0.02) {
+        if (!useSnap && !gpsOk) lastHeading = bearingDeg(prevPos, here);
+        prevPos = here;
+      }
+      render(lastGrade);
+      if (lastHeading == null) return; // 方位不明(未発進)は「—」表示のみ
+      if (lastUpdatePos && haversineKm(here, lastUpdatePos) < MIN_MOVE_KM) return;
+      lastUpdatePos = here;
+      const ahead = pointAhead(here, lastHeading, AHEAD_M);
+      const id = ++reqId;
+      Promise.all([
+        fetchElevationNum(here.lat, here.lng),
+        fetchElevationNum(ahead.lat, ahead.lng),
+      ]).then(([e0, e1]) => {
+        if (aborted || id !== reqId) return;
+        let g: number | null = null;
+        if (e0 != null && e1 != null) {
+          const gv = ((e1 - e0) / AHEAD_M) * 100;
+          if (Math.abs(gv) <= GRADE_MAX_PLAUSIBLE) g = gv;
+        }
+        lastGrade = g;
+        render(g);
+      });
+    };
+
+    if ("geolocation" in navigator && window.isSecureContext) {
+      watchId = navigator.geolocation.watchPosition(onPos, () => {}, {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 15000,
+      });
+    }
+    return () => {
+      aborted = true;
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      box.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, props.follow]);
