@@ -389,6 +389,7 @@ function RamenMapbox(props: Props) {
   const routeSnapRef = useRef<{ proj: Pt; bearing: number; at: number } | null>(null);
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
+  const hwActiveRef = useRef(false); // 現在「高速道路扱い」か（経路effectが書き、勾配effectが勾配抑制に読む）
   // 日本語化した name 系レイヤーの元 text-size を保持（bigLabels トグルで戻せるように）
   const labelOrigRef = useRef<Record<string, unknown>>({});
   const [tokenMissing, setTokenMissing] = useState(false);
@@ -1117,6 +1118,7 @@ function RamenMapbox(props: Props) {
       routeSnapRef.current = { proj: pr.proj, bearing: segBearing, at: Date.now() };
       // 高速判定（手動＞経路waycategory＞速度）＋この先の高速施設ストリップ更新
       effHighway = computeEffHighway(pr.segIdx);
+      hwActiveRef.current = effHighway; // 勾配effectが高速時の勾配抑制に使う
       updateHwStrip(rKm - pr.remKm);
       return pr;
     };
@@ -1194,6 +1196,7 @@ function RamenMapbox(props: Props) {
       hwToggle.remove();
       routeSnapRef.current = null;
       routeReapplyRef.current = null;
+      hwActiveRef.current = false;
       if (map.getLayer("route-line")) map.removeLayer("route-line");
       if (map.getSource("route")) map.removeSource("route");
     };
@@ -1452,6 +1455,11 @@ function RamenMapbox(props: Props) {
     box.className = "grade-box";
     map.getContainer().appendChild(box);
     const render = (g: number | null) => {
+      // 高速道路ではDEM標高が道路と乖離し勾配が誤るため非表示（Leaflet版と同じ。経路の高速判定 or 手動高速ON時）
+      if (hwActiveRef.current || propsRef.current.hwOverride === "on") {
+        box.style.display = "none";
+        return;
+      }
       box.style.display = "";
       updateGradeMeter(box, g, null);
     };
