@@ -1153,10 +1153,23 @@ function weatherBarHTML(wx: Weather): string {
       );
     })
     .join("");
-  return `<div class="wx-label">📍 天気</div>${cur}<div class="wx-days">${days}</div>`;
+  const t = wx.daily[0];
+  const today = t
+    ? `<div class="wx-today">` +
+      `<span class="wx-day-pop">☔${t.pop ?? 0}%</span>` +
+      `<span class="wx-day-temp"><b>${Math.round(t.tmax)}</b>/<span class="wx-lo">${Math.round(
+        t.tmin
+      )}</span></span></div>`
+    : "";
+  // 通常は wx-label + wx-cur + wx-today（当日のみ）。タップで .expanded → wx-days(5日間)を表示。
+  return (
+    `<div class="wx-label">📍 天気</div>${cur}${today}` +
+    `<div class="wx-days">${days}</div>` +
+    `<span class="wx-toggle" aria-hidden="true">▾</span>`
+  );
 }
 
-/** 画面下部の横長 天気バー（現在地の現在＋今日〜5日。Open-Meteo）。走行中(follow)は隠す。 */
+/** 画面下部の横長 天気バー（現在地。通常は当日のみ、タップで5日間に展開。Open-Meteo）。 */
 function WeatherBar({ pos, show }: { pos: Pt | null; show: boolean }) {
   const map = useMap();
   const boxRef = useRef<HTMLDivElement | null>(null);
@@ -1167,6 +1180,8 @@ function WeatherBar({ pos, show }: { pos: Pt | null; show: boolean }) {
     box.innerHTML = '<div class="wx-label">📍 天気</div><div class="wx-loading">取得中…</div>';
     L.DomEvent.disableClickPropagation(box);
     L.DomEvent.disableScrollPropagation(box);
+    // タップで当日表示↔5日間表示を切り替え（.expanded を付け外し）
+    box.addEventListener("click", () => box.classList.toggle("expanded"));
     map.getContainer().appendChild(box);
     boxRef.current = box;
     return () => {

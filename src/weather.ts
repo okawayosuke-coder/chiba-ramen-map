@@ -1,5 +1,5 @@
 // 現在地の天気予報（Open-Meteo・無料/APIキー不要）。画面下部の横長バーで使う。
-// 既に標高取得で open-meteo を使用済み。ここでは current(現在)＋daily(今日〜5日)を取得する。
+// 既に標高取得で open-meteo を使用済み。ここでは current(現在)＋daily(今日〜7日)を取得する。
 
 export interface DailyWx {
   date: string; // "YYYY-MM-DD"(JST)
@@ -53,7 +53,7 @@ export function wmo(code: number): { emoji: string; label: string } {
 const cache = new Map<string, Weather>();
 const TTL = 30 * 60 * 1000; // 30分キャッシュ（過剰取得を抑制）
 
-/** 指定地点の天気(現在＋5日)。約1km丸めでキャッシュ共有。取得不可は null。 */
+/** 指定地点の天気(現在＋7日)。約1km丸めでキャッシュ共有。取得不可は null。 */
 export async function fetchWeather(
   lat: number,
   lng: number
@@ -66,7 +66,7 @@ export async function fetchWeather(
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
       `&current=temperature_2m,weather_code,precipitation,wind_speed_10m` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
-      `&timezone=Asia%2FTokyo&forecast_days=5`;
+      `&timezone=Asia%2FTokyo&forecast_days=7`;
     const r = await fetch(url);
     if (!r.ok) return null;
     const d = await r.json();
