@@ -843,6 +843,92 @@ body {
 .car-arrow--dr {
   opacity: 0.45;
 }
+
+/* 画面下部の横長 天気バー（現在地の天気予報・Open-Meteo）。走行中(follow)はJSで非表示。 */
+.weather-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 620;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100% - 20px);
+  padding: 7px 14px;
+  background: rgba(16, 18, 23, 0.9);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  color: #e8eaed;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.wx-label {
+  font-size: 11px;
+  color: #aeb6c0;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.wx-cur {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  padding-right: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+.wx-emoji {
+  font-size: 26px;
+  line-height: 1;
+}
+.wx-temp {
+  font-size: 26px;
+  font-weight: 800;
+}
+.wx-cur-sub {
+  font-size: 11px;
+  color: #cdd3da;
+  line-height: 1.25;
+}
+.wx-days {
+  display: flex;
+  gap: 12px;
+}
+.wx-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 46px;
+  white-space: nowrap;
+}
+.wx-day-name {
+  font-size: 11px;
+  color: #aeb6c0;
+  font-weight: 700;
+}
+.wx-day-emoji {
+  font-size: 19px;
+  line-height: 1.1;
+}
+.wx-day-pop {
+  font-size: 10px;
+  color: #85b7eb;
+}
+.wx-day-temp {
+  font-size: 12px;
+}
+.wx-day-temp b {
+  font-weight: 800;
+}
+.wx-lo {
+  color: #9aa3ae;
+}
+.wx-loading {
+  font-size: 12px;
+  color: #cdd3da;
+}
 .follow-box {
   position: absolute;
   left: 10px;

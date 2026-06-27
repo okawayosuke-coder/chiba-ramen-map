@@ -12,6 +12,7 @@ import L from "leaflet";
 import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
 import { reverseAddressNoBanchi } from "../geocode";
+import { fetchWeather, wmo, type Weather } from "../weather";
 import { fetchPois, poiBrandStyle, poiIconFile, type BBox, type Poi, type PoiKind } from "../poi";
 import {
   loadLocalPois,
@@ -1120,6 +1121,77 @@ function DemoFit() {
       { padding: [40, 40] }
     );
   }, [map]);
+  return null;
+}
+
+/** 天気バーのHTML（現在＋今日〜5日）を組み立てる。 */
+function weatherBarHTML(wx: Weather): string {
+  const c = wmo(wx.current.code);
+  const WD = ["日", "月", "火", "水", "木", "金", "土"];
+  const cur =
+    `<div class="wx-cur">` +
+    `<span class="wx-emoji">${c.emoji}</span>` +
+    `<span class="wx-temp">${Math.round(wx.current.temp)}°</span>` +
+    `<span class="wx-cur-sub">${c.label}<br>${
+      wx.current.precip > 0 ? `☔${wx.current.precip}mm ・ ` : ""
+    }💨${Math.round(wx.current.wind)}</span>` +
+    `</div>`;
+  const days = wx.daily
+    .map((d, i) => {
+      const w = wmo(d.code);
+      const name =
+        i === 0 ? "今日" : i === 1 ? "明日" : WD[new Date(d.date).getUTCDay()];
+      return (
+        `<div class="wx-day">` +
+        `<span class="wx-day-name">${name}</span>` +
+        `<span class="wx-day-emoji">${w.emoji}</span>` +
+        `<span class="wx-day-pop">☔${d.pop ?? 0}%</span>` +
+        `<span class="wx-day-temp"><b>${Math.round(d.tmax)}</b>/<span class="wx-lo">${Math.round(
+          d.tmin
+        )}</span></span>` +
+        `</div>`
+      );
+    })
+    .join("");
+  return `<div class="wx-label">📍 天気</div>${cur}<div class="wx-days">${days}</div>`;
+}
+
+/** 画面下部の横長 天気バー（現在地の現在＋今日〜5日。Open-Meteo）。走行中(follow)は隠す。 */
+function WeatherBar({ pos, show }: { pos: Pt | null; show: boolean }) {
+  const map = useMap();
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const posKey = pos ? `${pos.lat.toFixed(2)},${pos.lng.toFixed(2)}` : "center";
+  useEffect(() => {
+    const box = L.DomUtil.create("div", "weather-bar") as HTMLDivElement;
+    box.style.display = "none";
+    box.innerHTML = '<div class="wx-label">📍 天気</div><div class="wx-loading">取得中…</div>';
+    L.DomEvent.disableClickPropagation(box);
+    L.DomEvent.disableScrollPropagation(box);
+    map.getContainer().appendChild(box);
+    boxRef.current = box;
+    return () => {
+      box.remove();
+      boxRef.current = null;
+    };
+  }, [map]);
+  useEffect(() => {
+    if (boxRef.current) boxRef.current.style.display = show ? "" : "none";
+  }, [show]);
+  useEffect(() => {
+    if (!show) return;
+    const loc = pos ?? { lat: map.getCenter().lat, lng: map.getCenter().lng };
+    let cancelled = false;
+    fetchWeather(loc.lat, loc.lng).then((wx) => {
+      if (cancelled || !boxRef.current) return;
+      boxRef.current.innerHTML = wx
+        ? weatherBarHTML(wx)
+        : '<div class="wx-label">📍 天気</div><div class="wx-loading">天気を取得できませんでした</div>';
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posKey, show, map]);
   return null;
 }
 
@@ -2395,6 +2467,7 @@ function RamenMap({
       />
       <FocusController focus={focus} />
       <UserFocus pos={userPos} />
+      <WeatherBar pos={userPos} show />
       <ElevationProbe />
       <FollowController active={follow} destRef={destRef} />
       <ResizeOnChange dep={paneHidden} />
