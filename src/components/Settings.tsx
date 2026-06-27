@@ -33,8 +33,6 @@ interface Props {
   setBigLabels: (v: boolean) => void;
   gyroGrade: boolean;
   setGyroGrade: (v: boolean) => void;
-  vectorMap: boolean;
-  setVectorMap: (v: boolean) => void;
   showPoi: boolean;
   setShowPoi: (v: boolean) => void;
   poiKinds: PoiKind[];
@@ -56,8 +54,6 @@ export default function Settings({
   setBigLabels,
   gyroGrade,
   setGyroGrade,
-  vectorMap,
-  setVectorMap,
   showPoi,
   setShowPoi,
   poiKinds,
@@ -195,21 +191,6 @@ export default function Settings({
           </div>
           <p className="modal__small">
             OSMの地図を2倍に拡大して地名を大きく表示します（テスト）。読みやすくなる反面、細かいラベルが減り、やや滲みます。OFFで通常の地図に戻ります。
-          </p>
-        </section>
-
-        <section className="set-sec">
-          <h3>ベクター地図（テスト）</h3>
-          <div className="set-row">
-            <button
-              className={`chip${vectorMap ? " chip--on" : ""}`}
-              onClick={() => setVectorMap(!vectorMap)}
-            >
-              ベクター表示 {vectorMap ? "ON" : "OFF"}
-            </button>
-          </div>
-          <p className="modal__small">
-            文字が画像でない<strong>ベクター地図</strong>に切替え、<strong>ラベルを一切減らさず全ての文字を1.5倍＋くっきり</strong>表示します（上の「文字を大きく」より情報量が落ちません）。地図の見た目は通常のOSMと少し変わります。初回ONで地図データを取得（要ネット接続・OpenFreeMap）。OFFで通常のOSM地図に戻ります。
           </p>
         </section>
 
