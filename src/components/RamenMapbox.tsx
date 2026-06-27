@@ -1,9 +1,16 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { Shop } from "../types";
 import { fmtDistance, roughMinutes, type Pt, type Dest } from "../nav";
-import type { PoiKind } from "../poi";
+import { fetchPois, poiBrandStyle, poiIconFile, type Poi, type PoiKind, type BBox } from "../poi";
+import {
+  loadLocalPois,
+  coverageContains,
+  localPoisInView,
+  LOCAL_KINDS,
+  type LocalPoiData,
+} from "../poiData";
 import type { HwOverride } from "../storage";
 
 /** Props は Leaflet 版 RamenMap と完全に同一（ドロップイン差し替え用）。
@@ -117,6 +124,15 @@ function scaleSize(v: unknown, f: number): unknown {
   return v; // 数値でも interpolate/step でもない式は触らない（安全側）
 }
 
+// 種類→マーカー形状クラス（色は poiBrandStyle のインライン指定。CSSはLeaflet版と共通）
+const POI_SHAPE: Record<PoiKind, string> = {
+  conv: "poi--conv",
+  fuel: "poi--fuel",
+  parking: "poi--parking",
+  ev: "poi--ev",
+  toilet: "poi--toilet",
+};
+
 function RamenMapbox(props: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -128,6 +144,9 @@ function RamenMapbox(props: Props) {
   const labelOrigRef = useRef<Record<string, unknown>>({});
   const [tokenMissing, setTokenMissing] = useState(false);
   const [tokenInput, setTokenInput] = useState("");
+  const [mapReady, setMapReady] = useState(false); // POIなど「地図準備後に貼る」effectのトリガ
+  // POI種類の集合が変わった時だけ再取得（配列の同一性に依存しない）
+  const poiKindsKey = useMemo(() => [...props.poiKinds].sort().join(","), [props.poiKinds]);
 
   // imperative ハンドラから常に最新の props を読むための ref
   const propsRef = useRef(props);
@@ -166,6 +185,7 @@ function RamenMapbox(props: Props) {
       }
       applyLabels(map);
       readyRef.current = true;
+      setMapReady(true);
       const src = map.getSource("shops") as mapboxgl.GeoJSONSource | undefined;
       src?.setData(shopsGeoJSON(propsRef.current.shops));
       placeUser(map, propsRef.current.userPos);
@@ -229,6 +249,260 @@ function RamenMapbox(props: Props) {
     for (const id of Object.keys(labelOrigRef.current)) scaleLabel(map, id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.bigLabels]);
+
+  // 周辺POI（コンビニ/GS=同梱データ即時, 駐車場/EV/トイレ=ライブOverpass）。
+  // z14未満は非表示・BUFFER余白＋bboxキャッシュ＋最小間隔で過剰取得を抑制（Leaflet版PoiLayer移植）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const active = (poiKindsKey ? poiKindsKey.split(",") : []) as PoiKind[];
+    if (active.length === 0) return;
+
+    const MINZOOM = 14;
+    const MIN_INTERVAL = 4000;
+    const MAX = 600;
+    const BUFFER = 0.7;
+    const ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
+    const ZOOM_HINT = "🏪 ズームすると周辺の施設を表示";
+
+    const hint = document.createElement("div");
+    hint.className = "poi-hint";
+    hint.textContent = ZOOM_HINT;
+    hint.style.display = "none";
+    map.getContainer().appendChild(hint);
+
+    let markers: mapboxgl.Marker[] = [];
+    const clearMarkers = () => {
+      for (const m of markers) m.remove();
+      markers = [];
+    };
+
+    // アイコンHTMLを種類×ブランドでキャッシュ（マーカー毎にelementは複製する）
+    const htmlCache = new Map<string, string>();
+    const iconHtml = (kind: PoiKind, label: string): string => {
+      const file = poiIconFile(kind, label);
+      if (file) {
+        const key = `img|${file}`;
+        let h = htmlCache.get(key);
+        if (!h) {
+          const gs = file.startsWith("gs-");
+          h = `<div class="${gs ? "poi-img-gs" : "poi-img"}"><img src="${ICON_BASE}${file}" alt="" /></div>`;
+          htmlCache.set(key, h);
+        }
+        return h;
+      }
+      const st = poiBrandStyle(kind, label);
+      const key = `${kind}|${st.bg}|${st.t}`;
+      let h = htmlCache.get(key);
+      if (!h) {
+        const fs = st.emoji ? "14px" : st.t.length >= 2 ? "9.5px" : "12.5px";
+        h = `<div class="poi ${POI_SHAPE[kind]}" style="background:${st.bg};color:${st.fg};font-size:${fs}">${st.t}</div>`;
+        htmlCache.set(key, h);
+      }
+      return h;
+    };
+    const makeEl = (html: string): HTMLElement => {
+      const wrap = document.createElement("div");
+      wrap.innerHTML = html;
+      return wrap.firstElementChild as HTMLElement;
+    };
+
+    let cachedLive: BBox | null = null;
+    let lastReqAt = 0;
+    let aborted = false;
+    let inFlight = false;
+    let failStreak = 0;
+    let lastLiveKey = "";
+    let lastLocal: Poi[] = [];
+    let localArea: BBox | null = null;
+    let lastLive: Poi[] = [];
+    let shown = false;
+    let local: LocalPoiData | null = null;
+    let localLoadFailed = false;
+
+    const localActive = active.filter((k) => LOCAL_KINDS.includes(k));
+    const liveOnly = active.filter((k) => !LOCAL_KINDS.includes(k));
+
+    const expand = (b: BBox, f: number): BBox => {
+      const dy = (b.n - b.s) * f;
+      const dx = (b.e - b.w) * f;
+      return { s: b.s - dy, w: b.w - dx, n: b.n + dy, e: b.e + dx };
+    };
+    const inside = (o: BBox, i: BBox) => i.s >= o.s && i.w >= o.w && i.n <= o.n && i.e <= o.e;
+
+    const capPick = (pois: Poi[]): Poi[] => {
+      const buckets = new Map<PoiKind, Poi[]>();
+      for (const p of pois) {
+        const arr = buckets.get(p.kind);
+        if (arr) arr.push(p);
+        else buckets.set(p.kind, [p]);
+      }
+      const lists = [...buckets.values()];
+      const picked: Poi[] = [];
+      for (let i = 0; picked.length < MAX; i++) {
+        let added = false;
+        for (const list of lists) {
+          if (i < list.length) {
+            picked.push(list[i]);
+            added = true;
+            if (picked.length >= MAX) break;
+          }
+        }
+        if (!added) break;
+      }
+      return picked;
+    };
+
+    const popupFor = (p: Poi, popup: mapboxgl.Popup): HTMLElement => {
+      const el = document.createElement("div");
+      el.className = "poi-popup";
+      const nm = document.createElement("div");
+      nm.className = "poi-popup__name";
+      nm.textContent = p.label;
+      el.appendChild(nm);
+      const d: Dest = { lat: p.lat, lng: p.lng, name: p.label };
+      const bDest = document.createElement("button");
+      bDest.type = "button";
+      bDest.className = "poi-popup__btn poi-popup__btn--dest";
+      bDest.textContent = "🎯 目的地に設定";
+      bDest.onclick = () => {
+        popup.remove();
+        propsRef.current.onSetDest(d);
+      };
+      const bNav = document.createElement("button");
+      bNav.type = "button";
+      bNav.className = "poi-popup__btn";
+      bNav.textContent = "🚗 Googleマップ";
+      bNav.onclick = () => {
+        popup.remove();
+        propsRef.current.onNav(d);
+      };
+      el.appendChild(bDest);
+      el.appendChild(bNav);
+      return el;
+    };
+
+    const draw = () => {
+      const picked = capPick([...lastLocal, ...lastLive]);
+      clearMarkers();
+      for (const p of picked) {
+        const el = makeEl(iconHtml(p.kind, p.label));
+        el.title = p.label;
+        const popup = new mapboxgl.Popup({ offset: 14, closeButton: true });
+        popup.setDOMContent(popupFor(p, popup));
+        markers.push(
+          new mapboxgl.Marker({ element: el, anchor: "center" })
+            .setLngLat([p.lng, p.lat])
+            .setPopup(popup)
+            .addTo(map)
+        );
+      }
+      shown = true;
+    };
+
+    const refresh = async () => {
+      if (aborted) return;
+      if (map.getZoom() < MINZOOM) {
+        if (shown) {
+          clearMarkers();
+          shown = false;
+        }
+        hint.textContent = ZOOM_HINT;
+        hint.style.display = "";
+        return;
+      }
+      if (hint.textContent === ZOOM_HINT) hint.style.display = "none";
+      const bd = map.getBounds();
+      if (!bd) return;
+      const view: BBox = { s: bd.getSouth(), w: bd.getWest(), n: bd.getNorth(), e: bd.getEast() };
+
+      let liveNeeded = liveOnly.slice();
+      let changed = false;
+      if (localActive.length) {
+        if (local && coverageContains(local, view)) {
+          if (!localArea || !inside(localArea, view)) {
+            const larea = expand(view, BUFFER);
+            lastLocal = localPoisInView(local, larea, localActive);
+            localArea = larea;
+            changed = true;
+          }
+        } else if (local || localLoadFailed) {
+          if (lastLocal.length || localArea) {
+            lastLocal = [];
+            localArea = null;
+            changed = true;
+          }
+          liveNeeded = liveNeeded.concat(localActive);
+        }
+      }
+
+      const liveKey = [...liveNeeded].sort().join(",");
+      if (liveKey !== lastLiveKey) {
+        cachedLive = null;
+        if (lastLive.length) {
+          lastLive = [];
+          changed = true;
+        }
+        lastLiveKey = liveKey;
+      }
+
+      if (changed || !shown) draw();
+
+      if (!liveNeeded.length) return;
+      if (inFlight) return;
+      if (cachedLive && inside(cachedLive, view)) return;
+      const now = performance.now();
+      if (now - lastReqAt < MIN_INTERVAL) return;
+      lastReqAt = now;
+      inFlight = true;
+      const area = expand(view, BUFFER);
+      try {
+        const pois = await fetchPois(area, liveNeeded);
+        if (aborted) return;
+        cachedLive = area;
+        failStreak = 0;
+        lastLive = pois;
+        if (hint.textContent !== ZOOM_HINT) hint.style.display = "none";
+        draw();
+      } catch {
+        if (aborted) return;
+        failStreak++;
+        if (failStreak >= 2) {
+          hint.textContent = "⚠ 周辺施設を取得中…（地図サーバ混雑）";
+          hint.style.display = "";
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    if (localActive.length) {
+      loadLocalPois()
+        .then((d) => {
+          if (!aborted) {
+            local = d;
+            refresh();
+          }
+        })
+        .catch(() => {
+          if (!aborted) {
+            localLoadFailed = true;
+            refresh();
+          }
+        });
+    }
+    map.on("moveend", refresh);
+    const timer = window.setInterval(refresh, 5000);
+    refresh();
+    return () => {
+      aborted = true;
+      map.off("moveend", refresh);
+      window.clearInterval(timer);
+      clearMarkers();
+      hint.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, poiKindsKey]);
 
   // ---- 以下はクロージャ内ヘルパ（関数宣言＝巻き上げ済み。propsRef で最新値を読む） ----
 
