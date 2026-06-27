@@ -57,9 +57,20 @@ import metaData from "./data/meta.json";
 // Mapbox 版地図（試験・URL に ?engine=mapbox で有効化）。
 // mapbox-gl(約1MB)は lazy import で別チャンク化し、既定(Leaflet)利用者には読み込ませない。
 const RamenMapbox = lazy(() => import("./components/RamenMapbox"));
+// 地図エンジン選択（試験）。?engine=mapbox で有効化し localStorage に記憶
+// → ホーム画面アイコン（クエリ無し）起動でも Mapbox 版を維持。?engine=leaflet で解除。
 const ENGINE_MAPBOX = (() => {
   try {
-    return new URLSearchParams(window.location.search).get("engine") === "mapbox";
+    const q = new URLSearchParams(window.location.search).get("engine");
+    if (q === "mapbox") {
+      localStorage.setItem("crm_engine", "mapbox");
+      return true;
+    }
+    if (q === "leaflet" || q === "off") {
+      localStorage.removeItem("crm_engine");
+      return false;
+    }
+    return localStorage.getItem("crm_engine") === "mapbox";
   } catch {
     return false;
   }
