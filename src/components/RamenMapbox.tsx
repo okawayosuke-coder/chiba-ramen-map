@@ -142,6 +142,9 @@ function RamenMapbox(props: Props) {
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const firstFixRef = useRef(true);
+  // 経路スナップ（無料のリアルタイムmap matching）: 経路effectが投影点＋道路方位を書き、
+  // followeffectが自車位置/向きに使う。経路案内中だけ新鮮（at が近い）。
+  const routeSnapRef = useRef<{ proj: Pt; bearing: number; at: number } | null>(null);
   // 日本語化した name 系レイヤーの元 text-size を保持（bigLabels トグルで戻せるように）
   const labelOrigRef = useRef<Record<string, unknown>>({});
   const [tokenMissing, setTokenMissing] = useState(false);
@@ -602,6 +605,14 @@ function RamenMapbox(props: Props) {
       }
       // 走行済み区間を消す（投影点→以降の頂点）
       setLine([[pr.proj.lat, pr.proj.lng], ...rCoords.slice(pr.segIdx + 1)]);
+      // 経路スナップ用に投影点＋道路セグメント方位を共有（followが自車位置/向きに使う）
+      let segBearing = routeSnapRef.current?.bearing ?? 0;
+      if (pr.segIdx + 1 < rCoords.length) {
+        const a = rCoords[pr.segIdx];
+        const b = rCoords[pr.segIdx + 1];
+        segBearing = bearingDeg({ lat: a[0], lng: a[1] }, { lat: b[0], lng: b[1] });
+      }
+      routeSnapRef.current = { proj: pr.proj, bearing: segBearing, at: Date.now() };
       return pr;
     };
 
@@ -669,6 +680,7 @@ function RamenMapbox(props: Props) {
       destMarker.remove();
       box.remove();
       clearBtn.remove();
+      routeSnapRef.current = null;
       if (map.getLayer("route-line")) map.removeLayer("route-line");
       if (map.getSource("route")) map.removeSource("route");
     };
@@ -718,13 +730,22 @@ function RamenMapbox(props: Props) {
 
     const onFix = (p: GeolocationPosition) => {
       if (aborted) return;
-      const here: [number, number] = [p.coords.longitude, p.coords.latitude];
-      carMarker.setLngLat(here).addTo(map);
       const sp = p.coords.speed; // m/s
       const kmh = sp != null && sp >= 0 ? sp * 3.6 : null;
       if (numEl) numEl.textContent = kmh == null ? "–" : String(Math.round(kmh));
+      // 経路案内中はGPSを経路へスナップ（無料のmap matching）し、向きも道路セグメント方位に。
+      // 経路が無い/古い時は生GPS＋GPS進行方位にフォールバック。
+      const snap = routeSnapRef.current;
+      const useSnap = !!snap && Date.now() - snap.at < 3000;
+      const here: [number, number] = useSnap
+        ? [snap!.proj.lng, snap!.proj.lat]
+        : [p.coords.longitude, p.coords.latitude];
+      carMarker.setLngLat(here).addTo(map);
       const hd = p.coords.heading;
-      if (kmh != null && kmh > MOVE_KMH && hd != null && isFinite(hd) && hd >= 0) lastBearing = hd;
+      if (kmh != null && kmh > MOVE_KMH) {
+        if (useSnap) lastBearing = snap!.bearing;
+        else if (hd != null && isFinite(hd) && hd >= 0) lastBearing = hd;
+      }
       if (first) {
         first = false;
         map.easeTo({ center: here, bearing: lastBearing, pitch: DRIVE_PITCH, zoom: DRIVE_ZOOM, duration: 800 });
