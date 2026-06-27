@@ -31,6 +31,8 @@ interface Props {
   setShowTrack: (v: boolean) => void;
   bigLabels: boolean;
   setBigLabels: (v: boolean) => void;
+  gyroGrade: boolean;
+  setGyroGrade: (v: boolean) => void;
   showPoi: boolean;
   setShowPoi: (v: boolean) => void;
   poiKinds: PoiKind[];
@@ -50,6 +52,8 @@ export default function Settings({
   setShowTrack,
   bigLabels,
   setBigLabels,
+  gyroGrade,
+  setGyroGrade,
   showPoi,
   setShowPoi,
   poiKinds,
@@ -187,6 +191,21 @@ export default function Settings({
           </div>
           <p className="modal__small">
             OSMの地図を2倍に拡大して地名を大きく表示します（テスト）。読みやすくなる反面、細かいラベルが減り、やや滲みます。OFFで通常の地図に戻ります。
+          </p>
+        </section>
+
+        <section className="set-sec">
+          <h3>傾斜メーターの補正（テスト）</h3>
+          <div className="set-row">
+            <button
+              className={`chip${gyroGrade ? " chip--on" : ""}`}
+              onClick={() => setGyroGrade(!gyroGrade)}
+            >
+              ジャイロで平坦補正 {gyroGrade ? "ON" : "OFF"}
+            </button>
+          </div>
+          <p className="modal__small">
+            端末の傾き（ジャイロ）を使い、<strong>平坦な道で勾配が誤表示される</strong>のを抑えます。端末が水平で加減速も小さい時は、地図標高が坂と判定しても平坦と表示します。勾配の数値計算は従来どおり。OFFで標高のみの判定（中央値＋ヒステリシス）に戻ります。
           </p>
         </section>
 

@@ -13,6 +13,7 @@ const K = {
   poiKinds: "crm_poikinds", // 表示する周辺POIの種類
   hwOverride: "crm_hwoverride", // 高速道路切り替え: auto | on | off
   bigLabels: "crm_biglabels", // 地図の文字を大きく（テスト・2倍拡大）
+  gyroGrade: "crm_gyrograde", // 傾斜メーター: ジャイロで平坦路の偽勾配を抑制（テスト）
 };
 
 export type HwOverride = "auto" | "on" | "off";
@@ -117,6 +118,18 @@ export function useBigLabels(): [boolean, (v: boolean) => void] {
   const set = useCallback((v: boolean) => {
     setOn(v);
     write(K.bigLabels, v);
+  }, []);
+  return [on, set];
+}
+
+/** 傾斜メーター: 端末の傾き(ジャイロ)で平坦路の偽勾配を抑制（テスト・既定ON）。
+ *  端末が水平＆加減速が小さい時、DEMが坂と言っても「偽」とみなし平坦表示にする。
+ *  実走で不調ならOFFにすれば従来のDEM＋中央値/ヒステリシスのみに戻る。 */
+export function useGyroGrade(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => read<boolean>(K.gyroGrade, true));
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    write(K.gyroGrade, v);
   }, []);
   return [on, set];
 }

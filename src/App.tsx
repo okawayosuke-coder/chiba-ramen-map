@@ -32,6 +32,7 @@ import {
 import {
   shopKey,
   useBigLabels,
+  useGyroGrade,
   useFavorites,
   useHwOverride,
   useNavApp,
@@ -105,6 +106,7 @@ export default function App() {
   const [dest, setDest] = useState<Dest | null>(null); // 目的地（店 or 周辺POI）
   const [showTrack, setShowTrack] = useShowTrack();
   const [bigLabels, setBigLabels] = useBigLabels();
+  const [gyroGrade, setGyroGrade] = useGyroGrade();
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Dest | null>(null);
@@ -712,6 +714,7 @@ export default function App() {
             poiKinds={activePoiKinds}
             showTrack={showTrack}
             bigLabels={bigLabels}
+            gyroGrade={gyroGrade}
             hwOverride={hwOverride}
             onCycleHwOverride={cycleHwOverride}
             dest={dest}
@@ -772,6 +775,8 @@ export default function App() {
           setShowTrack={setShowTrack}
           bigLabels={bigLabels}
           setBigLabels={setBigLabels}
+          gyroGrade={gyroGrade}
+          setGyroGrade={setGyroGrade}
           showPoi={showPoi}
           setShowPoi={setShowPoi}
           poiKinds={poiKinds}

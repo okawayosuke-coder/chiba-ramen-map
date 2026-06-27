@@ -597,6 +597,7 @@ function FollowController({
     let rafId = 0;
     // GPSロス時の推測走行（トンネル等）: 直前速度×経過×コンパス方位で前進し、GPS復帰で実位置へ補正。
     let lastGoodSpeed = 0; // 直前の有効速度(m/s)
+    let prevSpeed: number | null = null; // 1つ前のフィックス速度（加減速の算出用・Phase2）
     let drMode = false; // 推測走行中か
     let drLastPerf = 0; // 推測前進の前回時刻
     let drLastPan = 0; // 推測中の地図追従パンのスロットル基準
@@ -669,6 +670,8 @@ function FollowController({
       const { latitude, longitude, heading, speed, accuracy } = p.coords;
       // 自車位置はフィックスを「区間の終点」に設定し、rAFで補間して滑らかに動かす
       const nowPerf = performance.now();
+      // Phase2: 前回フィックスからの経過秒（lastFixPerf更新前に取得）。加減速の算出に使う
+      const dtFix = lastFixPerf > 0 ? (nowPerf - lastFixPerf) / 1000 : 0;
       if (drMode) {
         // GPS復帰: 推測走行を解除（区間補間が現在の推定位置→実フィックスを滑らかに補正）
         drMode = false;
@@ -725,7 +728,18 @@ function FollowController({
         });
       }
       const sp = speed != null && !Number.isNaN(speed) ? speed : null;
-      if (sp != null) lastGoodSpeed = sp; // 推測走行(GPSロス時)に使う直前速度
+      if (sp != null) {
+        lastGoodSpeed = sp; // 推測走行(GPSロス時)に使う直前速度
+        // Phase2: 加減速＝GPS速度の微分。取付角ゼロ点(betaZero)は「定速巡航中」だけ低域通過で学習
+        if (prevSpeed != null && dtFix > 0.05)
+          _pitch.accel = (sp - prevSpeed) / dtFix;
+        prevSpeed = sp;
+        if (sp > 3 && Math.abs(_pitch.accel) < PITCH_ACC_GATE && _pitch.beta != null)
+          _pitch.betaZero =
+            _pitch.betaZero == null
+              ? _pitch.beta
+              : _pitch.betaZero + BETAZERO_GAIN * (_pitch.beta - _pitch.betaZero);
+      }
       gpsMoving = sp != null && sp > 1.5;
       if (gpsMoving && heading != null && !Number.isNaN(heading)) {
         gpsHeading = heading;
@@ -907,6 +921,8 @@ function FollowController({
 
     // 端末のコンパス（ジャイロ/方位センサー）の生値。停車時の向きに使う（offsetで較正）
     const onOrient = (e: DeviceOrientationEvent) => {
+      // Phase2: 端末の前後傾き(pitch=beta)を取得。坂の妥当性ゲート用（コンパスとは独立に常時更新）
+      if (e.beta != null && isFinite(e.beta)) _pitch.beta = e.beta;
       const ev = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
       let raw: number | null = null;
       if (
@@ -1186,6 +1202,10 @@ const GRADE_STEEP = 8; // この先「急勾配」と警告する閾値(%)
 const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」に戻す閾値(%)
 const GRADE_SLOPE_ON = 2.2; // 平坦→「坂」表示に切替える閾値(%)。GRADE_FLATとの差がヒステリシス帯＝平坦路の小さな偽勾配・ちらつきを抑制
 const GRADE_MED_N = 3; // 現在勾配のスパイク除去に使う中央値フィルタ窓（直近N点。DEMの孤立した偽勾配を無視）
+// Phase2: 端末の傾き(ジャイロ)を「坂の妥当性ゲート」に使う閾値
+const PITCH_FLAT_DEG = 1.0; // 取付角補正後の前後傾きがこれ未満なら端末は「水平」(約1.75%勾配相当)
+const PITCH_ACC_GATE = 0.6; // |GPS速度の微分| がこれ未満の時だけ傾きを信用(m/s^2)。加減速中の傾き混入を除外
+const BETAZERO_GAIN = 0.05; // 取付角ゼロ点の学習ゲイン（低域通過。緩やかに収束）
 const GRADE_MAX_PLAUSIBLE = 25; // これ超の区間勾配はDEM/経路のノイズとして無視（実道路はまず超えない）
 
 /** 経路 coords を距離 spacingKm ごとのマーク点に分割。marks[i] は始点から i*spacingKm の地点。 */
@@ -1650,6 +1670,15 @@ type GradeMeter = {
 };
 const _gradeMeters = new WeakMap<HTMLElement, GradeMeter>();
 
+// Phase2: 端末の傾き(ジャイロ)で平坦路の偽勾配を検証するゲート用の共有状態。
+// FollowControllerが書き込み(onOrient=beta / onFix=accel,betaZero)、updateGradeMeterが読む。
+const _pitch = {
+  beta: null as number | null, // 端末の前後傾き(deg, 生)
+  betaZero: null as number | null, // 学習した取付角ゼロ(deg)
+  accel: 0, // GPS速度の微分(m/s^2)。加減速の大きさ
+  enabled: true, // 設定トグル（既定ON・テスト）
+};
+
 /** box 内に傾斜計SVGを一度だけ構築して各パーツの参照を返す（以後は属性更新でなめらかにアニメ）。 */
 function ensureGradeMeter(box: HTMLElement): GradeMeter {
   const cached = _gradeMeters.get(box);
@@ -1712,6 +1741,19 @@ function updateGradeMeter(
     if (Math.abs(med) > GRADE_SLOPE_ON) m.flat = false; // 明確な坂のみ表示開始
   } else if (Math.abs(med) < GRADE_FLAT) {
     m.flat = true; // 平坦へ戻す（ヒステリシスでちらつき防止）
+  }
+  // Phase2: 端末の傾き(ジャイロ)で坂の妥当性を検証。端末が明確に水平＆加減速が小さい時は、
+  // DEMが坂と言っても「平坦路の偽勾配」とみなして平坦へveto（値は変えず表示のみ抑制）。
+  // 取付角未学習/加減速中/トグルOFFなら何もしない＝DEMのまま（安全劣化）。
+  if (
+    _pitch.enabled &&
+    !m.flat &&
+    _pitch.betaZero != null &&
+    _pitch.beta != null &&
+    Math.abs(_pitch.accel) < PITCH_ACC_GATE &&
+    Math.abs(_pitch.beta - _pitch.betaZero) < PITCH_FLAT_DEG
+  ) {
+    m.flat = true; // 端末は水平 → DEMの坂は偽とみなして平坦表示
   }
   const flat = m.flat;
   const col = flat ? "#9aa0a6" : med > 0 ? "#EF9F27" : "#378ADD"; // 平坦灰/上り琥珀/下り青
@@ -1794,6 +1836,13 @@ function FreeGradeLayer({
           return box.querySelector(".gm-label")?.textContent;
         },
         label: () => box.querySelector(".gm-label")?.textContent,
+        // Phase2検証用: 端末傾きの状態を直接設定/参照（sim/debug時のみ）
+        pitch: (beta: number | null, betaZero: number | null, accel = 0) => {
+          _pitch.beta = beta;
+          _pitch.betaZero = betaZero;
+          _pitch.accel = accel;
+        },
+        pitchState: () => ({ ..._pitch }),
       };
     }
 
@@ -2221,6 +2270,7 @@ interface Props {
   poiKinds: PoiKind[];
   showTrack: boolean;
   bigLabels: boolean;
+  gyroGrade: boolean;
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -2242,6 +2292,7 @@ function RamenMap({
   poiKinds,
   showTrack,
   bigLabels,
+  gyroGrade,
   hwOverride,
   onCycleHwOverride,
   dest,
@@ -2266,6 +2317,8 @@ function RamenMap({
   // レンダー時に同期＝子の「切替の即時反映」effectが走る前に必ず最新値を保持させる。
   const hwOverrideRef = useRef<HwOverride>(hwOverride);
   hwOverrideRef.current = hwOverride;
+  // 傾斜メーターのジャイロveto(Phase2)のON/OFF（設定トグル）を共有状態へ反映
+  _pitch.enabled = gyroGrade;
 
   const icons = useMemo(() => {
     const cache = new Map<string, L.DivIcon>();
