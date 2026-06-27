@@ -9,7 +9,11 @@
 export interface SearchKey {
   plain: string;
   romaji: string;
+  hasKanji: boolean; // 元テキストに漢字を含むか（含む語はローマ字が断片化＝過剰一致するので使わない）
 }
+
+// 漢字（CJK統合漢字）。クエリ語が漢字を含むかの判定に使う。
+const KANJI_RE = /[㐀-䶿一-鿿]/;
 
 // 拗音（2文字）。先に2文字で照合する。
 const YOUON: Record<string, string> = {
@@ -110,7 +114,11 @@ function toRomaji(s: string): string {
 
 /** 文字列から検索キーを作る（店名+住所などに使用） */
 export function buildSearchKey(text: string): SearchKey {
-  return { plain: toPlain(text), romaji: toRomaji(text) };
+  return {
+    plain: toPlain(text),
+    romaji: toRomaji(text),
+    hasKanji: KANJI_RE.test(text),
+  };
 }
 
 /** クエリを空白区切りの語に分け、それぞれのキーを返す。空なら null（=絞り込みなし） */
@@ -125,10 +133,16 @@ export function parseQuery(q: string): SearchKey[] | null {
   return terms.length ? terms : null;
 }
 
-/** 1語が対象に一致するか。plain一致 もしくは romaji一致（2文字以上で誤爆抑制） */
+/** 1語が対象に一致するか。plain一致 もしくは romaji一致（2文字以上で誤爆抑制）。
+ *  ※漢字を含むクエリ語はローマ字化で漢字が捨てられ断片(例「支那そば」→"soba")になり
+ *    全そば店に過剰一致するため、ローマ字フォールバックは「漢字を含まない語」に限る。 */
 function matchesTerm(target: SearchKey, term: SearchKey): boolean {
   if (term.plain && target.plain.includes(term.plain)) return true;
-  if (term.romaji.length >= 2 && target.romaji.includes(term.romaji))
+  if (
+    !term.hasKanji &&
+    term.romaji.length >= 2 &&
+    target.romaji.includes(term.romaji)
+  )
     return true;
   return false;
 }
@@ -136,4 +150,23 @@ function matchesTerm(target: SearchKey, term: SearchKey): boolean {
 /** 全語が一致（AND）すれば対象にヒット */
 export function matchesQuery(target: SearchKey, terms: SearchKey[]): boolean {
   return terms.every((t) => matchesTerm(target, t));
+}
+
+/** 店名キーに対する1語の関連度（大きいほど良い一致）。店名/読みでの一致を高く、
+ *  住所/ジャンルだけの一致は弱く評価する（並べ替えで店名一致を上位に出すため）。 */
+function scoreTerm(nameKey: SearchKey, term: SearchKey): number {
+  if (term.plain && nameKey.plain.includes(term.plain))
+    return nameKey.plain.startsWith(term.plain) ? 100 : 60;
+  if (
+    !term.hasKanji &&
+    term.romaji.length >= 2 &&
+    nameKey.romaji.includes(term.romaji)
+  )
+    return nameKey.romaji.startsWith(term.romaji) ? 80 : 50;
+  return 5; // 店名では当たらない（住所/ジャンル等での一致。フィルタは別途通過済み前提）
+}
+
+/** クエリ全語の関連度合計（フィルタ通過済みの店を並べ替えるためのスコア） */
+export function scoreQuery(nameKey: SearchKey, terms: SearchKey[]): number {
+  return terms.reduce((sum, t) => sum + scoreTerm(nameKey, t), 0);
 }

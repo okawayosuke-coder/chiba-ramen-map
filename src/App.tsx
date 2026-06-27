@@ -47,6 +47,7 @@ import {
   buildSearchKey,
   matchesQuery,
   parseQuery,
+  scoreQuery,
   type SearchKey,
 } from "./search";
 import shopsData from "./data/shops.json";
@@ -102,6 +103,11 @@ const SHOP_SEARCH = new Map<Shop, SearchKey>(
       buildSearchKey(`${s.name} ${s.reading ?? ""} ${s.address} ${genres}`),
     ];
   })
+);
+
+// 関連度の並べ替え用に「店名＋読み」だけのキーも持つ（住所/ジャンルより店名一致を上位に）
+const SHOP_NAME = new Map<Shop, SearchKey>(
+  ALL_SHOPS.map((s) => [s, buildSearchKey(`${s.name} ${s.reading ?? ""}`)])
 );
 
 export default function App() {
@@ -233,9 +239,16 @@ export default function App() {
       if (favOnly && !favs.has(shopKey(s))) return false;
       if (qterms && !matchesQuery(SHOP_SEARCH.get(s)!, qterms)) return false;
       return true;
-    }).map((s) => ({ s, km: geo.pos ? haversineKm(geo.pos, s) : null }));
+    }).map((s) => ({
+      s,
+      km: geo.pos ? haversineKm(geo.pos, s) : null,
+      // 検索時の関連度（店名/読み一致を上位に。住所/ジャンルだけの一致は下位）
+      score: qterms ? scoreQuery(SHOP_NAME.get(s)!, qterms) : 0,
+    }));
 
     arr.sort((a, b) => {
+      // 検索中は関連度を最優先（同点なら選択中の並び順）
+      if (qterms && b.score !== a.score) return b.score - a.score;
       if (filters.sort === "near" && a.km != null && b.km != null)
         return a.km - b.km;
       if (filters.sort === "reviews") return b.s.reviews - a.s.reviews;
