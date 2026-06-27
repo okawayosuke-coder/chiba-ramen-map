@@ -145,6 +145,9 @@ const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」
 const GRADE_SLOPE_ON = 2.2; // 平坦→「坂」表示に切替える閾値（ヒステリシス帯でちらつき抑制）
 const GRADE_MED_N = 3; // 中央値フィルタ窓（孤立した偽勾配を無視）
 const GRADE_MAX_PLAUSIBLE = 25; // これ超はDEM/経路ノイズとして無視
+const GRADE_SPACING_KM = 0.08; // この先予告用の経路マーク間隔(80m)
+const GRADE_LOOK = 11; // 前方何マーク先まで見るか（80m×11＝約880m先まで予告）
+const GRADE_STEEP = 8; // この先「急勾配」と警告する閾値(%)
 
 /** 標高を数値(m)で返す。GSI高精度DEM→open-meteo概算の順。海域/取得不可は null。セッション内キャッシュ。 */
 const _eleNumCache = new Map<string, number | null>();
@@ -182,6 +185,28 @@ function pointAhead(from: Pt, headingDeg: number, distM: number): Pt {
   const dLat = (distM * Math.cos(rad)) / 111320;
   const dLng = (distM * Math.sin(rad)) / (111320 * Math.cos((from.lat * Math.PI) / 180));
   return { lat: from.lat + dLat, lng: from.lng + dLng };
+}
+
+/** 経路 coords を距離 spacingKm ごとのマーク点に分割。marks[i] は始点から i*spacingKm の地点（Leaflet版移植）。 */
+function buildMarks(coords: [number, number][], spacingKm: number): Pt[] {
+  const marks: Pt[] = [];
+  if (coords.length === 0) return marks;
+  marks.push({ lat: coords[0][0], lng: coords[0][1] });
+  let acc = 0;
+  let next = spacingKm;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const a = { lat: coords[i][0], lng: coords[i][1] };
+    const b = { lat: coords[i + 1][0], lng: coords[i + 1][1] };
+    const seg = haversineKm(a, b);
+    if (seg <= 0) continue;
+    while (acc + seg >= next) {
+      const t = (next - acc) / seg;
+      marks.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+      next += spacingKm;
+    }
+    acc += seg;
+  }
+  return marks;
 }
 
 type GradeMeter = {
@@ -390,6 +415,8 @@ function RamenMapbox(props: Props) {
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
   const hwActiveRef = useRef(false); // 現在「高速道路扱い」か（経路effectが書き、勾配effectが勾配抑制に読む）
+  // この先の急勾配予告: 経路effectが前方GRADE_LOOKマークの標高から最急(≥GRADE_STEEP%)を書き、勾配effectが表示に読む
+  const aheadGradeRef = useRef<{ grade: number; distM: number } | null>(null);
   // 日本語化した name 系レイヤーの元 text-size を保持（bigLabels トグルで戻せるように）
   const labelOrigRef = useRef<Record<string, unknown>>({});
   const [tokenMissing, setTokenMissing] = useState(false);
@@ -946,6 +973,10 @@ function RamenMapbox(props: Props) {
     let lastHeading: number | null = null;
     let headingPrevPos: Pt | null = null;
     let lastHereHw: Pt | null = null;
+    // この先急勾配の予告: 経路を80mマークに分割し、前方GRADE_LOOK先までの標高をキャッシュして最急を探す
+    let gradeMarks: Pt[] = [];
+    let eleAtMark: (number | null | undefined)[] = [];
+    let gradeReqId = 0;
 
     // ===== ハイウェイモード: この先のSA/PA/IC/JCTを近い順に右ストリップ表示（Leaflet版移植） =====
     const hwStrip = document.createElement("div");
@@ -1091,6 +1122,46 @@ function RamenMapbox(props: Props) {
       new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" })
         .format(new Date(Date.now() + Math.max(0, min) * 60000));
 
+    // この先(前方GRADE_LOOKマーク=約880m)で最も急な勾配(≥GRADE_STEEP%)を探し aheadGradeRef に書く。
+    // 高速道路ではDEMが道路と乖離するため予告しない（勾配メーター本体もhwActiveRefで非表示）。
+    const updateAheadGrade = (carDistKm: number) => {
+      if (effHighway || gradeMarks.length < 2) {
+        aheadGradeRef.current = null;
+        return;
+      }
+      const cur = Math.min(Math.max(Math.round(carDistKm / GRADE_SPACING_KM), 0), gradeMarks.length - 1);
+      const end = Math.min(cur + GRADE_LOOK, gradeMarks.length - 1);
+      const scan = () => {
+        let steepGrade = 0;
+        let steepDistM = -1;
+        for (let i = cur; i < end; i++) {
+          const a = eleAtMark[i];
+          const b = eleAtMark[i + 1];
+          if (typeof a === "number" && typeof b === "number") {
+            const g = ((b - a) / (GRADE_SPACING_KM * 1000)) * 100;
+            if (Math.abs(g) >= GRADE_STEEP && Math.abs(g) <= GRADE_MAX_PLAUSIBLE && Math.abs(g) > Math.abs(steepGrade)) {
+              steepGrade = g;
+              steepDistM = Math.max(0, Math.round((i * GRADE_SPACING_KM - carDistKm) * 1000));
+            }
+          }
+        }
+        aheadGradeRef.current = steepDistM >= 0 ? { grade: steepGrade, distM: steepDistM } : null;
+      };
+      scan(); // 既知の標高で即時更新（チラつき防止）
+      const need: number[] = [];
+      for (let i = cur; i <= end; i++) if (eleAtMark[i] === undefined) need.push(i);
+      if (!need.length) return;
+      const reqId = ++gradeReqId;
+      Promise.allSettled(
+        need.map(async (i) => {
+          eleAtMark[i] = await fetchElevationNum(gradeMarks[i].lat, gradeMarks[i].lng);
+        })
+      ).then(() => {
+        if (aborted || reqId !== gradeReqId) return;
+        scan();
+      });
+    };
+
     const refresh = (here: Pt) => {
       if (!rCoords || rKm <= 0) return null;
       const pr = projectOnRoute(rCoords, rSuffix, here);
@@ -1115,6 +1186,7 @@ function RamenMapbox(props: Props) {
       effHighway = computeEffHighway(pr.segIdx);
       hwActiveRef.current = effHighway; // 勾配effectが高速時の勾配抑制に使う
       updateHwStrip(rKm - pr.remKm);
+      updateAheadGrade(rKm - pr.remKm); // この先の急勾配を先読みして aheadGradeRef に反映
       return pr;
     };
 
@@ -1141,6 +1213,8 @@ function RamenMapbox(props: Props) {
             );
         }
         hwRanges = r.hwRanges ?? []; // 経路の高速/有料区間（ORS waycategory）
+        gradeMarks = buildMarks(r.coords, GRADE_SPACING_KM); // この先急勾配の予告用マーク（再ルートで作り直し）
+        eleAtMark = []; // 経路が変わったので標高キャッシュをリセット
         computeRouteFacilities(); // 経路沿いの高速施設を再計算
         refresh(from);
       });
@@ -1192,6 +1266,7 @@ function RamenMapbox(props: Props) {
       routeSnapRef.current = null;
       routeReapplyRef.current = null;
       hwActiveRef.current = false;
+      aheadGradeRef.current = null; // 経路解除で予告をクリア（古い警告を残さない）
       if (map.getLayer("route-line")) map.removeLayer("route-line");
       if (map.getSource("route")) map.removeSource("route");
     };
@@ -1219,6 +1294,19 @@ function RamenMapbox(props: Props) {
     let lastBearing = headingUp ? map.getBearing() : 0;
     let lastHere: [number, number] | null = null;
     let following = true;
+    // 進行方位（真北基準・ノース/ヘディング非依存）。停車時コンパス較正とトンネルDRの前進方向に使う。
+    let lastTravelHeading: number | null = null;
+    // 端末コンパス（ジャイロ＋地磁気）。許可はApp.tsxがタップ内で取得済み（requestOrientationPermission）。
+    let rawCompass: number | null = null; // 生値(0-360,真北基準)
+    let compassOffset: number | null = null; // 真方位 ≒ rawCompass + offset（走行中にGPS方位で学習）
+    // トンネルDR（GPSロス時の推測走行）: 直前速度×経過×方位で合成前進し、GPS復帰で実位置へ補正。
+    let haveFix = false;
+    let lastFixPerf = 0; // 直近フィックスの performance.now()
+    let lastGoodSpeedMs = 0; // 直近の有効速度(m/s)
+    let drMode = false; // 推測走行中か
+    let drLat = 0;
+    let drLng = 0; // 推測中の合成位置
+    let drLastPerf = 0;
 
     const CAR_SVG =
       '<svg class="car-arrow" width="54" height="54" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
@@ -1273,6 +1361,22 @@ function RamenMapbox(props: Props) {
     map.getContainer().appendChild(addrBox);
     let lastAddrPt: Pt | null = null;
     let addrReqId = 0;
+
+    // 左上(残距離の下): 目的地名＋方位矢印（地図の向きに対する相対方位）。目的地セット時のみ表示。
+    const destBox = document.createElement("div");
+    destBox.className = "dest-box";
+    destBox.style.display = "none";
+    destBox.innerHTML =
+      '<svg class="dest-arrow" width="20" height="20" viewBox="0 0 24 24"><path d="M12 2 L19 20 L12 15 L5 20 Z" fill="#2f9e44" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
+      '<span class="dest-txt"></span>';
+    map.getContainer().appendChild(destBox);
+    const norm360 = (d: number) => ((d % 360) + 360) % 360;
+    const angDiff = (a: number, b: number) => (((a - b + 540) % 360) - 180); // a-b を[-180,180)
+    // 較正済みコンパス方位（停車時の地図回転・DRのカーブ追従に使う）。コンパス未取得なら null。
+    const compassHeading = (): number | null =>
+      rawCompass == null ? null : compassOffset != null ? norm360(rawCompass + compassOffset) : rawCompass;
+    // DRの前進方向: 較正済みコンパス優先（トンネルのカーブ追従）→ 無ければ直近の進行方位 → 北。
+    const drHeading = (): number => compassHeading() ?? lastTravelHeading ?? 0;
 
     // 速度計（左下・Leaflet版と同じリングゲージ：背景トラック＋速度色アーク＋先端ビーズ＋数値）
     const box = document.createElement("div");
@@ -1339,10 +1443,19 @@ function RamenMapbox(props: Props) {
 
     const onFix = (p: GeolocationPosition) => {
       if (aborted) return;
+      if (drMode) {
+        // GPS復帰: 推測走行を解除（以降のeaseToが推定位置→実フィックスを滑らかに補正）
+        drMode = false;
+        carEl.classList.remove("car-dr");
+      }
       addTrackPoint(p.coords.latitude, p.coords.longitude, p.timestamp); // 走行軌跡を記録（生GPS）
       const sp = p.coords.speed; // m/s
       const kmh = sp != null && sp >= 0 ? sp * 3.6 : null;
       updateSpeedo(kmh, kmh != null && kmh > MOVE_KMH, p.coords.accuracy ?? null);
+      // トンネルDR用の記録: 直近フィックス時刻と有効速度（無効値は前回を保持）
+      haveFix = true;
+      lastFixPerf = performance.now();
+      if (sp != null && sp >= 0) lastGoodSpeedMs = sp;
       // 経路案内中はGPSを経路へスナップ（無料のmap matching）し、向きも道路セグメント方位に。
       // 経路が無い/古い時は生GPS＋GPS進行方位にフォールバック。rAFが tgt へ補間して描画する。
       const snap = routeSnapRef.current;
@@ -1361,11 +1474,38 @@ function RamenMapbox(props: Props) {
           if (aid === addrReqId && !aborted) addrBox.textContent = a ? `📍 ${a}` : "📍 現在地 取得できません";
         });
       }
+      // 目的地方位ボックス: 目的地名＋方位矢印（地図の向きに対する相対方位）
+      const dst = propsRef.current.dest;
+      if (dst) {
+        destBox.style.display = "";
+        const dkm = haversineKm(rawPt, { lat: dst.lat, lng: dst.lng });
+        const txt = destBox.querySelector(".dest-txt") as HTMLElement | null;
+        const arr = destBox.querySelector(".dest-arrow") as HTMLElement | null;
+        if (dkm < 0.06) {
+          if (txt) txt.textContent = `まもなく到着: ${dst.name ?? ""}`;
+          if (arr) arr.style.visibility = "hidden";
+        } else {
+          if (txt) txt.textContent = dst.name ?? "目的地";
+          if (arr) {
+            arr.style.visibility = "";
+            const rel = norm360(bearingDeg(rawPt, { lat: dst.lat, lng: dst.lng }) - map.getBearing());
+            arr.style.transform = `rotate(${rel}deg)`;
+          }
+        }
+      } else {
+        destBox.style.display = "none";
+      }
       const hd = p.coords.heading;
-      // ヘディングアップ時のみ進行方位を採用（ノースアップは常に北＝bearing 0）
-      if (headingUp && kmh != null && kmh > MOVE_KMH) {
-        if (useSnap) lastBearing = snap!.bearing;
-        else if (hd != null && isFinite(hd) && hd >= 0) lastBearing = hd;
+      const gpsHdOk = hd != null && isFinite(hd) && hd >= 0;
+      const travelHd = useSnap ? snap!.bearing : gpsHdOk ? hd : null;
+      if (kmh != null && kmh > MOVE_KMH && travelHd != null) {
+        lastTravelHeading = travelHd; // DRの前進方向（真北基準・ノース/ヘディング非依存）
+        // 走行中はGPS/経路方位を正解として、停車時用にコンパスoffsetを学習（低域通過）
+        if (sp != null && sp > 3 && rawCompass != null) {
+          const o = angDiff(travelHd, rawCompass);
+          compassOffset = compassOffset == null ? o : compassOffset + 0.3 * angDiff(o, compassOffset);
+        }
+        if (headingUp) lastBearing = travelHd; // ヘディングアップは地図を進行方位へ回す
       }
       if (!following) return; // 手動パン中はカメラを動かさない（自車は地理マーカーで実位置に表示）
       const bearing = headingUp ? lastBearing : 0;
@@ -1407,9 +1547,110 @@ function RamenMapbox(props: Props) {
       });
     }
 
+    // 端末コンパス: 停車時にヘディングアップで地図を向きへ追従回転（駐車中に車を回すと地図も回る）。
+    // 走行中はGPS方位(onFix)に任せ、DR中は staleTimer 側で扱う。許可はApp.tsxがタップ内で取得済み。
+    let lastCompassEase = 0;
+    const onOrient = (e: DeviceOrientationEvent) => {
+      const ev = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
+      let raw: number | null = null;
+      if (ev.webkitCompassHeading != null && !Number.isNaN(ev.webkitCompassHeading)) raw = ev.webkitCompassHeading;
+      else if (e.absolute && e.alpha != null) raw = (360 - e.alpha) % 360;
+      if (raw == null || Number.isNaN(raw)) return;
+      rawCompass = norm360(raw);
+      if (!headingUp || !following || drMode) return;
+      const ch = compassHeading();
+      if (ch == null || targetKmh > MOVE_KMH) return; // 走行中はGPS方位に任せる
+      const now = performance.now();
+      if (now - lastCompassEase < 250) return; // 連続イベントを間引き
+      if (Math.abs(angDiff(ch, lastBearing)) < 2) return; // 微小変化は無視（ジッタ抑制）
+      lastCompassEase = now;
+      lastBearing = ch;
+      if (lastHere) map.easeTo({ center: lastHere, bearing: ch, offset: [0, leadPx()], duration: 250 });
+    };
+    window.addEventListener("deviceorientationabsolute", onOrient as EventListener, true);
+    window.addEventListener("deviceorientation", onOrient, true);
+
+    // トンネルDR: GPSが GPS_STALE_MS 途切れ、直前まで走行していたら推測走行へ。直前速度×方位で前進し地図を流す。
+    const GPS_STALE_MS = 4000;
+    const staleTimer = window.setInterval(() => {
+      if (!haveFix || !following) return;
+      const now = performance.now();
+      if (!drMode) {
+        if (now - lastFixPerf > GPS_STALE_MS && lastGoodSpeedMs > 1.5 && lastHere) {
+          drMode = true;
+          drLng = lastHere[0];
+          drLat = lastHere[1];
+          drLastPerf = now;
+          carEl.classList.add("car-dr"); // 自車をゴースト表示
+          if (statusEl) statusEl.textContent = "📡 推定走行中（GPS弱・トンネル？）";
+        }
+        return;
+      }
+      const dt = Math.min(1.5, (now - drLastPerf) / 1000); // タブ復帰時の暴走防止に上限
+      drLastPerf = now;
+      const hdg = drHeading();
+      const distKm = (lastGoodSpeedMs * dt) / 1000;
+      const rad = (hdg * Math.PI) / 180;
+      drLat += (distKm / 111.32) * Math.cos(rad);
+      drLng += (distKm / (111.32 * Math.cos((drLat * Math.PI) / 180))) * Math.sin(rad);
+      lastHere = [drLng, drLat];
+      geoMarker.setLngLat(lastHere);
+      if (headingUp) lastBearing = compassHeading() ?? hdg;
+      map.easeTo({
+        center: lastHere,
+        bearing: headingUp ? lastBearing : 0,
+        offset: [0, leadPx()],
+        duration: 1000,
+        easing: (t) => t,
+      });
+    }, 1000);
+
+    // sim時のみ: タイマー/コンパスのスロットルに依存せずDR・コンパスを決定論検証するフック
+    if (new URLSearchParams(window.location.search).get("sim") === "drive") {
+      (window as unknown as Record<string, unknown>).__follow = {
+        state: () => ({
+          drMode,
+          lat: drLat,
+          lng: drLng,
+          heading: drHeading(),
+          lastGoodSpeedMs,
+          sinceFixMs: Math.round(performance.now() - lastFixPerf),
+          compass: rawCompass,
+          offset: compassOffset,
+          bearing: map.getBearing(),
+        }),
+        enterDr: () => {
+          if (!lastHere) return null;
+          drMode = true;
+          drLng = lastHere[0];
+          drLat = lastHere[1];
+          drLastPerf = performance.now();
+          carEl.classList.add("car-dr");
+          if (statusEl) statusEl.textContent = "📡 推定走行中（GPS弱・トンネル？）";
+          return [drLng, drLat];
+        },
+        drStep: (ms: number) => {
+          const hdg = drHeading();
+          const distKm = (lastGoodSpeedMs * (ms / 1000)) / 1000;
+          const rad = (hdg * Math.PI) / 180;
+          drLat += (distKm / 111.32) * Math.cos(rad);
+          drLng += (distKm / (111.32 * Math.cos((drLat * Math.PI) / 180))) * Math.sin(rad);
+          lastHere = [drLng, drLat];
+          return [drLng, drLat];
+        },
+        setCompass: (deg: number) => {
+          rawCompass = norm360(deg);
+          return compassHeading();
+        },
+      };
+    }
+
     return () => {
       aborted = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      window.clearInterval(staleTimer);
+      window.removeEventListener("deviceorientationabsolute", onOrient as EventListener, true);
+      window.removeEventListener("deviceorientation", onOrient, true);
       document.removeEventListener("visibilitychange", onVis);
       try {
         wake?.release();
@@ -1421,6 +1662,7 @@ function RamenMapbox(props: Props) {
       geoMarker.remove();
       recBtn.remove();
       addrBox.remove();
+      destBox.remove();
       box.remove();
       window.clearInterval(speedoAnim);
       // ブラウズ表示へ戻す（北向き・水平）
@@ -1454,7 +1696,7 @@ function RamenMapbox(props: Props) {
         return;
       }
       box.style.display = "";
-      updateGradeMeter(box, g, null);
+      updateGradeMeter(box, g, aheadGradeRef.current); // 現在勾配＋この先の急勾配予告（経路effectが供給）
     };
     render(lastGrade); // マウント直後から「—」で表示
 
@@ -1467,6 +1709,12 @@ function RamenMapbox(props: Props) {
           return box.querySelector(".gm-label")?.textContent;
         },
         label: () => box.querySelector(".gm-label")?.textContent,
+        ahead: () => aheadGradeRef.current, // 経路effectが先読みした「この先急勾配」の中身
+        feedWarn: (w: { grade: number; distM: number } | null) => {
+          updateGradeMeter(box, lastGrade ?? 1, w); // 予告描画の確認用
+          const el = box.querySelector(".grade-warn") as HTMLElement | null;
+          return { text: el?.textContent ?? null, shown: el ? el.style.display !== "none" : null };
+        },
       };
     }
 
