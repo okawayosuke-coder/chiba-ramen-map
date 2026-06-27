@@ -14,6 +14,7 @@ const K = {
   hwOverride: "crm_hwoverride", // 高速道路切り替え: auto | on | off
   bigLabels: "crm_biglabels", // 地図の文字を大きく（テスト・2倍拡大）
   gyroGrade: "crm_gyrograde", // 傾斜メーター: ジャイロで平坦路の偽勾配を抑制（テスト）
+  headingUp: "crm_headingup", // 走行中の地図の向き: true=ヘディングアップ / false=ノースアップ(既定)
 };
 
 export type HwOverride = "auto" | "on" | "off";
@@ -118,6 +119,17 @@ export function useBigLabels(): [boolean, (v: boolean) => void] {
   const set = useCallback((v: boolean) => {
     setOn(v);
     write(K.bigLabels, v);
+  }, []);
+  return [on, set];
+}
+
+/** 走行中の地図の向き。true=ヘディングアップ（進行方向が上・地図が回る）/ false=ノースアップ（北が上・既定）。
+ *  以前のLeaflet版はノースアップ＋平面だったため既定は false。 */
+export function useHeadingUp(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => read<boolean>(K.headingUp, false));
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    write(K.headingUp, v);
   }, []);
   return [on, set];
 }

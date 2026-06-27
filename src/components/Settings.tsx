@@ -33,6 +33,8 @@ interface Props {
   setBigLabels: (v: boolean) => void;
   gyroGrade: boolean;
   setGyroGrade: (v: boolean) => void;
+  headingUp: boolean;
+  setHeadingUp: (v: boolean) => void;
   showPoi: boolean;
   setShowPoi: (v: boolean) => void;
   poiKinds: PoiKind[];
@@ -54,6 +56,8 @@ export default function Settings({
   setBigLabels,
   gyroGrade,
   setGyroGrade,
+  headingUp,
+  setHeadingUp,
   showPoi,
   setShowPoi,
   poiKinds,
@@ -176,6 +180,27 @@ export default function Settings({
             <strong>コンビニ/GS</strong>は端末内データで表示（関東一円・
             {poiDate || "—"}時点・オフライン可）。
             駐車場/EV/トイレはネット取得（件数が多いため必要な時だけONを推奨）。
+          </p>
+        </section>
+
+        <section className="set-sec">
+          <h3>地図の向き（走行中）</h3>
+          <div className="set-row">
+            <button
+              className={`chip${!headingUp ? " chip--on" : ""}`}
+              onClick={() => setHeadingUp(false)}
+            >
+              ノースアップ
+            </button>
+            <button
+              className={`chip${headingUp ? " chip--on" : ""}`}
+              onClick={() => setHeadingUp(true)}
+            >
+              ヘディングアップ
+            </button>
+          </div>
+          <p className="modal__small">
+            ノースアップ＝北が上で固定。ヘディングアップ＝進行方向が上になるよう地図が回転（自車を下寄りにして前方を広く表示）。いずれも平面表示です。
           </p>
         </section>
 

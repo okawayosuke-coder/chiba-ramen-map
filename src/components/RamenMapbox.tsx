@@ -26,6 +26,7 @@ interface Props {
   showTrack: boolean;
   bigLabels: boolean;
   gyroGrade: boolean;
+  headingUp?: boolean; // 走行中の地図の向き: true=ヘディングアップ / false=ノースアップ(既定)
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -863,18 +864,19 @@ function RamenMapbox(props: Props) {
     let aborted = false;
     let watchId: number | null = null;
     let first = true;
-    let lastBearing = map.getBearing();
+    // 地図の向き（ノースアップ=北固定/ヘディングアップ=進行方向上）。変更時は deps で再マウント。
+    const headingUp = propsRef.current.headingUp ?? false;
+    let lastBearing = headingUp ? map.getBearing() : 0;
     const DRIVE_ZOOM = 16.5;
-    const DRIVE_PITCH = 55;
     const MOVE_KMH = 3; // これ以上で進行方位を採用（停車時のふらつきで地図が回らないように）
 
     // 自車マーカー（画面中央に固定）。1Hz GPSで地理マーカーを setLngLat するとカクつくため、
     // 自車は画面中央に固定し、カメラ側をフィックス間で線形補間して地図をなめらかに流す（カーナビ標準）。
     const carEl = document.createElement("div");
-    // 走行方向を広く見せるため自車を画面の下寄り(高さの約72%)に固定（Leaflet版 cameraTarget と同じ思想）
+    // ヘディングアップ時は前方を広く見せるため自車を下寄り(72%)、ノースアップ時は中央(50%)に固定
     carEl.setAttribute(
       "style",
-      "position:absolute;left:50%;top:72%;transform:translate(-50%,-50%);z-index:600;pointer-events:none;"
+      `position:absolute;left:50%;top:${headingUp ? "72%" : "50%"};transform:translate(-50%,-50%);z-index:600;pointer-events:none;`
     );
     carEl.innerHTML =
       '<svg class="car-arrow" width="54" height="54" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
@@ -961,20 +963,21 @@ function RamenMapbox(props: Props) {
         ? [snap!.proj.lng, snap!.proj.lat]
         : [p.coords.longitude, p.coords.latitude];
       const hd = p.coords.heading;
-      if (kmh != null && kmh > MOVE_KMH) {
+      // ヘディングアップ時のみ進行方位を採用（ノースアップは常に北＝bearing 0）
+      if (headingUp && kmh != null && kmh > MOVE_KMH) {
         if (useSnap) lastBearing = snap!.bearing;
         else if (hd != null && isFinite(hd) && hd >= 0) lastBearing = hd;
       }
-      // 走行方向を広く見せる: カメラ中心を画面の前方(高さの22%先=下寄りの自車位置)へオフセット
-      const lead = map.getContainer().clientHeight * 0.22;
+      // ヘディングアップ=進行方向を上＋自車を下寄り(前方ワイド)。ノースアップ=北固定・中央。いずれも平面(pitch0)。
+      const bearing = headingUp ? lastBearing : 0;
+      const lead = headingUp ? map.getContainer().clientHeight * 0.22 : 0;
       if (first) {
         first = false;
-        map.easeTo({ center: here, bearing: lastBearing, pitch: DRIVE_PITCH, zoom: DRIVE_ZOOM, offset: [0, lead], duration: 800 });
+        map.easeTo({ center: here, bearing, pitch: 0, zoom: DRIVE_ZOOM, offset: [0, lead], duration: 800 });
       } else {
         // 1Hzフィックス間をなめらかに繋ぐ: 線形イージング＋フィックス間隔より少し長いdurationで
-        // カメラが途切れず動き続け、下寄り固定の自車に対し地図がスーッと流れる。
-        // pitchは毎回維持（初回easeToが中断されても3Dピッチを取りこぼさない）。zoomは初回のみ＝走行中も手動ズーム可。
-        map.easeTo({ center: here, bearing: lastBearing, pitch: DRIVE_PITCH, offset: [0, lead], duration: 1100, easing: (t) => t });
+        // カメラが途切れず動き続け、自車に対し地図がスーッと流れる。
+        map.easeTo({ center: here, bearing, offset: [0, lead], duration: 1100, easing: (t) => t });
       }
     };
 
@@ -1023,7 +1026,7 @@ function RamenMapbox(props: Props) {
       map.easeTo({ bearing: 0, pitch: 0, duration: 600 });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, props.follow]);
+  }, [mapReady, props.follow, props.headingUp]);
 
   // 標高/勾配メーター（Stage 2c）: 追従走行中、進行方位の前方80mのDEM標高差から勾配を先読み表示。
   // 経路スナップ中は道路セグメント方位を使うので route/free 両対応。GSI標高API=無料。

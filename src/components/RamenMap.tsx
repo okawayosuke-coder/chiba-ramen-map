@@ -2391,6 +2391,8 @@ interface Props {
   showTrack: boolean;
   bigLabels: boolean;
   gyroGrade: boolean;
+  /** Mapbox版のみ使用（地図の向き）。Leaflet版は北固定のため無視。 */
+  headingUp?: boolean;
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
