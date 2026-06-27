@@ -122,11 +122,12 @@ export function useBigLabels(): [boolean, (v: boolean) => void] {
   return [on, set];
 }
 
-/** 傾斜メーター: 端末の傾き(ジャイロ)で平坦路の偽勾配を抑制（テスト・既定ON）。
+/** 傾斜メーター: 端末の傾き(ジャイロ)で平坦路の偽勾配を抑制（テスト）。
  *  端末が水平＆加減速が小さい時、DEMが坂と言っても「偽」とみなし平坦表示にする。
- *  実走で不調ならOFFにすれば従来のDEM＋中央値/ヒステリシスのみに戻る。 */
+ *  【既定OFF】2026-06-27の実走で、取付角ゼロを坂上でも学習してしまい本物の坂までvetoする
+ *  不具合＋横向き設置だとbetaが勾配を拾えない問題が判明したため、修正までは既定OFF。 */
 export function useGyroGrade(): [boolean, (v: boolean) => void] {
-  const [on, setOn] = useState<boolean>(() => read<boolean>(K.gyroGrade, true));
+  const [on, setOn] = useState<boolean>(() => read<boolean>(K.gyroGrade, false));
   const set = useCallback((v: boolean) => {
     setOn(v);
     write(K.gyroGrade, v);
