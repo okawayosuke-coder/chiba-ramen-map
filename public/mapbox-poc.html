@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+<title>Mapbox 実機検証 PoC — 千葉ラーメンMAP</title>
+<link href="https://unpkg.com/mapbox-gl@3/dist/mapbox-gl.css" rel="stylesheet" />
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; }
+  #app { display: flex; flex-direction: column; height: 100dvh; }
+  header { padding: 8px 10px; background: #111; color: #fff; font-size: 13px; flex: 0 0 auto; }
+  header b { font-size: 15px; }
+  #tokrow { display: flex; gap: 6px; padding: 8px 10px; background: #1c1c1e; flex: 0 0 auto; }
+  #tokrow input { flex: 1; min-width: 0; padding: 10px; border-radius: 8px; border: 1px solid #444; background: #000; color: #0f0; font-size: 13px; font-family: ui-monospace, monospace; }
+  #tokrow button { padding: 10px 14px; border-radius: 8px; border: 0; background: #2e7d32; color: #fff; font-weight: 700; font-size: 14px; }
+  #wrap { flex: 1 1 auto; position: relative; min-height: 0; }
+  #map { position: absolute; inset: 0; }
+  #status { position: absolute; left: 8px; top: 8px; z-index: 5; background: rgba(0,0,0,.78); color: #eee; font-size: 12px; line-height: 1.7; padding: 10px 12px; border-radius: 10px; max-width: 70%; }
+  #status .ok { color: #4ade80; } #status .ng { color: #f87171; } #status .warn { color: #fbbf24; }
+  #status .k { color: #9ca3af; }
+  #ctrls { position: absolute; right: 8px; bottom: 8px; z-index: 5; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  #ctrls .row { display: flex; gap: 6px; }
+  #ctrls button { padding: 9px 11px; border-radius: 9px; border: 0; background: rgba(20,20,20,.85); color: #fff; font-size: 13px; font-weight: 600; }
+  #ctrls button.on { background: #2563eb; }
+  #lblrow { position: absolute; left: 8px; bottom: 8px; z-index: 5; background: rgba(0,0,0,.78); color: #fff; padding: 8px 10px; border-radius: 10px; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  #lblrow input { width: 120px; }
+  .hide { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <b>Mapbox 実機検証 PoC</b> — iPadで開いて、緑＝OK / 赤＝NG を確認してください。
+  </header>
+  <div id="tokrow">
+    <input id="tok" type="text" placeholder="Mapbox公開トークン pk.… を貼り付け" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+    <button id="apply">適用</button>
+  </div>
+  <div id="wrap">
+    <div id="map"></div>
+    <div id="status">読み込み待ち…</div>
+    <div id="lblrow" class="hide">
+      <span>ラベル倍率</span>
+      <input id="lbl" type="range" min="0.8" max="2.2" step="0.1" value="1.0" />
+      <span id="lblv">1.0×</span>
+    </div>
+    <div id="ctrls" class="hide">
+      <div class="row">
+        <button id="bStreet" class="on">標準</button>
+        <button id="bDark">ダーク</button>
+        <button id="bOut">地形</button>
+      </div>
+      <div class="row">
+        <button id="bRot">回転+30°</button>
+        <button id="bNorth">北向き</button>
+        <button id="bPitch">3D傾き</button>
+      </div>
+      <div class="row">
+        <button id="bLoc">現在地</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/mapbox-gl@3/dist/mapbox-gl.js"></script>
+<script>
+(function () {
+  var S = document.getElementById('status');
+  var lines = {};
+  function set(key, label, state, extra) {
+    lines[key] = { label: label, state: state, extra: extra || '' };
+    render();
+  }
+  function render() {
+    var order = ['webgl', 'lib', 'token', 'map', 'rotate', 'pitch', 'label', 'geo'];
+    var html = '';
+    order.forEach(function (k) {
+      var l = lines[k];
+      if (!l) return;
+      var cls = l.state === 'ok' ? 'ok' : l.state === 'ng' ? 'ng' : 'warn';
+      var mark = l.state === 'ok' ? '✅' : l.state === 'ng' ? '❌' : '…';
+      html += '<div>' + mark + ' <span class="k">' + l.label + '</span> <span class="' + cls + '">' + (l.extra || '') + '</span></div>';
+    });
+    S.innerHTML = html || '読み込み待ち…';
+  }
+
+  // 1) WebGL2
+  var gl2 = !!document.createElement('canvas').getContext('webgl2');
+  set('webgl', 'WebGL2', gl2 ? 'ok' : 'ng', gl2 ? '対応' : '非対応(致命)');
+
+  // 2) ライブラリ
+  if (window.mapboxgl) {
+    set('lib', 'mapbox-gl', 'ok', 'v' + (mapboxgl.version || '?'));
+  } else {
+    set('lib', 'mapbox-gl', 'ng', 'CDN読込失敗');
+  }
+
+  var STYLES = {
+    street: 'mapbox://styles/mapbox/streets-v12',
+    dark: 'mapbox://styles/mapbox/dark-v11',
+    out: 'mapbox://styles/mapbox/outdoors-v12'
+  };
+  var map = null, curStyle = 'street', labelFactor = 1.0, pitched = false;
+
+  function applyLabelScale() {
+    if (!map || !map.isStyleLoaded()) return;
+    var layers = map.getStyle().layers || [];
+    var n = 0;
+    layers.forEach(function (ly) {
+      if (ly.type !== 'symbol') return;
+      try {
+        var cur = map.getLayoutProperty(ly.id, 'text-size');
+        var base = (cur == null) ? 16 : cur;
+        map.setLayoutProperty(ly.id, 'text-size', ['*', base, labelFactor]);
+        n++;
+      } catch (e) {}
+    });
+    set('label', 'ベクターラベル拡大', n > 0 ? 'ok' : 'warn', n + '層 ×' + labelFactor.toFixed(1));
+  }
+
+  function buildMap(token) {
+    try {
+      mapboxgl.accessToken = token;
+    } catch (e) {}
+    set('token', 'トークン適用', 'warn', '検証中…');
+
+    if (map) { try { map.remove(); } catch (e) {} map = null; }
+
+    map = new mapboxgl.Map({
+      container: 'map',
+      style: STYLES[curStyle],
+      center: [140.2237, 35.7173], // 佐倉付近
+      zoom: 13,
+      pitch: 0,
+      bearing: 0,
+      attributionControl: true,
+      cooperativeGestures: false
+    });
+
+    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
+    map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: 'metric' }));
+    map.touchZoomRotate.enableRotation(); // 2本指回転を明示有効化
+
+    var rendered = false;
+    map.on('render', function () {
+      if (!rendered && map.loaded()) {
+        rendered = true;
+        set('map', '地図の実描画', 'ok', '描画OK(タイル取得成功)');
+      }
+    });
+    map.on('load', function () {
+      set('token', 'トークン適用', 'ok', '有効');
+      set('map', '地図の実描画', 'ok', 'load完了');
+      set('rotate', '回転(ヘディングアップ可否)', 'ok', '2本指で回せます');
+      applyLabelScale();
+      document.getElementById('ctrls').classList.remove('hide');
+      document.getElementById('lblrow').classList.remove('hide');
+    });
+    map.on('error', function (e) {
+      var msg = (e && e.error && e.error.message) ? e.error.message : 'unknown';
+      if (/401|access token|Unauthorized/i.test(msg)) {
+        set('token', 'トークン適用', 'ng', 'トークン無効(401)');
+      } else {
+        set('map', '地図の実描画', 'ng', msg.slice(0, 60));
+      }
+    });
+    map.on('rotate', function () {
+      set('rotate', '回転(ヘディングアップ可否)', 'ok', 'bearing ' + Math.round(map.getBearing()) + '°');
+    });
+    map.on('pitch', function () {
+      set('pitch', '3D傾き(pitch)', 'ok', Math.round(map.getPitch()) + '°');
+    });
+  }
+
+  function switchStyle(name) {
+    if (!map) return;
+    curStyle = name;
+    map.setStyle(STYLES[name]);
+    map.once('style.load', applyLabelScale);
+    ['bStreet', 'bDark', 'bOut'].forEach(function (id) { document.getElementById(id).classList.remove('on'); });
+    document.getElementById(name === 'street' ? 'bStreet' : name === 'dark' ? 'bDark' : 'bOut').classList.add('on');
+  }
+
+  // UI配線
+  document.getElementById('bStreet').onclick = function () { switchStyle('street'); };
+  document.getElementById('bDark').onclick = function () { switchStyle('dark'); };
+  document.getElementById('bOut').onclick = function () { switchStyle('out'); };
+  document.getElementById('bRot').onclick = function () { if (map) map.easeTo({ bearing: map.getBearing() + 30 }); };
+  document.getElementById('bNorth').onclick = function () { if (map) map.easeTo({ bearing: 0, pitch: 0 }); };
+  document.getElementById('bPitch').onclick = function () {
+    if (!map) return;
+    pitched = !pitched;
+    map.easeTo({ pitch: pitched ? 60 : 0 });
+    document.getElementById('bPitch').classList.toggle('on', pitched);
+  };
+  document.getElementById('bLoc').onclick = function () {
+    set('geo', '現在地(GPS)', 'warn', '取得中…');
+    if (!navigator.geolocation) { set('geo', '現在地(GPS)', 'ng', '非対応'); return; }
+    navigator.geolocation.getCurrentPosition(function (p) {
+      var ll = [p.coords.longitude, p.coords.latitude];
+      set('geo', '現在地(GPS)', 'ok', ll[1].toFixed(4) + ',' + ll[0].toFixed(4));
+      if (map) {
+        map.flyTo({ center: ll, zoom: 16 });
+        new mapboxgl.Marker({ color: '#e11d48' }).setLngLat(ll).addTo(map);
+      }
+    }, function (err) {
+      set('geo', '現在地(GPS)', 'ng', err.message.slice(0, 40));
+    }, { enableHighAccuracy: true, timeout: 8000 });
+  };
+
+  var lbl = document.getElementById('lbl');
+  lbl.oninput = function () {
+    labelFactor = parseFloat(lbl.value);
+    document.getElementById('lblv').textContent = labelFactor.toFixed(1) + '×';
+    applyLabelScale();
+  };
+
+  // トークン入力（localStorageに保存・リポジトリには残らない）
+  var tokInput = document.getElementById('tok');
+  var saved = localStorage.getItem('mapbox_poc_token');
+  if (saved) tokInput.value = saved;
+  document.getElementById('apply').onclick = function () {
+    var t = tokInput.value.trim();
+    if (!/^pk\./.test(t)) { set('token', 'トークン適用', 'ng', 'pk.で始まる公開トークンを入れてください'); return; }
+    localStorage.setItem('mapbox_poc_token', t);
+    if (!window.mapboxgl) { set('lib', 'mapbox-gl', 'ng', 'CDN読込失敗'); return; }
+    buildMap(t);
+  };
+  // 保存済みなら自動起動
+  if (saved && /^pk\./.test(saved) && window.mapboxgl) {
+    buildMap(saved);
+  }
+})();
+</script>
+</body>
+</html>
