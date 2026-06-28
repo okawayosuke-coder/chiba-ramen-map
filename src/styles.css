@@ -1348,6 +1348,32 @@ body {
   user-select: none;
 }
 
+/* 🏠帰宅ボタン（画面右・中央下＝HW切替の下）。自宅登録済みのときだけ表示。 */
+.home-btn {
+  position: absolute;
+  right: 12px;
+  top: calc(50% + 152px); /* recenter(中央)/clear-dest(+48)/hw-toggle(+100)の下。hw-stripは中央より上で非干渉 */
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(18, 20, 24, 0.9);
+  color: #fff;
+  border: 2px solid #2f9e44; /* 自宅＝緑（目的地矢印と同系） */
+  border-radius: 999px;
+  padding: 10px 16px;
+  min-height: 48px;
+  font-size: 16.5px;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.home-btn:active {
+  background: rgba(47, 158, 68, 0.9);
+}
+
 /* ===== PWA更新通知バー ===== */
 .update-bar {
   position: fixed;

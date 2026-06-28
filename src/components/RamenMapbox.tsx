@@ -40,6 +40,8 @@ interface Props {
   dest: Dest | null;
   onSetDest: (s: Dest) => void;
   onClearDest: () => void;
+  home?: Dest | null; // 自宅（登録済みなら地図に🏠帰宅ボタンを表示）
+  onGoHome?: () => void; // 🏠帰宅ボタン: 自宅を目的地に設定
   userPos: Pt | null;
   isFav: (s: Shop) => boolean;
   onToggleFav: (s: Shop) => void;
@@ -835,6 +837,22 @@ function RamenMapbox(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, props.threeD]);
 
+  // 🏠帰宅ボタン（地図右・中央下＝ルート解除/HW切替の下）。自宅登録済みのときだけ常時表示し、
+  // タップで自宅を目的地に設定（onGoHome→App）。走行中も駐車中も押せるよう地図オーバーレイに置く。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !props.home) return; // 自宅未登録なら出さない
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "home-btn";
+    btn.textContent = "🏠 帰宅";
+    btn.onclick = () => propsRef.current.onGoHome?.();
+    map.getContainer().appendChild(btn);
+    return () => {
+      btn.remove();
+    };
+  }, [mapReady, props.home]);
+
   // 地点標高プローブ（Leaflet ElevationProbe 移植）: 地図をタップ/ホバーした地点の標高を
   // 5秒間表示（タッチはmouseoutが無いので自動消去）。ボタン/情報ボックス上は不感エリア。常時有効。
   useEffect(() => {
@@ -876,7 +894,7 @@ function RamenMapbox(props: Props) {
     // ボタン/情報ボックスの上＋周囲16pxは発火させない（UIタップが地図に貫通して誤標高を出さない）
     const DEAD = 16;
     const UI_SEL =
-      ".mapboxgl-ctrl,.recenter-btn,.clear-dest-btn,.hw-toggle,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.weather-bar,.poi-hint";
+      ".mapboxgl-ctrl,.recenter-btn,.clear-dest-btn,.hw-toggle,.home-btn,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.weather-bar,.poi-hint";
     const overUI = (cx: number, cy: number): boolean => {
       const cont = map.getContainer();
       const cr = cont.getBoundingClientRect();

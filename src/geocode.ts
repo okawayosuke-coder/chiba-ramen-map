@@ -29,3 +29,29 @@ export async function reverseAddressNoBanchi(
     return null;
   }
 }
+
+/** 国土地理院 住所検索（順ジオコーディング）で「住所文字列 → 緯度経度」。
+ *  最有力候補1件の座標と表記を返す。該当なし・失敗時は null。
+ *  返却 geometry.coordinates は GeoJSON 順 [lng, lat]。自宅登録などで使用。 */
+export async function geocodeAddress(
+  query: string
+): Promise<{ lat: number; lng: number; title: string } | null> {
+  const q = query.trim();
+  if (!q) return null;
+  try {
+    const r = await fetch(
+      `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`
+    );
+    if (!r.ok) return null;
+    const j = (await r.json()) as Array<{
+      geometry?: { coordinates?: [number, number] };
+      properties?: { title?: string };
+    }>;
+    const f = Array.isArray(j) ? j[0] : null;
+    const co = f?.geometry?.coordinates;
+    if (!co || co.length < 2) return null;
+    return { lat: co[1], lng: co[0], title: f?.properties?.title || q };
+  } catch {
+    return null;
+  }
+}

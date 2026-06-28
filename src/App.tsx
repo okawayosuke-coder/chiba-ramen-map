@@ -42,6 +42,7 @@ import {
   useShowTrack,
   useTraffic,
   useThreeD,
+  useHome,
   useTheme,
 } from "./storage";
 import { useGeolocation, useMovementDetector } from "./hooks";
@@ -154,6 +155,7 @@ export default function App() {
   const [headingUp, setHeadingUp] = useHeadingUp();
   const [traffic, setTraffic] = useTraffic();
   const [threeD, setThreeD] = useThreeD();
+  const [home, setHome] = useHome(); // 自宅（端末内のみ保存）。🏠帰宅ボタンの目的地
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Dest | null>(null);
@@ -369,6 +371,18 @@ export default function App() {
     setDest(null);
     setToast("目的地を解除しました");
   }, []);
+
+  // 🏠帰宅: 自宅を目的地に設定。未登録なら設定の登録を促す。
+  const onGoHome = useCallback(() => {
+    if (home) {
+      setDest(home);
+      setSheetOpen(false);
+      setToast(`自宅へ向かいます: ${home.name}`);
+    } else {
+      setToast("先に「設定 → 自宅」で自宅を登録してください");
+      setSettingsOpen(true);
+    }
+  }, [home]);
 
   // テスト用フック（?sim=drive のときだけ）。eval から任意座標を目的地に設定でき、
   // 店舗位置に縛られず特定の高速区間（例: 館山道の市原SA）を通るルートを検証できる。
@@ -781,6 +795,8 @@ export default function App() {
               dest,
               onSetDest,
               onClearDest,
+              home, // 自宅（地図の🏠帰宅ボタン表示判定）
+              onGoHome, // 🏠帰宅ボタン: 自宅を目的地に設定
               userPos: geo.pos,
               isFav,
               onToggleFav: toggle,
@@ -852,6 +868,9 @@ export default function App() {
           setTraffic={setTraffic}
           threeD={threeD}
           setThreeD={setThreeD}
+          home={home}
+          setHome={setHome}
+          currentPos={geo.pos}
           showPoi={showPoi}
           setShowPoi={setShowPoi}
           poiKinds={poiKinds}

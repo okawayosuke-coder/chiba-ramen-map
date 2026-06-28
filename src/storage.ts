@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Shop } from "./types";
-import type { NavApp, Pt } from "./nav";
+import type { Dest, NavApp, Pt } from "./nav";
 import { sunTheme } from "./sun";
 import { POI_KINDS, type PoiKind } from "./poi";
 
@@ -17,6 +17,7 @@ const K = {
   headingUp: "crm_headingup", // 走行中の地図の向き: true=ヘディングアップ / false=ノースアップ(既定)
   traffic: "crm_traffic", // リアルタイム渋滞表示（mapbox-traffic-v1）の表示ON/OFF（既定OFF）
   threeD: "crm_3d", // 3D表示（地形起伏＋3D建物＋俯瞰ピッチ）。任意機能・既定OFF
+  home: "crm_home", // 自宅の位置（{lat,lng,name}）。端末内のみ保存（公開ソースに住所を載せない）
 };
 
 export type HwOverride = "auto" | "on" | "off";
@@ -167,6 +168,17 @@ export function useThreeD(): [boolean, (v: boolean) => void] {
     write(K.threeD, v);
   }, []);
   return [on, set];
+}
+
+/** 自宅の位置（緯度経度＋名称）。端末内のみ保存し、公開リポジトリのソースには住所を載せない。
+ *  未登録は null。設定で「住所検索」または「現在地」から登録、地図の🏠帰宅ボタンで目的地に設定する。 */
+export function useHome(): [Dest | null, (d: Dest | null) => void] {
+  const [home, setHomeState] = useState<Dest | null>(() => read<Dest | null>(K.home, null));
+  const setHome = useCallback((d: Dest | null) => {
+    setHomeState(d);
+    write(K.home, d);
+  }, []);
+  return [home, setHome];
 }
 
 export type PoiKindsUpdater = PoiKind[] | ((prev: PoiKind[]) => PoiKind[]);

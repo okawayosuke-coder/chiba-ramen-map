@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { NAV_APP_META, navAppsForPlatform, type NavApp } from "../nav";
+import { NAV_APP_META, navAppsForPlatform, type Dest, type NavApp, type Pt } from "../nav";
 import { exportFavorites, type PoiKindsUpdater, type ThemePref } from "../storage";
+import { geocodeAddress } from "../geocode";
 import { POI_KINDS, POI_KIND_META, type PoiKind } from "../poi";
 import { loadLocalPois } from "../poiData";
 import { clearTrack, downloadTrackGPX, trackStats } from "../track";
@@ -39,6 +40,9 @@ interface Props {
   setTraffic: (v: boolean) => void;
   threeD: boolean;
   setThreeD: (v: boolean) => void;
+  home: Dest | null;
+  setHome: (d: Dest | null) => void;
+  currentPos: Pt | null;
   showPoi: boolean;
   setShowPoi: (v: boolean) => void;
   poiKinds: PoiKind[];
@@ -66,6 +70,9 @@ export default function Settings({
   setTraffic,
   threeD,
   setThreeD,
+  home,
+  setHome,
+  currentPos,
   showPoi,
   setShowPoi,
   poiKinds,
@@ -79,7 +86,37 @@ export default function Settings({
   const apps = navAppsForPlatform();
   const [stats, setStats] = useState(() => trackStats());
   const [poiDate, setPoiDate] = useState("");
+  const [homeQuery, setHomeQuery] = useState("");
+  const [homeBusy, setHomeBusy] = useState(false);
+  const [homeMsg, setHomeMsg] = useState("");
   useEscape(onClose);
+
+  // 住所文字列から自宅を登録（国土地理院 住所検索）。番地まで概ね対応。
+  const registerHomeByAddress = async () => {
+    const q = homeQuery.trim();
+    if (!q) return;
+    setHomeBusy(true);
+    setHomeMsg("検索中…");
+    const r = await geocodeAddress(q);
+    setHomeBusy(false);
+    if (!r) {
+      setHomeMsg("住所が見つかりませんでした。表記を変えて再度お試しください。");
+      return;
+    }
+    setHome({ lat: r.lat, lng: r.lng, name: "自宅" });
+    setHomeMsg(`登録しました: ${r.title}`);
+    setHomeQuery("");
+  };
+
+  // 現在地を自宅として登録（自宅にいる時に使うと確実）。
+  const registerHomeByCurrent = () => {
+    if (!currentPos) {
+      setHomeMsg("現在地が取得できていません。位置情報を許可してからお試しください。");
+      return;
+    }
+    setHome({ lat: currentPos.lat, lng: currentPos.lng, name: "自宅" });
+    setHomeMsg("現在地を自宅に登録しました。");
+  };
 
   // 同梱POI（コンビニ/GS）データの収集日を表示（鮮度の明示）
   useEffect(() => {
@@ -261,6 +298,51 @@ export default function Settings({
           <p className="modal__small">
             <strong>渋滞表示</strong>＝道路を渋滞度で色分け（Mapbox Traffic・約8分毎更新）。
             <strong>3D表示</strong>＝地形の起伏と3D建物を俯瞰視点で表示（任意機能・既定は平面）。3DはGPU負荷が高め＝発熱しやすいので、必要な時だけのご利用を推奨。
+          </p>
+        </section>
+
+        <section className="set-sec">
+          <h3>自宅（🏠帰宅ボタン）</h3>
+          <p className="modal__small" style={{ marginTop: 0 }}>
+            現在: <strong>{home ? `登録済み（${home.lat.toFixed(5)}, ${home.lng.toFixed(5)}）` : "未登録"}</strong>
+            {home ? "　地図右の「🏠帰宅」をタップで自宅をルート設定します。" : ""}
+          </p>
+          <div className="field">
+            <label>住所で登録（例: 千葉県○○市○○町1-2-3）</label>
+            <input
+              type="text"
+              placeholder="自宅の住所を入力"
+              value={homeQuery}
+              onChange={(e) => setHomeQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") registerHomeByAddress();
+              }}
+            />
+          </div>
+          <div className="set-row">
+            <button
+              className="chip"
+              onClick={registerHomeByAddress}
+              disabled={homeBusy || !homeQuery.trim()}
+            >
+              🔍 住所から登録
+            </button>
+            <button className="chip" onClick={registerHomeByCurrent} disabled={!currentPos}>
+              📍 現在地を自宅に登録
+            </button>
+            <button
+              className="chip"
+              onClick={() => {
+                setHome(null);
+                setHomeMsg("自宅の登録を解除しました。");
+              }}
+              disabled={!home}
+            >
+              解除
+            </button>
+          </div>
+          <p className="modal__small">
+            {homeMsg || "自宅は端末内のみに保存されます（住所はサーバや公開コードに保存しません）。"}
           </p>
         </section>
 

@@ -2404,6 +2404,9 @@ interface Props {
   dest: Dest | null;
   onSetDest: (s: Dest) => void;
   onClearDest: () => void;
+  /** Mapbox版のみ使用（🏠帰宅ボタン）。Leaflet版は無視。 */
+  home?: Dest | null;
+  onGoHome?: () => void;
   userPos: Pt | null;
   isFav: (s: Shop) => boolean;
   onToggleFav: (s: Shop) => void;
