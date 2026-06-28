@@ -414,6 +414,7 @@ function RamenMapbox(props: Props) {
   const routeSnapRef = useRef<{ proj: Pt; bearing: number; at: number } | null>(null);
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
+  const hwToggleLabelRef = useRef<(() => void) | null>(null); // 高速トグルのラベル更新（follow基準effectが設定）
   const hwActiveRef = useRef(false); // 現在「高速道路扱い」か（経路effectが書き、勾配effectが勾配抑制に読む）
   // この先の急勾配予告: 経路effectが前方GRADE_LOOKマークの標高から最急(≥GRADE_STEEP%)を書き、勾配effectが表示に読む
   const aheadGradeRef = useRef<{ grade: number; distM: number } | null>(null);
@@ -1032,14 +1033,8 @@ function RamenMapbox(props: Props) {
     hwStrip.className = "hw-strip";
     hwStrip.style.display = "none";
     map.getContainer().appendChild(hwStrip);
-    const hwToggle = document.createElement("button");
-    hwToggle.type = "button";
-    hwToggle.className = "hw-toggle"; // 右・中央下（Leaflet版と同じ位置）
-    const hwLabel = () =>
-      propsRef.current.hwOverride === "on" ? "🛣 高速:ON" : propsRef.current.hwOverride === "off" ? "🛣 高速:OFF" : "🛣 高速:自動";
-    hwToggle.textContent = hwLabel();
-    hwToggle.onclick = () => propsRef.current.onCycleHwOverride();
-    map.getContainer().appendChild(hwToggle);
+    // 高速切替ボタン(.hw-toggle)は follow 基準の独立 effect で生成（フリー走行でも表示）。
+    // ここ(route effect)は propsRef.current.hwOverride を読むだけ。
 
     let hwRanges: [number, number][] = [];
     const isHwSeg = (segIdx: number) => hwRanges.some(([a, b]) => segIdx >= a && segIdx < b);
@@ -1161,9 +1156,8 @@ function RamenMapbox(props: Props) {
       .catch(() => {
         /* highway.json 無し時はストリップ非表示のまま */
       });
-    // 高速切替を次のGPS取得を待たず即反映（ラベル＋ストリップ）
+    // 高速切替を次のGPS取得を待たず即、ストリップへ反映（トグルのラベルは hwToggleLabelRef 側で更新）
     routeReapplyRef.current = () => {
-      hwToggle.textContent = hwLabel();
       if (lastHereHw && rCoords) refresh(lastHereHw);
     };
 
@@ -1314,7 +1308,6 @@ function RamenMapbox(props: Props) {
       box.remove();
       clearBtn.remove();
       hwStrip.remove();
-      hwToggle.remove();
       routeSnapRef.current = null;
       routeReapplyRef.current = null;
       hwActiveRef.current = false;
@@ -1327,8 +1320,31 @@ function RamenMapbox(props: Props) {
 
   // 高速道路切替(自動/高速/一般道)を次のGPS取得を待たず即、ストリップ＆トグル表示へ反映
   useEffect(() => {
-    routeReapplyRef.current?.();
+    routeReapplyRef.current?.(); // 経路ストリップの即時反映（経路ありの時）
+    hwToggleLabelRef.current?.(); // トグルのラベル更新（フリー走行時もここで反映）
   }, [props.hwOverride]);
+
+  // 高速道路切替トグル(.hw-toggle)。Leaflet版(active={follow})と同じく走行(follow)中は常に表示
+  // ＝経路の有無に関わらずフリー走行でも出す。フリー走行では手動「高速:ON」で勾配計を抑制できる。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !props.follow) return;
+    const hwToggle = document.createElement("button");
+    hwToggle.type = "button";
+    hwToggle.className = "hw-toggle"; // 右・中央下（Leaflet版と同じ位置）
+    const label = () => {
+      const o = propsRef.current.hwOverride;
+      hwToggle.textContent = o === "on" ? "🛣 高速:ON" : o === "off" ? "🛣 高速:OFF" : "🛣 高速:自動";
+    };
+    label();
+    hwToggle.onclick = () => propsRef.current.onCycleHwOverride();
+    map.getContainer().appendChild(hwToggle);
+    hwToggleLabelRef.current = label; // hwOverride変化時にラベル更新（上のeffectが呼ぶ）
+    return () => {
+      hwToggleLabelRef.current = null;
+      hwToggle.remove();
+    };
+  }, [mapReady, props.follow]);
 
   // 走行追従モード（Stage 2b）: ヘディングアップ回転＋3Dピッチ＋自車マーカー＋速度計＋Wake Lock。
   // Mapboxはカメラを進行方位へ回せるので、自車矢印は常に上向き（Leaflet版のコンパス補正は不要）。
