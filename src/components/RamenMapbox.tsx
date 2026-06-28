@@ -1461,6 +1461,7 @@ function RamenMapbox(props: Props) {
     const leadPx = () => (headingUp ? map.getContainer().clientHeight * 0.22 : 0);
     let lastBearing = headingUp ? map.getBearing() : 0;
     let lastHere: [number, number] | null = null;
+    let prevCam: [number, number] | null = null; // 直近のカメラ追従先（>150mジャンプ検出・停車時パン抑制に使用）
     let following = true;
     // 進行方位（真北基準・ノース/ヘディング非依存）。停車時コンパス較正とトンネルDRの前進方向に使う。
     let lastTravelHeading: number | null = null;
@@ -1693,10 +1694,24 @@ function RamenMapbox(props: Props) {
       const bearing = headingUp ? lastBearing : 0;
       if (first) {
         first = false;
-        map.easeTo({ center: here, bearing, pitch: 0, zoom: DRIVE_ZOOM, offset: [0, leadPx()], duration: 800 });
+        // 追従開始時はユーザーの現在ズームを保持（150m等の設定を尊重）。広域閲覧中(<14)なら運転用にDRIVE_ZOOMへ寄せる。
+        const startZoom = map.getZoom() >= 14 ? map.getZoom() : DRIVE_ZOOM;
+        map.easeTo({ center: here, bearing, pitch: 0, zoom: startZoom, offset: [0, leadPx()], duration: 800 });
+        prevCam = here;
       } else {
-        // 1Hzフィックス間を線形イージング(間隔より少し長い1100ms)で繋ぎ、画面固定の自車に地図がなめらかに流れる。
-        map.easeTo({ center: here, bearing, offset: [0, leadPx()], duration: 1100, easing: (t) => t });
+        // GPSグリッチ/トンネル復帰で前回カメラ位置から150m超ジャンプしたら、滑らかに追わず即スナップ
+        // （誤った遠方へ1.1秒かけて流れて戻る不快な動きを防ぐ。Leaflet版の>150m即スナップ移植）。
+        const movedKm = prevCam ? haversineKm({ lng: prevCam[0], lat: prevCam[1] }, { lng: here[0], lat: here[1] }) : 0;
+        const isJump = !!prevCam && movedKm > 0.15;
+        const stationary = kmh == null || kmh <= MOVE_KMH;
+        // 停車中＋ほぼ不動(20m未満)はパンを打たない（毎フィックスのeaseToによる微ジッタ・電力を抑制。Leaflet版同様）。
+        if (!isJump && stationary && prevCam && movedKm < 0.02) {
+          /* 据え置き（パンしない） */
+        } else {
+          // 1Hzフィックス間を線形イージング(間隔より少し長い1100ms)で繋ぎ、画面固定の自車に地図がなめらかに流れる。
+          map.easeTo({ center: here, bearing, offset: [0, leadPx()], duration: isJump ? 0 : 1100, easing: (t) => t });
+          prevCam = here;
+        }
       }
     };
 
@@ -1785,6 +1800,7 @@ function RamenMapbox(props: Props) {
         duration: 1000,
         easing: (t) => t,
       });
+      prevCam = lastHere; // DRの前進もカメラ追従先として記録（GPS復帰時のジャンプ判定を正しく）
     }, 1000);
 
     // sim時のみ: タイマー/コンパスのスロットルに依存せずDR・コンパスを決定論検証するフック
