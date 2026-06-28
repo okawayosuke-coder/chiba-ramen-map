@@ -847,6 +847,22 @@ body {
 .car-dr {
   opacity: 0.45;
 }
+/* 自車マークの右に標高(m)を常設表示（Leaflet版 car-elev ツールチップ相当）。SVGの右に絶対配置 */
+.car-elev-label {
+  position: absolute;
+  left: calc(100% - 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  background: rgba(18, 20, 24, 0.82);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
 
 /* 画面下部の横長 天気バー（現在地の天気予報・Open-Meteo）。走行中(follow)はJSで非表示。 */
 .weather-bar {

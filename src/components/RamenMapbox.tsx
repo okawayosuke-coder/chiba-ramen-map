@@ -179,6 +179,102 @@ async function fetchElevationNum(lat: number, lng: number): Promise<number | nul
   return val;
 }
 
+/** 標高を「12.3 m」形式の文字列で返す（GSI高精度DEM→open-meteo概算）。自車横の常設標高表示用。Leaflet版 fetchElevation 移植。 */
+async function fetchElevationStr(lat: number, lng: number): Promise<string | null> {
+  try {
+    const r = await fetch(
+      `https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=${lng}&lat=${lat}&outtype=JSON`
+    );
+    const j = await r.json();
+    if (j && j.elevation !== "-----" && j.elevation != null && !isNaN(Number(j.elevation)))
+      return `${Number(j.elevation).toFixed(1)} m`;
+  } catch {
+    /* GSI失敗時は予備へ */
+  }
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
+    const j = await r.json();
+    if (j && Array.isArray(j.elevation) && j.elevation[0] != null)
+      return `${Number(j.elevation[0]).toFixed(0)} m（概算）`;
+  } catch {
+    /* 取得不可 */
+  }
+  return null;
+}
+
+/** スケールバー用の「キリの良い数」。Leaflet標準(1/2/3/5)に1.5・7も許可＝…300/200/150/100/70/50…（150mを出すため）。 */
+function roundNum150(num: number): number {
+  const pow10 = Math.pow(10, String(Math.floor(num)).length - 1);
+  const d0 = num / pow10;
+  const d = d0 >= 10 ? 10 : d0 >= 7 ? 7 : d0 >= 5 ? 5 : d0 >= 3 ? 3 : d0 >= 2 ? 2 : d0 >= 1.5 ? 1.5 : 1;
+  return pow10 * d;
+}
+
+/** 半段(0.5)ズームの +/- コントロール（Leaflet zoomDelta/zoomSnap=0.5 移植）。
+ *  Mapbox標準は1段ズーム＝ユーザに「一回タップで2段階」に感じられ、かつ縮尺150mを飛ばすため自作。 */
+class HalfStepZoomControl implements mapboxgl.IControl {
+  private _c?: HTMLDivElement;
+  onAdd(map: mapboxgl.Map): HTMLElement {
+    const c = document.createElement("div");
+    c.className = "mapboxgl-ctrl mapboxgl-ctrl-group";
+    const mk = (kind: "in" | "out", delta: number, aria: string) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `mapboxgl-ctrl-zoom-${kind}`;
+      b.setAttribute("aria-label", aria);
+      const ic = document.createElement("span");
+      ic.className = "mapboxgl-ctrl-icon";
+      ic.setAttribute("aria-hidden", "true");
+      b.appendChild(ic);
+      b.addEventListener("click", () => {
+        const z = map.getZoom();
+        // 0.5刻みにスナップ（zoomSnap=0.5相当）
+        const next = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), Math.round((z + delta) * 2) / 2));
+        map.easeTo({ zoom: next, duration: 200 });
+      });
+      return b;
+    };
+    c.appendChild(mk("in", 0.5, "ズームイン"));
+    c.appendChild(mk("out", -0.5, "ズームアウト"));
+    this._c = c;
+    return c;
+  }
+  onRemove(): void {
+    this._c?.remove();
+    this._c = undefined;
+  }
+}
+
+/** 150mを出せるスケールバー（Leaflet ScaleWith150 移植）。Mapbox標準ScaleControlは1.5倍を出さず150mが出ないため自作。 */
+class Scale150Control implements mapboxgl.IControl {
+  private _map?: mapboxgl.Map;
+  private _el?: HTMLDivElement;
+  private _update = () => {};
+  onAdd(map: mapboxgl.Map): HTMLElement {
+    this._map = map;
+    const el = document.createElement("div");
+    el.className = "mapboxgl-ctrl mapboxgl-ctrl-scale";
+    this._el = el;
+    const maxWidth = 130;
+    this._update = () => {
+      const y = map.getContainer().clientHeight / 2;
+      const maxMeters = map.unproject([0, y]).distanceTo(map.unproject([maxWidth, y]));
+      if (!isFinite(maxMeters) || maxMeters <= 0) return;
+      const dist = roundNum150(maxMeters);
+      el.style.width = `${Math.round(maxWidth * (dist / maxMeters))}px`;
+      el.textContent = dist >= 1000 ? `${dist / 1000} km` : `${dist} m`;
+    };
+    map.on("move", this._update);
+    this._update();
+    return el;
+  }
+  onRemove(): void {
+    if (this._map) this._map.off("move", this._update);
+    this._el?.remove();
+    this._map = undefined;
+  }
+}
+
 /** from から進行方位 headingDeg(0=北) 方向へ distM メートル進んだ地点。 */
 function pointAhead(from: Pt, headingDeg: number, distM: number): Pt {
   const rad = (headingDeg * Math.PI) / 180;
@@ -461,11 +557,11 @@ function RamenMapbox(props: Props) {
     });
     mapRef.current = map;
     (window as unknown as Record<string, unknown>).__mbmap = map; // 検証/デバッグ用（試験エンジン時のみ）
-    // ズーム+/- は左上（Leaflet版と同じ位置。右側の高速ストリップ/各ボタンと被らない）。コンパスは出さない。
-    // ボタンはCSSで大きく（走行中もタップしやすく）。
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false, showZoom: true }), "top-left");
-    // 縮尺バー（画面上の一定長が実距離で何m/kmか）。右下＝著作権表示の上。走行中の距離感の把握用。
-    map.addControl(new mapboxgl.ScaleControl({ maxWidth: 130, unit: "metric" }), "bottom-right");
+    // ズーム+/- は左上（Leaflet版と同じ位置）。コンパスは出さない。Leaflet同様の半段(0.5)ズーム＝
+    // 1タップ0.5段（標準1段だと「2段階」に感じる）＋縮尺150mを飛ばさない。CSSで大きくタップしやすく。
+    map.addControl(new HalfStepZoomControl(), "top-left");
+    // 縮尺バー（実距離m/km）。右下＝著作権表示の上。150mを出せる自作版（Leaflet ScaleWith150 移植）。
+    map.addControl(new Scale150Control(), "bottom-right");
     map.touchZoomRotate.enableRotation(); // 2本指回転（ヘディングアップの素地）
 
     // コンテナのサイズ変化（左ペイン開閉・画面回転・ウィンドウリサイズ）で地図を再計測。
@@ -1384,6 +1480,8 @@ function RamenMapbox(props: Props) {
       '<svg class="car-arrow" width="54" height="54" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
       '<circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/>' +
       '<path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
+    // 自車の右に標高(m)を常設表示（Leaflet版＝自車マーク横ツールチップ「標高 ◯m」移植）。約40m毎更新。
+    const CAR_HTML = CAR_SVG + '<span class="car-elev-label">標高 …</span>';
     // 追従中の自車＝画面固定オーバーレイ（カメラが自車を中央追従するので地図がなめらかに流れる）。
     // ヘディングアップは下寄り(72%・前方ワイド)、ノースアップは中央(50%)。
     const carEl = document.createElement("div");
@@ -1391,11 +1489,12 @@ function RamenMapbox(props: Props) {
       "style",
       `position:absolute;left:50%;top:${headingUp ? "72%" : "50%"};transform:translate(-50%,-50%);z-index:600;pointer-events:none;`
     );
-    carEl.innerHTML = CAR_SVG;
+    carEl.innerHTML = CAR_HTML;
     map.getContainer().appendChild(carEl);
     // 手動パンで追従を外した時の自車＝地理マーカー（実位置に残す）。追従中は非表示。
     const geoEl = document.createElement("div");
-    geoEl.innerHTML = CAR_SVG;
+    geoEl.style.position = "relative"; // 標高ラベル(absolute)の位置基準
+    geoEl.innerHTML = CAR_HTML;
     geoEl.style.display = "none";
     const geoMarker = new mapboxgl.Marker({ element: geoEl, anchor: "center" });
     const c0 = propsRef.current.userPos ?? { lat: map.getCenter().lat, lng: map.getCenter().lng };
@@ -1433,6 +1532,7 @@ function RamenMapbox(props: Props) {
     map.getContainer().appendChild(addrBox);
     let lastAddrPt: Pt | null = null;
     let addrReqId = 0;
+    let elevReqId = 0; // 自車横の標高表示の競合排除（住所と同じ約40m毎に更新）
 
     // 左上(残距離の下): 目的地名＋方位矢印（地図の向きに対する相対方位）。目的地セット時のみ表示。
     const destBox = document.createElement("div");
@@ -1544,6 +1644,16 @@ function RamenMapbox(props: Props) {
         const aid = ++addrReqId;
         reverseAddressNoBanchi(rawPt.lat, rawPt.lng).then((a) => {
           if (aid === addrReqId && !aborted) addrBox.textContent = a ? `📍 ${a}` : "📍 現在地 取得できません";
+        });
+        // 自車横の標高(m)も同じ約40m毎に更新（Leaflet版「標高 ◯m」常設表示の移植・GSI標高API無料）
+        const eid = ++elevReqId;
+        fetchElevationStr(rawPt.lat, rawPt.lng).then((t) => {
+          if (eid !== elevReqId || aborted) return;
+          const txt = t ? `標高 ${t}` : "標高 -";
+          const a = carEl.querySelector(".car-elev-label");
+          const b = geoEl.querySelector(".car-elev-label");
+          if (a) a.textContent = txt;
+          if (b) b.textContent = txt;
         });
       }
       // 目的地方位ボックス: 目的地名＋方位矢印（地図の向きに対する相対方位）
