@@ -51,8 +51,12 @@ interface Props {
 }
 
 const STYLE_LIGHT = "mapbox://styles/mapbox/streets-v12";
-const STYLE_DARK = "mapbox://styles/mapbox/dark-v11"; // 夜間用。streets-v12と同じMapbox Streetsソース＝日本語化(name_ja)も同様に効く
+// 夜間用。Mapbox Standard の night ライトプリセット＝駅/地名/POI/道路名がフル表示される本格的なダーク地図。
+// （旧 dark-v11 はデータ可視化向けで駅ラベル層が無く情報量が極端に少なかったため刷新）
+const STYLE_DARK = "mapbox://styles/mapbox/standard";
 const styleFor = (t?: string): string => (t === "dark" ? STYLE_DARK : STYLE_LIGHT);
+// Standard スタイルか（設定はconfig API、ラベルはconfigのlanguageで制御＝classicスタイルと扱いが異なる）
+const isStandard = (url: string): boolean => url.indexOf("/standard") !== -1;
 const PITCH_3D = 60; // 3D表示ON時の俯瞰ピッチ角（度）。OFFは0=真上から平面
 const MB_VIEW_KEY = "crm_mapview_mb"; // Mapbox 用（bearing/pitch も保存）
 const LEAFLET_VIEW_KEY = "crm_mapview"; // 互換: Leaflet 版の保存位置を初期復元に流用
@@ -701,6 +705,7 @@ function RamenMapbox(props: Props) {
         wired = true;
       }
       applyLabels(map);
+      applyStandardConfig(map); // Standardスタイルなら night プリセット＋日本語ラベルを適用
       readyRef.current = true;
       setMapReady(true);
       const src = map.getSource("shops") as mapboxgl.GeoJSONSource | undefined;
@@ -808,7 +813,9 @@ function RamenMapbox(props: Props) {
         });
       }
       map.setTerrain({ source: "mapbox-dem", exaggeration: 1.3 });
-      if (!map.getLayer("3d-buildings")) {
+      // 手動の3D建物押出は classic スタイル(streets-v12)用。Standard(夜間)は建物を内蔵描画する
+      // （pitchを倒すと自動で3D建物が立つ）ので composite/building の手動追加はスキップ＝二重描画/エラー回避。
+      if (!isStandard(styleRef.current) && !map.getLayer("3d-buildings")) {
         const firstSymbol = map.getStyle().layers?.find((l) => l.type === "symbol")?.id;
         map.addLayer(
           {
@@ -2689,6 +2696,33 @@ function RamenMapbox(props: Props) {
         : Math.max(map.getZoom(), 13);
       firstFixRef.current = false;
       map.flyTo({ center: [pos.lng, pos.lat], zoom: z, duration: 0.6 });
+    }
+  }
+
+  /** Standardスタイル時の設定。night ライトプリセット（ダーク）＋日本語ラベル＋各種ラベル表示ON。
+   *  classicスタイル（streets-v12）では config API が無く throw するため isStandard でガードし無視する。
+   *  Standardのラベルは applyLabels(レイヤ単位のtext-field書換)ではなく config の language で日本語化する。 */
+  function applyStandardConfig(map: mapboxgl.Map) {
+    if (!isStandard(styleRef.current)) return;
+    const set = (k: string, v: unknown) => {
+      try {
+        (map as unknown as { setConfigProperty: (i: string, k: string, v: unknown) => void })
+          .setConfigProperty("basemap", k, v);
+      } catch {
+        /* 非Standard/旧mapbox-glでは無視 */
+      }
+    };
+    set("lightPreset", "night"); // 夜景（ダーク）。駅/地名/POI/道路を保ったまま暗くする
+    set("showPointOfInterestLabels", true);
+    set("showTransitLabels", true); // 駅・鉄道などの交通ラベル
+    set("showPlaceLabels", true); // 地名
+    set("showRoadLabels", true); // 道路名
+    // ラベルの日本語化は Standard では config('language') が効かず map.setLanguage が正API。
+    // localIdeographFontFamily で漢字/かなを端末フォント生成。
+    try {
+      (map as unknown as { setLanguage?: (l: string) => void }).setLanguage?.("ja");
+    } catch {
+      /* 旧mapbox-glでは未対応＝無視 */
     }
   }
 
