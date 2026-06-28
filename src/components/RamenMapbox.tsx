@@ -355,16 +355,20 @@ function ensureGradeMeter(box: HTMLElement): GradeMeter {
  *  （Phase2のジャイロvetoは既定OFF・横向き要再設計のためMapbox版では未移植）。 */
 // Phase2(v2) ジャイロveto（Leaflet版移植・既定OFF=「ジャイロで平坦補正」トグル）。設置向き非依存で
 // 端末の傾き(重力ベクトル)を見て、平坦姿勢のままDEMが坂と言う＝平坦路の偽勾配を平坦へveto（値は変えず表示のみ）。
-const PITCH_FLAT_DEG = 1.5; // g0からの姿勢差がこれ未満なら「水平」(°)
-const PITCH_ACC_GATE = 0.6; // |GPS速度微分|がこれ未満の時だけ傾きを信用(m/s^2)
+const PITCH_FLAT_DEG = 1.5; // g0からの姿勢差がこれ未満なら「水平」(°)。約2.6%相当（融合の平坦判定にも使用）
+const PITCH_ACC_GATE = 0.6; // |GPS速度微分|がこれ未満の時だけ傾きを信用(m/s^2)。加減速の前後G混入を除外
+const PITCH_TURN_GATE = 6; // 進行方位の変化率がこれ未満(°/s)の時だけ傾きを信用＝旋回/バンクのローリング混入を除外
+const PITCH_BLEND = 0.8; // 融合での端末傾き(実測値)の重み（残りはDEM）。端末は現在の実姿勢＝主、DEMは従＋符号
 const G0_GAIN = 0.05; // 平坦基準g0学習の低域通過ゲイン
 const GRAV_LP = 0.9; // 重力ベクトル抽出の低域通過係数
-// grade effect が書き込み(onMotion=g / onPos=accel,g0,enabled)、updateGradeMeter が demFlat 書込み＆veto読取り。
+// grade effect が書き込み(onMotion=g / onPos=accel,heading,g0,enabled)、updateGradeMeter が demFlat 書込み＆融合読取り。
 const _pitch = {
   g: null as number[] | null, // 低域通過した重力ベクトル(端末frame)
-  g0: null as number[] | null, // 平坦走行時に学習した基準姿勢
+  g0: null as number[] | null, // 平坦・直進巡航時に学習した基準姿勢
   accel: 0, // GPS速度の微分(m/s^2)
+  headingRate: 0, // 進行方位の変化率(°/s)。旋回検出（高いと傾きを信用しない）
   demFlat: true, // 直近のDEM勾配が平坦か(g0学習ゲート)
+  lastSign: 1 as 1 | -1, // 直近の勾配符号（DEM平坦時の上り/下り判定に保持）
   enabled: false, // 設定トグル（既定OFF）
 };
 /** 2つの重力ベクトルのなす角(度)。設置向き非依存で端末姿勢変化＝路面pitchを測る。 */
@@ -396,33 +400,49 @@ function updateGradeMeter(
   if (m.hist.length > GRADE_MED_N) m.hist.shift();
   const sorted = [...m.hist].sort((a, b) => a - b);
   const med = sorted[Math.floor(sorted.length / 2)];
-  if (m.flat) {
-    if (Math.abs(med) > GRADE_SLOPE_ON) m.flat = false;
-  } else if (Math.abs(med) < GRADE_FLAT) {
-    m.flat = true;
-  }
   // 直近のDEM勾配が平坦か＝grade effectのg0(基準姿勢)学習ゲートへ渡す（坂で学習しないため）
   _pitch.demFlat = Math.abs(med) < GRADE_FLAT;
-  // Phase2 ジャイロveto: トグルON＆基準学習済＆加減速小＆端末姿勢が平坦基準に近いのにDEMが坂
-  // ＝平坦路の偽勾配とみなして平坦表示へ。OFF/未学習/加減速中はDEMのまま（安全劣化）。
+  // ===== ジャイロ融合(Phase2 v2) =====
+  // 従来は「DEM坂＋端末水平→平坦」の片方向vetoのみだったのを、端末の傾き(g vs g0)から
+  // 現在の路面pitch角→勾配%を直接算出し、DEMと融合してメーターを駆動する双方向の補正へ。
+  //  ・端末は「現在の車の実姿勢」＝応答が速く真値（DEMの80m先読み誤差/ラグが乗らない）→ 主。
+  //  ・DEMは符号(上り/下り)と従の重み＝端末だけでは出ない向きを与える。
+  //  ・旋回/バンクのローリングは headingRate ゲートで、加減速の前後Gは accel ゲートで除外。
+  // トグルOFF/基準未学習/旋回中/加減速中は従来どおりDEM(med)のまま＝安全劣化。
+  let eff = med;
   if (
     _pitch.enabled &&
-    !m.flat &&
     _pitch.g != null &&
     _pitch.g0 != null &&
     Math.abs(_pitch.accel) < PITCH_ACC_GATE &&
-    gravAngleDeg(_pitch.g, _pitch.g0) < PITCH_FLAT_DEG
+    _pitch.headingRate < PITCH_TURN_GATE
   ) {
+    const pitchDeg = gravAngleDeg(_pitch.g, _pitch.g0); // g0(平坦基準)からの傾き角
+    if (pitchDeg < PITCH_FLAT_DEG) {
+      // 端末が水平＝路面は平坦。DEMが坂と言っても偽勾配として平坦化（veto）。
+      eff = 0;
+    } else {
+      // 端末が傾いている＝実際に坂。傾き角→勾配%を主、DEMは符号＋軽い従。
+      const mDev = Math.min(GRADE_MAX_PLAUSIBLE, Math.tan((pitchDeg * Math.PI) / 180) * 100);
+      if (Math.abs(med) >= GRADE_FLAT) _pitch.lastSign = med >= 0 ? 1 : -1; // DEMが坂を見たら符号を更新・保持
+      const sign = Math.abs(med) >= GRADE_FLAT ? (med >= 0 ? 1 : -1) : _pitch.lastSign; // DEM平坦時は直近符号
+      eff = sign * (PITCH_BLEND * mDev + (1 - PITCH_BLEND) * Math.abs(med)); // 端末主(PITCH_BLEND)・DEM従
+    }
+  }
+  // ヒステリシス（融合後の eff に対して。ちらつき防止）
+  if (m.flat) {
+    if (Math.abs(eff) > GRADE_SLOPE_ON) m.flat = false;
+  } else if (Math.abs(eff) < GRADE_FLAT) {
     m.flat = true;
   }
   const flat = m.flat;
-  const col = flat ? "#9aa0a6" : med > 0 ? "#EF9F27" : "#378ADD"; // 平坦灰/上り琥珀/下り青
-  const labelCol = flat ? "#cdd3da" : med > 0 ? "#FAC775" : "#85B7EB";
-  const ang = flat ? 0 : Math.max(-34, Math.min(34, med * 2.2)); // 視認性のため誇張（数値は実値）
+  const col = flat ? "#9aa0a6" : eff > 0 ? "#EF9F27" : "#378ADD"; // 平坦灰/上り琥珀/下り青
+  const labelCol = flat ? "#cdd3da" : eff > 0 ? "#FAC775" : "#85B7EB";
+  const ang = flat ? 0 : Math.max(-34, Math.min(34, eff * 2.2)); // 視認性のため誇張（数値は実値）
   m.tilt.setAttribute("transform", `rotate(${(-ang).toFixed(1)} 85 56)`);
   m.road.setAttribute("stroke", col);
-  const g = Math.abs(Math.round(med));
-  m.label.textContent = flat ? "0%" : med > 0 ? `↗ ${g}%` : `↘ ${g}%`;
+  const g = Math.abs(Math.round(eff));
+  m.label.textContent = flat ? "0%" : eff > 0 ? `↗ ${g}%` : `↘ ${g}%`;
   m.label.setAttribute("fill", labelCol);
   if (warn) {
     m.warn.style.display = "";
@@ -2211,8 +2231,9 @@ function RamenMapbox(props: Props) {
     let prevPos: Pt | null = null;
     let reqId = 0;
     let lastGrade: number | null = null;
-    let prevSpeed: number | null = null; // ジャイロveto: 加減速(速度微分)算出用
+    let prevSpeed: number | null = null; // ジャイロ融合: 加減速(速度微分)算出用
     let lastFixT = 0;
+    let prevHdg: number | null = null; // ジャイロ融合: 進行方位の変化率(旋回検出)算出用
 
     const box = document.createElement("div");
     box.className = "grade-box";
@@ -2237,6 +2258,11 @@ function RamenMapbox(props: Props) {
           return box.querySelector(".gm-label")?.textContent;
         },
         label: () => box.querySelector(".gm-label")?.textContent,
+        // ジャイロ融合の数式検証用: _pitch を直接セットして feed(DEM%) の融合結果を確認できる
+        setPitch: (o: Partial<typeof _pitch>) => {
+          Object.assign(_pitch, o);
+          return { ..._pitch };
+        },
         ahead: () => aheadGradeRef.current, // 経路effectが先読みした「この先急勾配」の中身
         feedWarn: (w: { grade: number; distM: number } | null) => {
           updateGradeMeter(box, lastGrade ?? 1, w); // 予告描画の確認用
@@ -2248,7 +2274,7 @@ function RamenMapbox(props: Props) {
 
     const onPos = (p: GeolocationPosition) => {
       const here: Pt = { lat: p.coords.latitude, lng: p.coords.longitude };
-      // Phase2 ジャイロveto: トグル状態を反映し、定速巡航＆DEM平坦時のみ基準姿勢g0を学習（坂では学習しない）
+      // ジャイロ融合: トグル状態を反映。基準姿勢g0は「平坦・直進・定速巡航」時のみ学習（坂/旋回/加減速では学習しない）
       _pitch.enabled = propsRef.current.gyroGrade;
       const sp = p.coords.speed;
       const dtFix = lastFixT > 0 ? (p.timestamp - lastFixT) / 1000 : 0;
@@ -2256,7 +2282,13 @@ function RamenMapbox(props: Props) {
       if (sp != null && sp >= 0) {
         if (prevSpeed != null && dtFix > 0.05) _pitch.accel = (sp - prevSpeed) / dtFix;
         prevSpeed = sp;
-        if (sp > 3 && Math.abs(_pitch.accel) < PITCH_ACC_GATE && _pitch.demFlat && _pitch.g) {
+        if (
+          sp > 3 &&
+          Math.abs(_pitch.accel) < PITCH_ACC_GATE &&
+          _pitch.headingRate < PITCH_TURN_GATE &&
+          _pitch.demFlat &&
+          _pitch.g
+        ) {
           if (!_pitch.g0) _pitch.g0 = [..._pitch.g];
           else _pitch.g0 = _pitch.g0.map((v, i) => v + G0_GAIN * (_pitch.g![i] - v));
         }
@@ -2272,6 +2304,14 @@ function RamenMapbox(props: Props) {
       else if (haversineKm(prevPos, here) >= 0.02) {
         if (!useSnap && !gpsOk) lastHeading = bearingDeg(prevPos, here);
         prevPos = here;
+      }
+      // 進行方位の変化率(°/s)＝旋回検出。融合とg0学習で「直進中だけ傾きを信用」するために使う。
+      if (lastHeading != null) {
+        if (prevHdg != null && dtFix > 0.05) {
+          const dHdg = Math.abs(((lastHeading - prevHdg + 540) % 360) - 180); // 最短角差
+          _pitch.headingRate = dHdg / dtFix;
+        }
+        prevHdg = lastHeading;
       }
       render(lastGrade);
       if (lastHeading == null) return; // 方位不明(未発進)は「—」表示のみ
