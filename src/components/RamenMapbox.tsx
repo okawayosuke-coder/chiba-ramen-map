@@ -1332,9 +1332,13 @@ function RamenMapbox(props: Props) {
     const hwToggle = document.createElement("button");
     hwToggle.type = "button";
     hwToggle.className = "hw-toggle"; // 右・中央下（Leaflet版と同じ位置）
+    // Leaflet版と同じ二段表示（ラベル＋色付き値ピル）。textContentだと__t/__vのフォント指定が
+    // 当たらず極小になる（=今回のフォント不具合の原因）。modifierクラスで枠/ピル色も切替。
     const label = () => {
       const o = propsRef.current.hwOverride;
-      hwToggle.textContent = o === "on" ? "🛣 高速:ON" : o === "off" ? "🛣 高速:OFF" : "🛣 高速:自動";
+      const v = o === "on" ? "高速" : o === "off" ? "一般道" : "自動";
+      hwToggle.className = `hw-toggle hw-toggle--${o}`;
+      hwToggle.innerHTML = `<span class="hw-toggle__t">🛣 HW切替</span><span class="hw-toggle__v">${v}</span>`;
     };
     label();
     hwToggle.onclick = () => propsRef.current.onCycleHwOverride();
