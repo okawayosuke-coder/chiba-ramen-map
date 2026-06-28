@@ -353,6 +353,29 @@ function ensureGradeMeter(box: HTMLElement): GradeMeter {
 
 /** 勾配メーター更新。Phase1の中央値フィルタ＋ヒステリシスで平坦路の偽勾配・ちらつきを抑制。
  *  （Phase2のジャイロvetoは既定OFF・横向き要再設計のためMapbox版では未移植）。 */
+// Phase2(v2) ジャイロveto（Leaflet版移植・既定OFF=「ジャイロで平坦補正」トグル）。設置向き非依存で
+// 端末の傾き(重力ベクトル)を見て、平坦姿勢のままDEMが坂と言う＝平坦路の偽勾配を平坦へveto（値は変えず表示のみ）。
+const PITCH_FLAT_DEG = 1.5; // g0からの姿勢差がこれ未満なら「水平」(°)
+const PITCH_ACC_GATE = 0.6; // |GPS速度微分|がこれ未満の時だけ傾きを信用(m/s^2)
+const G0_GAIN = 0.05; // 平坦基準g0学習の低域通過ゲイン
+const GRAV_LP = 0.9; // 重力ベクトル抽出の低域通過係数
+// grade effect が書き込み(onMotion=g / onPos=accel,g0,enabled)、updateGradeMeter が demFlat 書込み＆veto読取り。
+const _pitch = {
+  g: null as number[] | null, // 低域通過した重力ベクトル(端末frame)
+  g0: null as number[] | null, // 平坦走行時に学習した基準姿勢
+  accel: 0, // GPS速度の微分(m/s^2)
+  demFlat: true, // 直近のDEM勾配が平坦か(g0学習ゲート)
+  enabled: false, // 設定トグル（既定OFF）
+};
+/** 2つの重力ベクトルのなす角(度)。設置向き非依存で端末姿勢変化＝路面pitchを測る。 */
+function gravAngleDeg(a: number[], b: number[]): number {
+  const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const ma = Math.hypot(a[0], a[1], a[2]);
+  const mb = Math.hypot(b[0], b[1], b[2]);
+  if (ma === 0 || mb === 0) return 0;
+  return (Math.acos(Math.max(-1, Math.min(1, dot / (ma * mb)))) * 180) / Math.PI;
+}
+
 function updateGradeMeter(
   box: HTMLElement,
   grade: number | null,
@@ -376,6 +399,20 @@ function updateGradeMeter(
   if (m.flat) {
     if (Math.abs(med) > GRADE_SLOPE_ON) m.flat = false;
   } else if (Math.abs(med) < GRADE_FLAT) {
+    m.flat = true;
+  }
+  // 直近のDEM勾配が平坦か＝grade effectのg0(基準姿勢)学習ゲートへ渡す（坂で学習しないため）
+  _pitch.demFlat = Math.abs(med) < GRADE_FLAT;
+  // Phase2 ジャイロveto: トグルON＆基準学習済＆加減速小＆端末姿勢が平坦基準に近いのにDEMが坂
+  // ＝平坦路の偽勾配とみなして平坦表示へ。OFF/未学習/加減速中はDEMのまま（安全劣化）。
+  if (
+    _pitch.enabled &&
+    !m.flat &&
+    _pitch.g != null &&
+    _pitch.g0 != null &&
+    Math.abs(_pitch.accel) < PITCH_ACC_GATE &&
+    gravAngleDeg(_pitch.g, _pitch.g0) < PITCH_FLAT_DEG
+  ) {
     m.flat = true;
   }
   const flat = m.flat;
@@ -2018,6 +2055,8 @@ function RamenMapbox(props: Props) {
     let prevPos: Pt | null = null;
     let reqId = 0;
     let lastGrade: number | null = null;
+    let prevSpeed: number | null = null; // ジャイロveto: 加減速(速度微分)算出用
+    let lastFixT = 0;
 
     const box = document.createElement("div");
     box.className = "grade-box";
@@ -2053,6 +2092,19 @@ function RamenMapbox(props: Props) {
 
     const onPos = (p: GeolocationPosition) => {
       const here: Pt = { lat: p.coords.latitude, lng: p.coords.longitude };
+      // Phase2 ジャイロveto: トグル状態を反映し、定速巡航＆DEM平坦時のみ基準姿勢g0を学習（坂では学習しない）
+      _pitch.enabled = propsRef.current.gyroGrade;
+      const sp = p.coords.speed;
+      const dtFix = lastFixT > 0 ? (p.timestamp - lastFixT) / 1000 : 0;
+      lastFixT = p.timestamp;
+      if (sp != null && sp >= 0) {
+        if (prevSpeed != null && dtFix > 0.05) _pitch.accel = (sp - prevSpeed) / dtFix;
+        prevSpeed = sp;
+        if (sp > 3 && Math.abs(_pitch.accel) < PITCH_ACC_GATE && _pitch.demFlat && _pitch.g) {
+          if (!_pitch.g0) _pitch.g0 = [..._pitch.g];
+          else _pitch.g0 = _pitch.g0.map((v, i) => v + G0_GAIN * (_pitch.g![i] - v));
+        }
+      }
       // 向き: 経路スナップ中は道路方位、なければGPS進行方位、それも無ければ移動方向
       const snap = routeSnapRef.current;
       const useSnap = !!snap && Date.now() - snap.at < 3000;
@@ -2093,9 +2145,20 @@ function RamenMapbox(props: Props) {
         timeout: 15000,
       });
     }
+    // Phase2 ジャイロveto用: 端末の重力ベクトルを低域通過で抽出（設置向き非依存のpitch検出）。
+    // 許可はApp.tsxの requestOrientationPermission が DeviceMotion も同時要求済み。
+    const onMotion = (e: DeviceMotionEvent) => {
+      const a = e.accelerationIncludingGravity;
+      if (!a || a.x == null || a.y == null || a.z == null) return;
+      const s = [a.x, a.y, a.z];
+      if (!_pitch.g) _pitch.g = s;
+      else _pitch.g = _pitch.g.map((v, i) => v * GRAV_LP + s[i] * (1 - GRAV_LP));
+    };
+    window.addEventListener("devicemotion", onMotion);
     return () => {
       aborted = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      window.removeEventListener("devicemotion", onMotion);
       box.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
