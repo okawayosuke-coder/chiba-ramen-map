@@ -768,6 +768,7 @@ export default function App() {
               bigLabels,
               gyroGrade,
               headingUp,
+              theme: theme.resolved, // 夜間/ライト: Mapboxは地図スタイルをdark/lightに切替（Leafletはタイルにフィルタ）
               hwOverride,
               onCycleHwOverride: cycleHwOverride,
               dest,

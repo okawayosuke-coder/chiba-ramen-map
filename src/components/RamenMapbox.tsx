@@ -31,6 +31,7 @@ interface Props {
   bigLabels: boolean;
   gyroGrade: boolean;
   headingUp?: boolean; // 走行中の地図の向き: true=ヘディングアップ / false=ノースアップ(既定)
+  theme?: string; // "dark" | "light"。夜間は地図スタイルをdarkへ切替（Leaflet版はタイルにCSSフィルタ）
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -44,7 +45,9 @@ interface Props {
   distanceTo: (s: Shop) => number | null;
 }
 
-const STYLE_URL = "mapbox://styles/mapbox/streets-v12";
+const STYLE_LIGHT = "mapbox://styles/mapbox/streets-v12";
+const STYLE_DARK = "mapbox://styles/mapbox/dark-v11"; // 夜間用。streets-v12と同じMapbox Streetsソース＝日本語化(name_ja)も同様に効く
+const styleFor = (t?: string): string => (t === "dark" ? STYLE_DARK : STYLE_LIGHT);
 const MB_VIEW_KEY = "crm_mapview_mb"; // Mapbox 用（bearing/pitch も保存）
 const LEAFLET_VIEW_KEY = "crm_mapview"; // 互換: Leaflet 版の保存位置を初期復元に流用
 
@@ -511,6 +514,7 @@ function RamenMapbox(props: Props) {
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
   const hwToggleLabelRef = useRef<(() => void) | null>(null); // 高速トグルのラベル更新（follow基準effectが設定）
+  const styleRef = useRef<string>(""); // 現在適用中の地図スタイルURL（テーマ切替の重複setStyle防止）
   const hwActiveRef = useRef(false); // 現在「高速道路扱い」か（経路effectが書き、勾配effectが勾配抑制に読む）
   // この先の急勾配予告: 経路effectが前方GRADE_LOOKマークの標高から最急(≥GRADE_STEEP%)を書き、勾配effectが表示に読む
   const aheadGradeRef = useRef<{ grade: number; distM: number } | null>(null);
@@ -545,9 +549,10 @@ function RamenMapbox(props: Props) {
     }
     mapboxgl.accessToken = token;
     const v = getInitialView();
+    styleRef.current = styleFor(propsRef.current.theme); // 初期スタイル（夜間ならdark）
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: STYLE_URL,
+      style: styleRef.current,
       center: [v.lng, v.lat],
       zoom: v.zoom,
       bearing: v.bearing,
@@ -570,12 +575,15 @@ function RamenMapbox(props: Props) {
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(containerRef.current);
 
+    let wired = false; // クリック等のインタラクションは1度だけ束縛（テーマ切替のsetStyle再読込で二重登録しない）
     map.on("style.load", () => {
       // style.load は full 'load' より早く確実に発火する（ヘッドレス検証でも動く・実機でも堅牢）。
-      // 再 setStyle 時の二重登録を防ぐため source 有無で初期化をガード。
-      if (!map.getSource("shops")) {
-        setupLayers(map);
+      // テーマ切替の setStyle でも再発火する。source/layer は消えるので毎回再構築、
+      // インタラクション(map.on click)は layer IDで束縛され setStyle を跨いで残るので1度だけ。
+      if (!map.getSource("shops")) setupLayers(map);
+      if (!wired) {
         wireInteractions(map);
+        wired = true;
       }
       applyLabels(map);
       readyRef.current = true;
@@ -644,6 +652,22 @@ function RamenMapbox(props: Props) {
     for (const id of Object.keys(labelOrigRef.current)) scaleLabel(map, id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.bigLabels]);
+
+  // 夜間/ライト切替: 地図スタイルを dark/light に差し替え（Leaflet版はタイルにCSSフィルタ、Mapboxはstyle切替）。
+  // setStyleでsource/layerは消えるため、mapReadyを一旦falseにして全レイヤー追加effectを再実行させ再構築する。
+  // 既存の map.on('style.load')(init) が setupLayers+applyLabels+setMapReady(true) を再実行する。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    const want = styleFor(props.theme);
+    if (want === styleRef.current) return; // 変化なし
+    styleRef.current = want;
+    labelOrigRef.current = {}; // 新スタイルのラベル原値を取り直す（bigLabels基準）
+    readyRef.current = false;
+    setMapReady(false); // 全mapReady-effect(route/track/POI/follow/grade/標高プローブ等)を解除→style.loadで再構築
+    map.setStyle(want);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.theme]);
 
   // 地点標高プローブ（Leaflet ElevationProbe 移植）: 地図をタップ/ホバーした地点の標高を
   // 5秒間表示（タッチはmouseoutが無いので自動消去）。ボタン/情報ボックス上は不感エリア。常時有効。

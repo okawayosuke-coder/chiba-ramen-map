@@ -2393,6 +2393,8 @@ interface Props {
   gyroGrade: boolean;
   /** Mapbox版のみ使用（地図の向き）。Leaflet版は北固定のため無視。 */
   headingUp?: boolean;
+  /** Mapbox版のみ使用（dark/lightスタイル切替）。Leaflet版はCSSフィルタで暗転のため無視。 */
+  theme?: string;
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
