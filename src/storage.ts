@@ -18,6 +18,7 @@ const K = {
   traffic: "crm_traffic", // リアルタイム渋滞表示（mapbox-traffic-v1）の表示ON/OFF（既定OFF）
   threeD: "crm_3d", // 3D表示（地形起伏＋3D建物＋俯瞰ピッチ）。任意機能・既定OFF
   home: "crm_home", // 自宅の位置（{lat,lng,name}）。端末内のみ保存（公開ソースに住所を載せない）
+  recentDests: "crm_recent_dests", // 最近設定した目的地（{lat,lng,name}[]・端末内のみ・最大6件）
 };
 
 export type HwOverride = "auto" | "on" | "off";
@@ -179,6 +180,39 @@ export function useHome(): [Dest | null, (d: Dest | null) => void] {
     write(K.home, d);
   }, []);
   return [home, setHome];
+}
+
+const MAX_RECENT = 6;
+const isDest = (d: unknown): d is Dest =>
+  !!d &&
+  typeof (d as Dest).lat === "number" &&
+  typeof (d as Dest).lng === "number" &&
+  typeof (d as Dest).name === "string";
+// 約10m以内（緯度経度4桁）かつ同名なら「同じ目的地」とみなして重複を除く
+const sameDest = (a: Dest, b: Dest): boolean =>
+  Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lng - b.lng) < 1e-4;
+
+/** 最近設定した目的地（緯度経度＋名称の配列）。端末内のみ保存。新しい順・最大6件・重複は前方へ集約。
+ *  店舗/POI/住所検索/地図長押しのいずれで設定しても push され、ワンタップで再設定できる。 */
+export function useRecentDests(): {
+  recents: Dest[];
+  push: (d: Dest) => void;
+  clear: () => void;
+} {
+  const [recents, setRecents] = useState<Dest[]>(() => {
+    const raw = read<unknown[]>(K.recentDests, []);
+    return (Array.isArray(raw) ? raw : []).filter(isDest).slice(0, MAX_RECENT);
+  });
+  // 永続化は useFavorites と同じく useEffect で（更新関数内では副作用を持たない）
+  useEffect(() => {
+    write(K.recentDests, recents);
+  }, [recents]);
+  const push = useCallback((d: Dest) => {
+    if (!isDest(d)) return;
+    setRecents((prev) => [d, ...prev.filter((p) => !sameDest(p, d))].slice(0, MAX_RECENT));
+  }, []);
+  const clear = useCallback(() => setRecents([]), []);
+  return { recents, push, clear };
 }
 
 export type PoiKindsUpdater = PoiKind[] | ((prev: PoiKind[]) => PoiKind[]);

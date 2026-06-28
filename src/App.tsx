@@ -43,8 +43,10 @@ import {
   useTraffic,
   useThreeD,
   useHome,
+  useRecentDests,
   useTheme,
 } from "./storage";
+import { geocodeAddress } from "./geocode";
 import { useGeolocation, useMovementDetector } from "./hooks";
 import { downloadTrackGPX, trackStats } from "./track";
 import {
@@ -156,6 +158,10 @@ export default function App() {
   const [traffic, setTraffic] = useTraffic();
   const [threeD, setThreeD] = useThreeD();
   const [home, setHome] = useHome(); // 自宅（端末内のみ保存）。🏠帰宅ボタンの目的地
+  const { recents, push: pushRecent, clear: clearRecents } = useRecentDests(); // 最近の目的地（端末内のみ）
+  // 検索ボックスの入力を住所として解決した候補（ラーメン店に限らず任意地点を目的地化）
+  const [addrSuggest, setAddrSuggest] = useState<{ lat: number; lng: number; title: string } | null>(null);
+  const addrReqRef = useRef(0); // 住所ジオコーディングの競合（古い応答）を捨てるための連番
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Dest | null>(null);
@@ -361,11 +367,47 @@ export default function App() {
     // "shared" / "cancelled" は通知不要
   }, []);
 
-  const onSetDest = useCallback((d: Dest) => {
-    setDest(d);
-    setSheetOpen(false);
-    setToast(`目的地に設定: ${d.name}（走行モードで残り距離を表示）`);
-  }, []);
+  const onSetDest = useCallback(
+    (d: Dest) => {
+      setDest(d);
+      pushRecent(d); // 店舗/POI/住所/地図長押し、どの入口でも履歴に残す
+      setSheetOpen(false);
+      setToast(`目的地に設定: ${d.name}（走行モードで残り距離を表示）`);
+    },
+    [pushRecent]
+  );
+
+  // 検索ボックスの入力を住所として順ジオコーディング（デバウンス）。解決できたら
+  // 検索結果の先頭に「📍 この住所へ案内」行を出す（自動では目的地化しない＝誤爆防止）。
+  // 店名検索（shops.json 照合）はこれと独立に従来どおり並行動作する。
+  useEffect(() => {
+    const q = filters.query.trim();
+    if (q.length < 2) {
+      setAddrSuggest(null);
+      return;
+    }
+    const id = ++addrReqRef.current;
+    const t = setTimeout(async () => {
+      const r = await geocodeAddress(q);
+      if (id !== addrReqRef.current) return; // 古い応答は捨てる
+      setAddrSuggest(r);
+    }, 450);
+    return () => clearTimeout(t);
+  }, [filters.query]);
+
+  // 住所サジェスト行をタップ → その地点を目的地に設定
+  const onSetDestFromAddr = useCallback(() => {
+    if (!addrSuggest) return;
+    onSetDest({ lat: addrSuggest.lat, lng: addrSuggest.lng, name: addrSuggest.title });
+  }, [addrSuggest, onSetDest]);
+
+  // この店が現在の目的地か（座標一致で判定）。最近の目的地チップ等で dest が
+  // 店オブジェクトと別参照になっても「🧭 ルート」ボタンを正しく点灯させる。
+  const isDestHere = useCallback(
+    (s: Shop) =>
+      !!dest && Math.abs(dest.lat - s.lat) < 1e-6 && Math.abs(dest.lng - s.lng) < 1e-6,
+    [dest]
+  );
 
   const onClearDest = useCallback(() => {
     setDest(null);
@@ -565,6 +607,31 @@ export default function App() {
             </div>
           )}
 
+          {recents.length > 0 && !filters.query && (
+            <div className="recent-row">
+              <span className="recent-row__lbl">🕘 最近の目的地</span>
+              <div className="chips-row">
+                {recents.map((r, i) => (
+                  <button
+                    key={`${r.lat},${r.lng},${i}`}
+                    className="chip chip--recent"
+                    onClick={() => onSetDest(r)}
+                    title={`「${r.name}」を目的地に設定`}
+                  >
+                    {r.name}
+                  </button>
+                ))}
+                <button
+                  className="chip chip--clear"
+                  onClick={clearRecents}
+                  title="最近の目的地の履歴を消去"
+                >
+                  消去
+                </button>
+              </div>
+            </div>
+          )}
+
           {filtersOpen && (
             <>
               <div className="field">
@@ -685,6 +752,22 @@ export default function App() {
         </div>
 
         <div className="list">
+          {addrSuggest && (
+            <button
+              className="addr-suggest"
+              onClick={onSetDestFromAddr}
+              title={`「${addrSuggest.title}」を目的地に設定`}
+            >
+              <span className="addr-suggest__ic" aria-hidden="true">
+                📍
+              </span>
+              <span className="addr-suggest__txt">
+                <span className="addr-suggest__t">この住所へ案内</span>
+                <span className="addr-suggest__a">{addrSuggest.title}</span>
+              </span>
+              <span className="addr-suggest__go">設定 →</span>
+            </button>
+          )}
           {view.map(({ s, km }) => (
             <div
               key={shopKey(s)}
@@ -725,7 +808,7 @@ export default function App() {
                   🚗 Googleマップ
                 </button>
                 <button
-                  className={`act act--route${dest === s ? " on" : ""}`}
+                  className={`act act--route${isDestHere(s) ? " on" : ""}`}
                   onClick={() => onSetDest(s)}
                   title="アプリ内で道なりルートを表示"
                 >

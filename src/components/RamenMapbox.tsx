@@ -665,6 +665,9 @@ function RamenMapbox(props: Props) {
   const propsRef = useRef(props);
   propsRef.current = props;
 
+  // 地図長押しが発火した直後の click（指離し）を、標高プローブが拾わないよう1回だけ抑制するフラグ
+  const suppressClickRef = useRef(false);
+
   // ---- 初期化（マウント時に一度だけ） ----
   useEffect(() => {
     const token = resolveToken();
@@ -947,6 +950,11 @@ function RamenMapbox(props: Props) {
     };
     const show = (e: mapboxgl.MapMouseEvent) => {
       if (dragging) return;
+      // 長押しで目的地候補を出した直後の click は標高を出さない（1回だけ消費）
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
       const px = e.point.x;
       const py = e.point.y;
       if (overUI(px, py)) {
@@ -993,6 +1001,164 @@ function RamenMapbox(props: Props) {
       window.clearTimeout(timer);
       window.clearTimeout(hideTimer);
       box.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady]);
+
+  // 地図長押し → 任意地点を目的地に（Google/Apple Maps 流）。
+  // 約600ms静止押下で仮ピン📍＋逆ジオの住所＋「ここへ案内」確認ポップアップを出す。
+  // 単タップ（標高表示）・パン・ピンチズーム/回転とは独立（移動やマルチタッチで不成立）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const HOLD_MS = 600;
+    const MOVE_TOL = 12; // px。押下後これ以上動いたら長押し不成立（パン扱い）
+    let timer = 0;
+    let backstop = 0;
+    let startPt: { x: number; y: number } | null = null;
+    let startLngLat: mapboxgl.LngLat | null = null;
+    let candMarker: mapboxgl.Marker | null = null;
+    let candPopup: mapboxgl.Popup | null = null;
+    let candAddrTimer = 0; // 逆ジオの応答待ちタイムアウト
+
+    const clearTimer = () => {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = 0;
+      }
+    };
+    const removeCandidate = () => {
+      if (candAddrTimer) {
+        window.clearTimeout(candAddrTimer);
+        candAddrTimer = 0;
+      }
+      candPopup?.remove();
+      candPopup = null;
+      candMarker?.remove();
+      candMarker = null;
+    };
+
+    const showCandidate = (lat: number, lng: number) => {
+      removeCandidate();
+      const pinEl = document.createElement("div");
+      pinEl.className = "cand-pin";
+      pinEl.textContent = "📍";
+      candMarker = new mapboxgl.Marker({ element: pinEl, anchor: "bottom" })
+        .setLngLat([lng, lat])
+        .addTo(map);
+
+      const el = document.createElement("div");
+      el.className = "popup popup--cand";
+      el.innerHTML = `
+        <div class="name">この地点を目的地に</div>
+        <div class="cand-addr">住所を取得中…</div>
+        <div class="popup__actions">
+          <button class="act act--route" type="button">🧭 ここへ案内</button>
+          <button class="act act--cancel" type="button">取消</button>
+        </div>`;
+      const addrEl = el.querySelector(".cand-addr") as HTMLElement | null;
+      const goBtn = el.querySelector(".act--route") as HTMLButtonElement | null;
+      const cancelBtn = el.querySelector(".act--cancel") as HTMLButtonElement | null;
+      let destName = "地図で選択した地点";
+      let addrResolved = false;
+      // 逆ジオが遅い/落ちた時に「住所を取得中…」のままハングさせない（7秒で打ち切り）。
+      // destName はフォールバックの「地図で選択した地点」のままなので「ここへ案内」は使える。
+      candAddrTimer = window.setTimeout(() => {
+        candAddrTimer = 0;
+        if (!addrResolved && addrEl) addrEl.textContent = "（住所不明）";
+      }, 7000);
+      reverseAddressNoBanchi(lat, lng).then((a) => {
+        addrResolved = true;
+        if (candAddrTimer) {
+          window.clearTimeout(candAddrTimer);
+          candAddrTimer = 0;
+        }
+        if (a) {
+          destName = a;
+          if (addrEl) addrEl.textContent = a;
+        } else if (addrEl) {
+          addrEl.textContent = "（住所不明）";
+        }
+      });
+      if (goBtn)
+        goBtn.onclick = () => {
+          propsRef.current.onSetDest({ lat, lng, name: destName });
+          removeCandidate();
+        };
+      if (cancelBtn) cancelBtn.onclick = () => removeCandidate();
+      // closeOnClick:false ＝ 地図タップでは消えない（Google/Apple Maps 流に「ここへ案内 / 取消 / ✕」で明示的に閉じる）。
+      candPopup = new mapboxgl.Popup({ offset: 28, maxWidth: "260px", closeOnClick: false })
+        .setLngLat([lng, lat])
+        .setDOMContent(el)
+        .addTo(map);
+      // ✕ や 取消 でポップアップを閉じたら仮ピンも消す
+      candPopup.on("close", () => {
+        candMarker?.remove();
+        candMarker = null;
+      });
+    };
+
+    const fire = () => {
+      timer = 0;
+      if (!startLngLat) return;
+      const { lat, lng } = startLngLat;
+      // 指離しで飛んでくる click を標高プローブに拾わせない
+      suppressClickRef.current = true;
+      window.clearTimeout(backstop);
+      backstop = window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 1500);
+      showCandidate(lat, lng);
+    };
+
+    const onDown = (e: mapboxgl.MapMouseEvent | mapboxgl.MapTouchEvent) => {
+      const oe = e.originalEvent as TouchEvent | MouseEvent;
+      // マルチタッチ（ピンチズーム/回転）は対象外
+      if (oe && "touches" in oe && oe.touches && oe.touches.length > 1) {
+        clearTimer();
+        return;
+      }
+      startPt = { x: e.point.x, y: e.point.y };
+      startLngLat = e.lngLat;
+      clearTimer();
+      timer = window.setTimeout(fire, HOLD_MS);
+    };
+    const onMove = (e: mapboxgl.MapMouseEvent | mapboxgl.MapTouchEvent) => {
+      if (!timer || !startPt) return;
+      if (
+        Math.abs(e.point.x - startPt.x) > MOVE_TOL ||
+        Math.abs(e.point.y - startPt.y) > MOVE_TOL
+      )
+        clearTimer();
+    };
+
+    map.on("mousedown", onDown);
+    map.on("touchstart", onDown);
+    map.on("mousemove", onMove);
+    map.on("touchmove", onMove);
+    map.on("mouseup", clearTimer);
+    map.on("touchend", clearTimer);
+    map.on("touchcancel", clearTimer);
+    map.on("dragstart", clearTimer);
+    map.on("zoomstart", clearTimer);
+    map.on("rotatestart", clearTimer);
+    map.on("pitchstart", clearTimer);
+
+    return () => {
+      clearTimer();
+      window.clearTimeout(backstop);
+      removeCandidate();
+      map.off("mousedown", onDown);
+      map.off("touchstart", onDown);
+      map.off("mousemove", onMove);
+      map.off("touchmove", onMove);
+      map.off("mouseup", clearTimer);
+      map.off("touchend", clearTimer);
+      map.off("touchcancel", clearTimer);
+      map.off("dragstart", clearTimer);
+      map.off("zoomstart", clearTimer);
+      map.off("rotatestart", clearTimer);
+      map.off("pitchstart", clearTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady]);
@@ -1411,6 +1577,27 @@ function RamenMapbox(props: Props) {
     const destMarker = new mapboxgl.Marker({ element: destEl, anchor: "bottom" })
       .setLngLat([to.lng, to.lat])
       .addTo(map);
+
+    // 新しい目的地が画面外なら見えるようにカメラを寄せる（走行追従中は動かさない）。
+    // 店舗ルートは focus 効果が、地図長押しは押した地点が、既に画面内なので実質ノーオペ。
+    // 主に住所検索・最近の目的地で遠方を設定したときに効く。
+    if (!propsRef.current.follow) {
+      const b = map.getBounds();
+      if (b && !b.contains([to.lng, to.lat])) {
+        const up = propsRef.current.userPos;
+        if (up && haversineKm(up, to) < 60) {
+          map.fitBounds(
+            [
+              [Math.min(up.lng, to.lng), Math.min(up.lat, to.lat)],
+              [Math.max(up.lng, to.lng), Math.max(up.lat, to.lat)],
+            ],
+            { padding: 80, maxZoom: 15, duration: 800 }
+          );
+        } else {
+          map.flyTo({ center: [to.lng, to.lat], zoom: 13, duration: 800 });
+        }
+      }
+    }
 
     // 経路線（GeoJSON。店舗ピン/クラスタの下に置く）
     const lineData = (coords: [number, number][]): GeoJSON.Feature<GeoJSON.LineString> => ({

@@ -1695,3 +1695,106 @@ body {
   font-weight: 700;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
 }
+
+/* ===== 地図長押しで立てる「目的地候補」ピン＋確認ポップアップ ===== */
+.cand-pin {
+  font-size: 30px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+  animation: candDrop 0.25s ease;
+}
+@keyframes candDrop {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.popup--cand .cand-addr {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+.act--cancel {
+  color: var(--muted);
+}
+
+/* ===== 検索結果の先頭に出す「住所→目的地」サジェスト行 ===== */
+.addr-suggest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  margin: 0;
+  padding: 12px 16px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: #eef6ff;
+  color: var(--text);
+  cursor: pointer;
+}
+[data-theme="dark"] .addr-suggest {
+  background: #15314f;
+}
+.addr-suggest__ic {
+  font-size: 20px;
+  flex: 0 0 auto;
+}
+.addr-suggest__txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.addr-suggest__t {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1c7ed6;
+}
+.addr-suggest__a {
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.addr-suggest__go {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1c7ed6;
+}
+/* ダーク背景(#15314f)では #1c7ed6 がコントラスト不足のため明るい青に */
+[data-theme="dark"] .addr-suggest__t,
+[data-theme="dark"] .addr-suggest__go {
+  color: #7fb3f0;
+}
+
+/* ===== 最近の目的地（チップ） ===== */
+.recent-row {
+  margin: 8px 16px 0;
+}
+.recent-row__lbl {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.chip--recent {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  min-height: 38px;
+  padding: 8px 13px;
+}
+.chip--clear {
+  color: var(--muted);
+}
