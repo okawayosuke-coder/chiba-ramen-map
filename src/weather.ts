@@ -53,14 +53,16 @@ export function wmo(code: number): { emoji: string; label: string } {
 const cache = new Map<string, Weather>();
 const TTL = 30 * 60 * 1000; // 30分キャッシュ（過剰取得を抑制）
 
-/** 指定地点の天気(現在＋7日)。約1km丸めでキャッシュ共有。取得不可は null。 */
+/** 指定地点の天気(現在＋7日)。約1km丸めでキャッシュ共有。取得不可は null。
+ *  force=true でキャッシュを無視して再取得（定期自動更新で最新化＋更新時刻を進めるため）。 */
 export async function fetchWeather(
   lat: number,
-  lng: number
+  lng: number,
+  force = false
 ): Promise<Weather | null> {
   const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
   const c = cache.get(key);
-  if (c && Date.now() - c.fetchedAt < TTL) return c;
+  if (!force && c && Date.now() - c.fetchedAt < TTL) return c;
   try {
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +

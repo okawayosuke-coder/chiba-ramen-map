@@ -1034,6 +1034,35 @@ function RamenMapbox(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, wxPosKey]);
 
+  // 天気・渋滞の更新時刻を停車中でも随時更新するための定期自動更新。
+  // 渋滞: Mapboxは期限切れタイルを自動再取得(refreshExpiredTiles)するが、時刻を確実に進めるため
+  //       5分ごとに source.reload()（渋滞ON時のみ）。sourcedataハンドラが取得時刻を更新する。
+  // 天気: 移動が無いと再取得が起きないため、20分ごとに force 再取得してバーを再描画。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const trafficTimer = window.setInterval(() => {
+      if (!propsRef.current.traffic) return;
+      try {
+        (map.getSource("traffic") as { reload?: () => void } | undefined)?.reload?.();
+      } catch {
+        /* 無視 */
+      }
+    }, 5 * 60 * 1000);
+    const wxTimer = window.setInterval(() => {
+      const loc = propsRef.current.userPos ?? { lat: map.getCenter().lat, lng: map.getCenter().lng };
+      fetchWeather(loc.lat, loc.lng, true).then((wx) => {
+        if (!weatherBoxRef.current || !wx) return;
+        weatherBoxRef.current.innerHTML = weatherBarHTML(wx);
+        paintTrafficTime();
+      });
+    }, 20 * 60 * 1000);
+    return () => {
+      window.clearInterval(trafficTimer);
+      window.clearInterval(wxTimer);
+    };
+  }, [mapReady]);
+
   // 走行軌跡（Phase3）: 記録した走行点を速度別色の方向矢印で表示。
   // symbol＋icon-rotation-alignment:map で地図回転に追従、icon-allow-overlap:false で重なりを自動間引き（Leafletの20px間隔相当）。
   useEffect(() => {
