@@ -2518,21 +2518,28 @@ function RamenMapbox(props: Props) {
           type: "line",
           source: "traffic",
           "source-layer": "traffic",
+          // Standard では基図のsymbol層が非公開で firstSymbol(before)が効かず層が隠れる。
+          // slot:"middle"=道路の上・ラベルの下に明示配置（classicスタイルではslotは無視されbeforeが効く）。
+          slot: "middle",
           layout: {
             "line-cap": "round",
             visibility: propsRef.current.traffic ? "visible" : "none",
           },
           filter: ["match", ["get", "congestion"], ["moderate", "heavy", "severe"], true, false],
           paint: {
-            "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 16, 5],
-            "line-offset": ["interpolate", ["linear"], ["zoom"], 10, 1, 16, 3],
+            "line-width": ["interpolate", ["linear"], ["zoom"], 10, 3, 13, 5, 16, 8],
+            "line-offset": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 16, 4],
+            "line-opacity": 0.95,
+            // Standardの夜間ライティングで自前レイヤーが暗く沈むのを防ぐ＝発光を最大にして明色のまま視認。
+            // classicスタイル(ライト)では照明モデルが無く無視される（無害）。
+            "line-emissive-strength": 1,
             "line-color": [
               "match",
               ["get", "congestion"],
-              "moderate", "#f0b400", // 黄: やや混雑
-              "heavy", "#e8590c", // 橙: 混雑
-              "severe", "#c0202d", // 赤: 渋滞
-              "#f0b400",
+              "moderate", "#ffd21a", // 明るい黄: やや混雑
+              "heavy", "#ff7a1a", // 明るい橙: 混雑
+              "severe", "#ff2d2d", // 明るい赤: 渋滞
+              "#ffd21a",
             ],
           },
         },
