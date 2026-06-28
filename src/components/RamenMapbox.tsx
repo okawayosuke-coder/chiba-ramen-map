@@ -900,7 +900,9 @@ function RamenMapbox(props: Props) {
             "icon-image": ["match", ["get", "ci"], 1, "trk1", 2, "trk2", 3, "trk3", 4, "trk4", "trk0"],
             "icon-rotate": ["get", "bearing"],
             "icon-rotation-alignment": "map",
-            "icon-allow-overlap": false,
+            // 走行軌跡は累積の履歴。重なりで間引かず全点を表示する（既走行の道を再走行しても矢印が残る・増える）。
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
             "icon-size": 1,
           },
         },
