@@ -34,7 +34,7 @@
 </style>
 <div class="wrap">
   <h1>🍜 千葉ラーメンMAP — 追加機能の提案</h1>
-  <p class="sub">現状（検索・あいまいエリア絞り込み・お気に入り・カーナビ起動・走行モード/速度/現在地住所/標高・走行軌跡・目的地&道なり残距離/到着予定時刻(リアルタイム)・走行済みルート自動消去・勾配メーター(軽バン)/この先急勾配予告・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ハイウェイモード〔前方SA/PA/IC/JCTストリップ・SA/PA設備アイコン/ブランド画像〕・地図表示(位置/縮尺)の記憶・ダーク/日の入り自動・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-27 / v0.3.13 時点）</p>
+  <p class="sub">現状（<b>Mapbox GL JS地図</b>・検索/あいまい/読み仮名・エリア絞り込み・お気に入り・<b>任意目的地〔店/POI＋住所検索＋地図長押し＋最近の目的地〕を集約した目的地パネル</b>・カーナビ起動・<b>Mapbox Directions(渋滞考慮)ルート</b>＋ORS/OSRMフォールバック・走行モード/速度(リング型)/現在地住所/標高・走行軌跡・道なり残距離/到着予定時刻(リアルタイム)・走行済みルート自動消去・勾配メーター(軽バン)/この先急勾配予告・ジャンル絞り込み・周辺POI〔コンビニ/GS＝端末内データ＋ブランドアイコン／駐車場/EV/トイレ＝ライブ〕・ハイウェイモード〔前方SA/PA/IC/JCTストリップ・SA/PA設備アイコン〕・<b>🏠帰宅</b>・<b>リアルタイム渋滞</b>・<b>3D(地形/建物)</b>・<b>天気バー</b>・地図表示(位置/縮尺)の記憶・<b>ダーク(Mapbox Standard night)/日の入り自動</b>・PWA）を踏まえた拡張案。<b>工数 <span class="badge S">S</span>=小 <span class="badge M">M</span>=中 <span class="badge L">L</span>=大</b> ／ <span class="badge done">✅ 実装済み</span>=導入済み（2026-06-29 / v0.8.1 時点）</p>
 
   <div class="top">
     <b>⭐ おすすめ優先（コスパ順）</b>
@@ -73,7 +73,7 @@
     <div class="card done"><h3>走行中表示の見やすさ調整 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>実走フィードバックを反映し、<b>ルート線を濃い青＋太く</b>（薄くて見辛いを解消）、<b>「残り◯km・◯時◯分着」を20pxに＋背景をコンパクト化</b>、<b>目的地名を18pxにして残り距離のすぐ下へ近接</b>。走行中にパッと読めるレイアウトに整理。<span class="note">v0.2.37〜0.2.40。</span></p></div>
   </div>
 
-  <h2>🆕 今日の進捗（2026-06-27 / v0.2.41〜v0.3.13）</h2>
+  <h2>📅 進捗（2026-06-27 / v0.2.41〜v0.3.13）</h2>
   <p class="sub">テーマは「勾配表示のメーター化」と「<b>ハイウェイモード（v0.3）の新設</b>」、そして<b>走行UIの読みやすさ調整</b>。勾配を傾斜計メーター（軽バン）に刷新し基準距離を80mへ最適化。前方の高速道路施設ストリップ＋SA/PA設備アイコン（ブランド画像）を新設して<b>v0.3系を開始</b>。さらに施設ストリップ/傾斜計の拡大・幅統一、地図表示(位置+縮尺)の記憶、HW切替ボタンの短縮、地図の文字拡大（テスト）、sim検証ツールの拡充、<b>スピードメーターのモダン刷新（リング型ゲージ）</b>、<b>傾斜メーターの常時表示の完全化（停車中も）</b>まで。</p>
   <div class="grid">
     <div class="card done"><h3>勾配を傾斜計メーター化（車が坂に乗って傾く） <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>文言（⬈上り◯%）を、<b>車が実際の坂に乗って傾くメーター</b>に刷新（4案のモックアップから選択）。<b>上り=琥珀／下り=青／平坦=水平で「0%」</b>、傾きはフィックス間をなめらかにアニメ。左下・<b>速度計のすぐ上</b>に配置。<span class="note">v0.2.41〜0.2.46。車は<b>軽バンの側面シルエット</b>（前=黄ヘッドライト／後=赤テールランプで前後を明示）。傾きは視認性のため誇張（±34°上限）、数値は実値。</span></p></div>
@@ -90,6 +90,33 @@
     <div class="card done"><h3>走行検証ツールの拡充（sim専用） <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>実機なしで走行を確認するため、<b>経路に沿って自走する経路追従ドライブ</b>（simは本来直進で道路カーブを無視するのを解消）＋<b>URLだけで指定区間を自動走行(autodrive)</b>＋任意目的地/速度設定を追加。いずれも <code>?sim=drive</code> 時のみで本番は不変。<span class="note">v0.3.3〜0.3.4。</span></p></div>
     <div class="card done"><h3>スピードメーターをモダンなリング型に刷新 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>従来の<b>針＋目盛りの円形ダイヤルを廃止</b>し、すっきりした<b>リング型ゲージ</b>に刷新。背景トラックリング＋<b>速度色の進捗アーク</b>（停車=灰／&lt;10赤／&lt;30黄／&lt;50緑／≥50青）＋現在速度を示す<b>先端ビーズ</b>＋中央の白い大きな数字。ボックスは<b>角丸16px＋内側ハイライト＋影</b>で上質に。<b>傾斜計も同じ縁取りに統一</b>（幅140pxは維持）。<span class="note">v0.3.12。目盛り数字も廃しミニマル化。色分けロジックと滑らかな補間は従来どおり。数字は白基調にして色は進捗アーク/ビーズが担当。</span></p></div>
     <div class="card done"><h3>傾斜メーターを停車中でも常時表示（高速以外） <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>「高速時以外は計測出来なくても常時表示」要望の積み残しを修正。従来は<b>方位不明（未発進）だと非表示</b>で、停車中や自宅で開いた直後に出なかった。<b>表示条件と計測条件を分離</b>し、<b>高速モードでない限り停車中・GPS取得前でも「—」で常時表示</b>（方位は前方勾配の計測にのみ使用）。<span class="note">v0.3.13。高速モード（HW切替=「高速」or 速度ベースの自動判定）時は従来どおり非表示＝ボタンが「高速」だと隠れる点に注意（ボタンに現在状態を表示）。</span></p></div>
+  </div>
+
+  <h2>📅 進捗（2026-06-27〜28 / v0.3.14〜v0.7.54）— 地図エンジンをMapbox GL JSへ全面移行</h2>
+  <p class="sub">最大のテーマは<b>地図エンジンをLeafletからMapbox GL JSへ全面移行</b>（既定化）。全機能をPhaseに分けて再移植し、移行後に<b>ルーティング刷新・🏠帰宅・ダーク刷新・リアルタイム渋滞・3D・天気/渋滞の更新時刻</b>を追加。旧Leaflet版は <code>?engine=leaflet</code> でレガシー残置。</p>
+  <div class="grid">
+    <div class="card done"><h3>地図エンジンをMapbox GL JSへ全面移行（既定化） <span class="badge L">L</span> <span class="badge done">✅</span></h3><p>軽量なLeafletから<b>ベクター地図のMapbox GL JS</b>へ全面移行し<b>既定エンジンに</b>（v0.7.12）。経路案内/走行追従/速度計/標高/勾配メーター/高速ストリップ/天気バー/走行軌跡/現在地住所/周辺POIを<b>Phaseに分けて再移植</b>。日本語ラベルは端末ローカル生成でCJKグリフのサーバDLゼロ＝高速・省通信。<span class="note">v0.7.10〜v0.7.45。旧Leaflet版は <code>?engine=leaflet</code> で残置（レガシー）。移行漏れ（標高プローブ/ダーク/追従ロバスト性等）は監査で順次是正。</span></p></div>
+    <div class="card done"><h3>Mapbox Directions(渋滞考慮)を主ルーティングに <span class="badge M">M</span> <span class="badge done">✅</span></h3><p>道なり経路を<b>Mapbox Directions の driving-traffic</b>主体に刷新＝<b>渋滞を考慮したETA</b>、進行方位(bearing)指定で<b>不要なUターンを抑止</b>。従来のOpenRouteService/OSRMは<b>フォールバック</b>に降格。<span class="note">v0.7.49。</span></p></div>
+    <div class="card done"><h3>🏠帰宅ボタン＋自宅登録 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>地図右に<b>🏠帰宅</b>ボタン。設定で<b>住所検索(国土地理院)／現在地</b>から自宅を登録し、ワンタップで自宅を目的地に。自宅は<b>端末内のみ保存</b>（<code>crm_home</code>・公開ソースに住所を載せない）。<span class="note">v0.7.50。</span></p></div>
+    <div class="card done"><h3>ダークをMapbox Standard nightへ刷新 <span class="badge M">M</span> <span class="badge done">✅</span></h3><p>旧dark-v11は<b>駅/地名/POIが出ず情報量が乏しかった</b>ため、<b>Mapbox Standard の night プリセット</b>へ刷新（駅/POI/道路名がフル表示の本格ダーク）。<b>夜間でも渋滞が見える</b>よう描画を調整。<span class="note">v0.7.51〜0.7.52。ライトは streets-v12。</span></p></div>
+    <div class="card done"><h3>リアルタイム渋滞表示 <span class="badge M">M</span> <span class="badge done">✅</span></h3><p><b>Mapbox Traffic</b>で道路を渋滞度に応じて色分け（黄→橙→赤）。設定でON/OFF。<span class="note">v0.7.45。</span></p></div>
+    <div class="card done"><h3>3D表示（地形起伏＋3D建物＋俯瞰） <span class="badge M">M</span> <span class="badge done">✅</span></h3><p>地形の起伏＋3D建物＋俯瞰ピッチの<b>3D表示</b>をトグルで追加（縮尺ボタンの下に「3D」）。既定は平面。<span class="note">v0.7.46・v0.7.48。</span></p></div>
+    <div class="card done"><h3>天気バーに更新時刻＋停車中も自動更新 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>天気バーに<b>天気・渋滞の「◯◯時点」</b>を表示。<b>停車中でも定期自動更新</b>（天気20分ごと／渋滞5分ごと）で、止まっていても情報が古びない。<span class="note">v0.7.53〜0.7.54。</span></p></div>
+    <div class="card done"><h3>あいまい検索＝漢字店名を読みで引ける <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>店名の約9割が漢字で「むさし」「ichiran」等の<b>読みで引けなかった</b>問題を解消。<b>kuromojiでカナ読みを付与</b>し、店名＋読み＋住所＋ジャンルを検索キーに。<span class="note">v0.7.0。過剰一致と関連度順も是正(v0.7.1)。</span></p></div>
+    <div class="card done"><h3>傾斜メーターのジャイロ補正を本格化 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>平坦路の偽勾配を端末の傾き(ジャイロ)で抑制。片方向veto→誤抑制で既定OFF→<b>横向き設置対応で作り直し</b>→<b>双方向融合＋横Gゲート＋スパイク抑制</b>と段階改良。<span class="note">v0.3.14〜v0.6.0・v0.7.38・v0.7.44・v0.7.47。設定でON/OFF（既定OFF）。</span></p></div>
+    <div class="card done"><h3>トンネル/GPSロス時の推測走行（DR） <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>トンネル等でGPSが切れても<b>直前の速度・方位で推測走行</b>し自車表示を継続。<span class="note">v0.4.0。Mapbox版へも移植(v0.7.28)。</span></p></div>
+  </div>
+
+  <h2>🆕 今日の進捗（2026-06-29 / v0.8.0〜v0.8.1）— 目的地を「どこでも」設定できるUIへ <span class="tag hot">大型</span></h2>
+  <p class="sub">今回の<b>大きな変更</b>。目的地を<b>ラーメン店/POIに限定せず任意地点</b>へ＝<b>住所検索・地図長押し・最近の目的地</b>の3入口を追加(v0.8.0)し、分散していた導線を<b>「目的地パネル」に集約</b>してUIを分かりやすく刷新(v0.8.1)。ルート/ETA/勾配/カーナビ起動/共有といった下流は<b>既存の目的地基盤（<code>Dest{緯度,経度,名称}</code>）をそのまま流用</b>＝深いアーキ変更なしで成立。</p>
+  <div class="grid">
+    <div class="card done"><h3>任意の目的地化（v0.8系開始） <span class="badge L">L</span> <span class="badge done">✅</span></h3><p>これまで目的地は<b>登録済みラーメン店/周辺POIのみ</b>だったのを、<b>{緯度経度＋名称}で表せる任意地点</b>に拡張。経路線・残距離/ETA・勾配メーター・カーナビ起動・共有は<b>店と全く同じ挙動</b>で任意地点に効く。新機能のため<b>minorバンプ＝v0.8.0で v0.8系を開始</b>。<span class="note">店リンク/お気に入りは従来どおり店舗専用、はしご(経由地)も店舗専用＝任意点は単一目的地で対応。</span></p></div>
+    <div class="card done"><h3>住所検索→目的地（検索結果に候補行） <span class="badge M">M</span> <span class="badge done">✅</span></h3><p>検索ボックスの入力を<b>住所として順ジオコーディング</b>（国土地理院・入力後デバウンス）。住所として解けたら<b>検索結果の先頭に「📍 この住所へ案内」行</b>を出し、タップで目的地化。<b>店名検索（一覧の絞り込み）とは独立に並行</b>＝住所でも店名でも同じ箱でOK。自動では目的地化しない（誤爆防止）。<span class="note">v0.8.0。遠方の住所は地図が自動でその地点へ移動。</span></p></div>
+    <div class="card done"><h3>地図長押し→目的地 <span class="badge M">M</span> <span class="badge done">✅</span></h3><p>地図を<b>約0.6秒長押し</b>すると、その地点に<b>📍仮ピン＋逆ジオの住所＋「🧭 ここへ案内／取消」確認ポップアップ</b>。Google/Apple Maps流で<b>誤タップに強い</b>。パン・ピンチズーム・単タップ（標高表示）とは独立。<b>初回だけ「長押しで目的地」ヒント</b>を表示。<span class="note">v0.8.0。ポップアップは地図タップでは消えず、明示操作（ここへ案内/取消/✕）で閉じる。逆ジオは7秒タイムアウト。</span></p></div>
+    <div class="card done"><h3>最近の目的地 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>設定した目的地を<b>端末内に最大6件保存</b>（座標が近い重複は集約）。パネルにチップで並び、<b>ワンタップで再設定</b>・消去も可。店/POI/住所/長押し、どの入口で設定しても残る。<span class="note">v0.8.0。端末内のみ（<code>crm_recent_dests</code>）。</span></p></div>
+    <div class="card done"><h3>🎯 目的地パネルに集約（UIを分かりやすく） <span class="badge M">M</span> <span class="badge done">✅</span></h3><p>分散していた導線（検索・長押し・最近・自宅・目的地チップ）を<b>1つのパネルに統合</b>し状態で表示を切替。<b>未設定</b>＝「🎯 目的地を設定」＋統合検索（🔍 店名・住所・場所）＋方法ボタン（📍地図を長押し／🏠自宅へ）＋🕘最近の目的地。<b>設定済み</b>＝<b>目的地カード</b>（店名・住所・直線距離/目安分・<b>🧭地図で見る／🚗Googleマップ／共有／✕解除</b>）。<span class="note">v0.8.1。設定済みは設定方法を隠してカードに集中。</span></p></div>
+    <div class="card done"><h3>遠方目的地の自動表示＋「地図で見る」 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>画面外の目的地を設定すると<b>自動で地図がその地点（＋現在地）を収める</b>ようカメラを移動。目的地カードの<b>🧭 地図で見る</b>でいつでも再表示。走行追従中はカメラを奪わない。<span class="note">v0.8.1。</span></p></div>
+    <div class="card done"><h3>品質：敵対的レビューで監査 <span class="badge S">S</span> <span class="badge done">✅</span></h3><p>各機能を<b>複数視点のコードレビュー＋敵対的検証</b>で点検し、確度の高い指摘のみ採用修正（ダーク時の文字コントラスト・長押しポップアップの自動クローズ防止・逆ジオのタイムアウト・解除時の状態リセット・座標一致でのルートボタン点灯等）。型チェック/ビルド/ブラウザ実機で全状態を確認。<span class="note">v0.8.0〜v0.8.1。</span></p></div>
   </div>
 
   <h2>✅ 最近実装した改善（v0.2.0〜0.2.7・提案リスト外を含む）</h2>
@@ -114,6 +141,7 @@
   <div class="grid">
     <div class="card done"><h3>駐車場/EV/トイレ POI <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>Overpassで <code>amenity=parking / charging_station / toilets</code> を表示。設定の「周辺POIの表示」で種類を選択（既定はコンビニ/GS）、🏪ボタンで一括ON/OFF。種類別ラウンドロビンで表示上限を配分。<span class="note">※「道の駅」は未対応（必要なら追加可）。</span></p></div>
     <div class="card done"><h3>目的地セット＆道なり残距離/ETA <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>店の🎯から目的地を設定すると、<b>道なり経路線＋残り距離(km)・到着予定時刻・目的地方向の矢印</b>を表示（旧・直線距離はv0.2.13で廃止）。走行済み区間は即消去、逸脱で再ルート。外部ナビに頼らず軽量。</p></div>
+    <div class="card done"><h3>任意地点を目的地に（店以外も） <span class="badge L">L</span> <span class="badge done">✅ 実装済み</span></h3><p>店/POIに限らず<b>住所検索・地図長押し・最近の目的地</b>から任意地点を目的地に設定可。導線は<b>「目的地パネル」に集約</b>（未設定＝検索＋方法ボタン、設定済み＝目的地カード）。経路/ETA/勾配/ナビ起動/共有は店と同じ挙動。<span class="note">v0.8.0〜v0.8.1。詳細は上の「今日の進捗」参照。</span></p></div>
     <div class="card done"><h3>勾配メーター＋この先急勾配予告 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>走行中、左下に<b>軽バンが坂に乗って傾く傾斜計メーター</b>で現在勾配を表示（上り琥珀／下り青／平坦0%）。前方に8%以上の坂があれば「⚠ この先 ↓◯%」を予告。国土地理院DEMで算出。<b>高速以外は計測不可でも常時表示</b>（取得失敗/海上/ノイズ時は「—」）、<b>高速走行中のみ非表示</b>。<span class="note">v0.3.11で「—」プレースホルダを追加→<b>v0.3.13で停車中・未発進でも出すよう完全に常時表示化</b>。高速モード時のみ非表示。詳細は「今日の進捗」参照。</span></p></div>
     <div class="card"><h3>ルート沿いの高評価店ハイライト <span class="badge M">M</span> <span class="tag">次の候補</span></h3><p>現在地→目的地の経路“近く”の店を強調。<span class="note">道なりルート(OpenRouteService)を実装済みなので、その経路ジオメトリのバッファ内の店を抽出すれば実現可能（OSMベースで規約クリア）。</span></p></div>
     <div class="card done"><h3>走行軌跡ログ <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>走行中 約50m毎にGPSトラックを記録（端末内・上限約1000km分＝2万点）。進行方向の三角＋速度別色で地図表示、設定で表示ON/OFF・GPX書き出し・消去。</p></div>
@@ -125,7 +153,7 @@
     <div class="card done"><h3>ジャンル絞り込み <span class="badge M">M</span> <span class="badge done">✅ 実装済み</span></h3><p>家系・二郎系・つけ麺・味噌 等。店名からの自動分類＋Web調査overrides（約150店）でチップ絞り込み。</p></div>
     <div class="card"><h3>「今営業中」フィルタ <span class="badge M">M</span> <span class="tag warn">データ制約</span></h3><p>OSMの営業時間がある店のみ判定。<span class="note">ラーメン店は欠損が多く部分的。あくまで“分かる範囲”表示。</span></p></div>
     <div class="card"><h3>総合スコア順 <span class="badge S">S</span></h3><p>評価×口コミ数のベイズ平均で“ハズレにくい順”。少件数の高評価に振り回されない並べ替え。</p></div>
-    <div class="card done"><h3>あいまい検索 <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>ひらがな/カタカナ/英字/全半角/大小の表記ゆれを吸収（例「らーめん」「ラーメン」「ramen」が同一ヒット）。ローマ字⇄かなも橋渡し、空白区切りで複数語AND。<span class="note">※漢字は読みデータが無いためローマ字照合外（「二郎」等はジャンル絞り込みで対応）。</span></p></div>
+    <div class="card done"><h3>あいまい検索（漢字も読みでヒット） <span class="badge S">S</span> <span class="badge done">✅ 実装済み</span></h3><p>ひらがな/カタカナ/英字/全半角/大小の表記ゆれを吸収（例「らーめん」「ラーメン」「ramen」が同一ヒット）。ローマ字⇄かなも橋渡し、空白区切りで複数語AND。<span class="note">v0.7.0で<b>漢字店名にも読み仮名(kuromoji)を付与</b>＝「むさし」「ichiran」等の読みでも漢字店名がヒット（「二郎」等はジャンル絞り込みも併用可）。住所入力は<b>目的地化にも対応</b>（→目的地パネル）。</span></p></div>
     <div class="card"><h3>条件プリセット <span class="badge S">S</span></h3><p>よく使う条件をワンタップ保存（例「家系×4.0+×近い順」）。</p></div>
   </div>
 
@@ -188,9 +216,10 @@
     </ul>
   </div>
 
-  <h2>⑧ メジャーアップデート構想（v0.3〜）</h2>
+  <h2>⑧ メジャーアップデート構想（テーマ）</h2>
+  <p class="sub">※ 実際の版番号 <b>v0.4〜v0.8 は「エンジンのMapbox移行・あいまい検索・任意目的地化」に充当済み</b>（現在地は <b>v0.8.1</b>）。下記の名称は版番号ではなく<b>テーマ</b>として参照。</p>
   <div class="grid">
-    <div class="card"><h3>v0.3 Navigation（カーナビ） <span class="badge L">L</span> <span class="tag">進行中</span></h3><p><b>目玉のハイウェイモードは実装済み（下記・v0.3.0〜）</b>。到着予定時刻も実装済み。残りは音声ターンバイターン＋ルート沿いPOIハイライト＋ヘディングアップ表示。</p></div>
+    <div class="card done"><h3>Navigation（カーナビ） <span class="badge L">L</span> <span class="badge done">✅ ほぼ達成</span></h3><p><b>ハイウェイモード・到着予定時刻・Mapbox Directions(渋滞考慮)ルート・リアルタイム渋滞・ヘディングアップ表示・任意目的地</b>まで実装済み。<b>残りは音声ターンバイターン＋ルート沿いPOIハイライト</b>。<span class="note">エンジンもMapbox GL JSへ移行済み。</span></p></div>
     <div class="card"><h3>v0.4 My Ramen（記録/パスポート化） <span class="badge L">L</span></h3><p>訪問済み＋自己評価＋写真＋メモ＋制覇マップ＋統計。「地図」→「自分のラーメン記録」へ格上げ＝リテンション強化。</p></div>
     <div class="card"><h3>v0.5 Anywhere（全国・マルチジャンル） <span class="badge L">L</span></h3><p>千葉ラーメン→全国 or 他ジャンル(カレー/サウナ等)へ。データ＋ナビ基盤を流用。件数増の軽量化が課題。</p></div>
     <div class="card"><h3>v0.6 Offline（完全オフライン） <span class="badge L">L</span></h3><p>地図タイル事前DL(GSI/PMTiles)＋データ同梱で走行中ほぼ通信ゼロ。経路探索は表示中心。</p></div>
