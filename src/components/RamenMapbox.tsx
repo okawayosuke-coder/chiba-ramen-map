@@ -1658,6 +1658,8 @@ function RamenMapbox(props: Props) {
     let drLat = 0;
     let drLng = 0; // 推測中の合成位置
     let drLastPerf = 0;
+    let hdgPrevPt: Pt | null = null; // GPS heading 無し端末向け: 位置差分から方位を出すフォールバック用
+    let carRot = 0; // ノースアップ時の自車矢印の連続回転角（最短回転）
 
     const CAR_SVG =
       '<svg class="car-arrow" width="54" height="54" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
@@ -1796,6 +1798,21 @@ function RamenMapbox(props: Props) {
     userMarkerRef.current?.remove();
     userMarkerRef.current = null;
 
+    // 自車の向き表示: ヘディングアップは地図が回るので矢印は上向き固定。
+    // ノースアップ(既定)は地図が北固定なので、自車「矢印」を進行方位へ回す（Leaflet版と同じ）。
+    // 走行中はGPS/経路方位、停車中はコンパス方位。最短回転(carRot)でなめらかに。
+    const applyCarRotation = () => {
+      if (headingUp) return;
+      const moving = targetKmh > MOVE_KMH;
+      const hd = moving ? lastTravelHeading : compassHeading() ?? lastTravelHeading;
+      if (hd == null) return;
+      carRot += angDiff(hd, carRot);
+      const a = carEl.querySelector(".car-arrow") as HTMLElement | null;
+      const b = geoEl.querySelector(".car-arrow") as HTMLElement | null;
+      if (a) a.style.transform = `rotate(${carRot}deg)`;
+      if (b) b.style.transform = `rotate(${carRot}deg)`;
+    };
+
     const onFix = (p: GeolocationPosition) => {
       if (aborted) return;
       if (drMode) {
@@ -1862,7 +1879,13 @@ function RamenMapbox(props: Props) {
       }
       const hd = p.coords.heading;
       const gpsHdOk = hd != null && isFinite(hd) && hd >= 0;
-      const travelHd = useSnap ? snap!.bearing : gpsHdOk ? hd : null;
+      let travelHd: number | null = useSnap ? snap!.bearing : gpsHdOk ? hd : null;
+      // GPS heading を返さない端末向けフォールバック: 連続GPS位置の差分から進行方位（約15m以上動いた時）
+      if (!hdgPrevPt) hdgPrevPt = rawPt;
+      else if (haversineKm(hdgPrevPt, rawPt) >= 0.015) {
+        if (travelHd == null) travelHd = bearingDeg(hdgPrevPt, rawPt);
+        hdgPrevPt = rawPt;
+      }
       if (kmh != null && kmh > MOVE_KMH && travelHd != null) {
         lastTravelHeading = travelHd; // DRの前進方向（真北基準・ノース/ヘディング非依存）
         // 走行中はGPS/経路方位を正解として、停車時用にコンパスoffsetを学習（低域通過）
@@ -1872,6 +1895,7 @@ function RamenMapbox(props: Props) {
         }
         if (headingUp) lastBearing = travelHd; // ヘディングアップは地図を進行方位へ回す
       }
+      applyCarRotation(); // ノースアップは自車矢印を進行方位へ回す（ヘディングアップは地図回転に任せる）
       if (!following) return; // 手動パン中はカメラを動かさない（自車は地理マーカーで実位置に表示）
       const bearing = headingUp ? lastBearing : 0;
       if (first) {
@@ -1936,23 +1960,27 @@ function RamenMapbox(props: Props) {
       else if (e.absolute && e.alpha != null) raw = (360 - e.alpha) % 360;
       if (raw == null || Number.isNaN(raw)) return;
       rawCompass = norm360(raw);
-      if (!headingUp || !following || drMode) return;
-      const ch = compassHeading();
-      if (ch == null || targetKmh > MOVE_KMH) return; // 走行中はGPS方位に任せる
-      const now = performance.now();
-      if (now - lastCompassEase < 250) return; // 連続イベントを間引き
-      if (Math.abs(angDiff(ch, lastBearing)) < 2) return; // 微小変化は無視（ジッタ抑制）
-      lastCompassEase = now;
-      lastBearing = ch;
-      if (lastHere) map.easeTo({ center: lastHere, bearing: ch, offset: [0, leadPx()], duration: 250 });
+      if (!following || drMode) return;
+      if (targetKmh > MOVE_KMH) return; // 走行中はGPS方位(onFix)に任せる
+      if (headingUp) {
+        // ヘディングアップ停車中: 地図をコンパス方位へ追従回転（駐車中に車を回すと地図も回る）
+        const ch = compassHeading();
+        if (ch == null) return;
+        const now = performance.now();
+        if (now - lastCompassEase < 250) return; // 連続イベントを間引き
+        if (Math.abs(angDiff(ch, lastBearing)) < 2) return; // 微小変化は無視（ジッタ抑制）
+        lastCompassEase = now;
+        lastBearing = ch;
+        if (lastHere) map.easeTo({ center: lastHere, bearing: ch, offset: [0, leadPx()], duration: 250 });
+      } else {
+        // ノースアップ停車中: コンパスで自車「矢印」を回す（地図は北固定）
+        applyCarRotation();
+      }
     };
-    // コンパス(磁気/ジャイロ)はヘディングアップ時のみ起動＝停車時の地図回転に使用。
-    // ノースアップ(既定)では使わないので磁気センサーを起動せず省電力（発熱低減）。
-    // 北固定時のDRはlastTravelHeadingで直進推測にフォールバック。
-    if (headingUp) {
-      window.addEventListener("deviceorientationabsolute", onOrient as EventListener, true);
-      window.addEventListener("deviceorientation", onOrient, true);
-    }
+    // コンパスは追従中つねに起動（ヘディングアップ=停車時に地図回転／ノースアップ=停車時に自車矢印を回す）。
+    // 許可はApp.tsxがタップ内で取得済み（requestOrientationPermission）。
+    window.addEventListener("deviceorientationabsolute", onOrient as EventListener, true);
+    window.addEventListener("deviceorientation", onOrient, true);
 
     // トンネルDR: GPSが GPS_STALE_MS 途切れ、直前まで走行していたら推測走行へ。直前速度×方位で前進し地図を流す。
     const GPS_STALE_MS = 4000;
