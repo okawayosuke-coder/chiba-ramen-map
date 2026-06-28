@@ -40,6 +40,7 @@ interface Props {
   dest: Dest | null;
   onSetDest: (s: Dest) => void;
   onClearDest: () => void;
+  recenterDest?: number; // 増えるたびに地図を目的地（＋現在地）へ寄せる信号（目的地カードの「地図で見る」）
   home?: Dest | null; // 自宅（登録済みなら地図に🏠帰宅ボタンを表示）
   onGoHome?: () => void; // 🏠帰宅ボタン: 自宅を目的地に設定
   userPos: Pt | null;
@@ -95,6 +96,21 @@ function getInitialView(): View {
     /* 破損値は無視 */
   }
   return { lng: 140.18, lat: 35.55, zoom: 10, bearing: 0, pitch: 0 };
+}
+
+/** 目的地（と現在地）が見えるよう地図を寄せる。現在地が60km圏ならfitBounds、遠ければ目的地へflyTo。 */
+function fitCameraToDest(map: mapboxgl.Map, dest: Pt, userPos: Pt | null): void {
+  if (userPos && haversineKm(userPos, dest) < 60) {
+    map.fitBounds(
+      [
+        [Math.min(userPos.lng, dest.lng), Math.min(userPos.lat, dest.lat)],
+        [Math.max(userPos.lng, dest.lng), Math.max(userPos.lat, dest.lat)],
+      ],
+      { padding: 80, maxZoom: 15, duration: 800 }
+    );
+  } else {
+    map.flyTo({ center: [dest.lng, dest.lat], zoom: 13, duration: 800 });
+  }
 }
 
 function shopsGeoJSON(shops: Shop[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
@@ -930,7 +946,7 @@ function RamenMapbox(props: Props) {
     // ボタン/情報ボックスの上＋周囲16pxは発火させない（UIタップが地図に貫通して誤標高を出さない）
     const DEAD = 16;
     const UI_SEL =
-      ".mapboxgl-ctrl,.recenter-btn,.clear-dest-btn,.hw-toggle,.home-btn,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.weather-bar,.poi-hint";
+      ".mapboxgl-ctrl,.recenter-btn,.clear-dest-btn,.hw-toggle,.home-btn,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.weather-bar,.poi-hint,.lp-hint";
     const overUI = (cx: number, cy: number): boolean => {
       const cont = map.getContainer();
       const cr = cont.getBoundingClientRect();
@@ -1159,6 +1175,49 @@ function RamenMapbox(props: Props) {
       map.off("zoomstart", clearTimer);
       map.off("rotatestart", clearTimer);
       map.off("pitchstart", clearTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady]);
+
+  // 目的地カードの「🧭 地図で見る」: recenterDest が増えたら目的地（＋現在地）へカメラを寄せる。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !props.recenterDest || !props.dest) return;
+    fitCameraToDest(map, { lat: props.dest.lat, lng: props.dest.lng }, propsRef.current.userPos);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.recenterDest]);
+
+  // 地図長押しの初回ヒント（一度だけ）。「長押しで目的地」を周知し、OK か12秒で消える。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    try {
+      if (localStorage.getItem("crm_lphint_done")) return;
+    } catch {
+      return;
+    }
+    const hint = document.createElement("div");
+    hint.className = "lp-hint";
+    hint.innerHTML =
+      '<span class="lp-hint__t">💡 地図を長押しすると、その場所を目的地にできます</span>' +
+      '<button type="button" class="lp-hint__ok">OK</button>';
+    map.getContainer().appendChild(hint);
+    let timer = 0;
+    const dismiss = () => {
+      try {
+        localStorage.setItem("crm_lphint_done", "1");
+      } catch {
+        /* noop */
+      }
+      window.clearTimeout(timer);
+      hint.remove();
+    };
+    const okBtn = hint.querySelector(".lp-hint__ok") as HTMLButtonElement | null;
+    if (okBtn) okBtn.onclick = dismiss;
+    timer = window.setTimeout(dismiss, 12000);
+    return () => {
+      window.clearTimeout(timer);
+      hint.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady]);
@@ -1584,18 +1643,7 @@ function RamenMapbox(props: Props) {
     if (!propsRef.current.follow) {
       const b = map.getBounds();
       if (b && !b.contains([to.lng, to.lat])) {
-        const up = propsRef.current.userPos;
-        if (up && haversineKm(up, to) < 60) {
-          map.fitBounds(
-            [
-              [Math.min(up.lng, to.lng), Math.min(up.lat, to.lat)],
-              [Math.max(up.lng, to.lng), Math.max(up.lat, to.lat)],
-            ],
-            { padding: 80, maxZoom: 15, duration: 800 }
-          );
-        } else {
-          map.flyTo({ center: [to.lng, to.lat], zoom: 13, duration: 800 });
-        }
+        fitCameraToDest(map, to, propsRef.current.userPos);
       }
     }
 

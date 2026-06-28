@@ -46,7 +46,7 @@ import {
   useRecentDests,
   useTheme,
 } from "./storage";
-import { geocodeAddress } from "./geocode";
+import { geocodeAddress, reverseAddressNoBanchi } from "./geocode";
 import { useGeolocation, useMovementDetector } from "./hooks";
 import { downloadTrackGPX, trackStats } from "./track";
 import {
@@ -162,6 +162,8 @@ export default function App() {
   // 検索ボックスの入力を住所として解決した候補（ラーメン店に限らず任意地点を目的地化）
   const [addrSuggest, setAddrSuggest] = useState<{ lat: number; lng: number; title: string } | null>(null);
   const addrReqRef = useRef(0); // 住所ジオコーディングの競合（古い応答）を捨てるための連番
+  const [destAddr, setDestAddr] = useState<string | null>(null); // 目的地カードの補足住所（逆ジオ・番地なし）
+  const [recenterTick, setRecenterTick] = useState(0); // 「地図で見る」で地図を目的地へ寄せる信号
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Dest | null>(null);
@@ -409,8 +411,39 @@ export default function App() {
     [dest]
   );
 
+  // 目的地カードの補足住所（番地なし）を逆ジオで取得。店舗ならエリア名、住所/地図長押し
+  // なら名称がほぼ住所なので（重複は表示側で抑制）。dest 解除でクリア。
+  useEffect(() => {
+    if (!dest) {
+      setDestAddr(null);
+      return;
+    }
+    let alive = true;
+    reverseAddressNoBanchi(dest.lat, dest.lng).then((a) => {
+      if (alive) setDestAddr(a);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [dest]);
+
+  // 目的地までの直線距離（現在地があるときだけ）
+  const destDist = dest && geo.pos ? haversineKm(geo.pos, dest) : null;
+
+  // 目的地カード:「🧭 地図で見る」＝地図を目的地（＋現在地）へ寄せる
+  const onShowDestOnMap = useCallback(() => setRecenterTick((t) => t + 1), []);
+
+  // 目的地カード:「共有」＝任意目的地のナビリンクを共有
+  const doShareDest = useCallback(async (d: Dest) => {
+    const r = await shareNav(d, d.name);
+    if (r === "copied") setToast("ナビリンクをコピーしました");
+    else if (r === "failed") setToast("共有できませんでした");
+  }, []);
+
   const onClearDest = useCallback(() => {
     setDest(null);
+    // 解除はクリーンな状態へ戻す＝残った検索語も消して「最近の目的地」を再表示する
+    setFilters((f) => (f.query ? { ...f, query: "" } : f));
     setToast("目的地を解除しました");
   }, []);
 
@@ -570,14 +603,114 @@ export default function App() {
         </nav>
 
         <div className="filters">
-          <div className="field">
-            <label>店名・住所で検索</label>
-            <input
-              type="text"
-              placeholder="例: ramen / らーめん / 家系 / 松戸 …"
-              value={filters.query}
-              onChange={(e) => set("query", e.target.value)}
-            />
+          {/* 目的地パネル: 検索・地図長押し・最近・自宅をまとめ、設定後は目的地カードを表示 */}
+          <div className={`dest-panel${dest ? " dest-panel--active" : ""}`}>
+            {dest ? (
+              <div className="dest-card">
+                <div className="dest-card__head">🎯 目的地</div>
+                <div className="dest-card__name">{dest.name}</div>
+                {destAddr &&
+                  !dest.name.includes(destAddr) &&
+                  !destAddr.includes(dest.name) && (
+                    <div className="dest-card__addr">{destAddr}</div>
+                  )}
+                {destDist != null && (
+                  <div className="dest-card__dist">
+                    📍 直線{fmtDistance(destDist)}・車約{roughMinutes(destDist)}分（目安）
+                  </div>
+                )}
+                <div className="dest-card__actions">
+                  <button
+                    className="act act--route"
+                    onClick={onShowDestOnMap}
+                    title="地図で目的地・ルートを表示"
+                  >
+                    🧭 地図で見る
+                  </button>
+                  <button
+                    className="act act--nav"
+                    onClick={() => startGoogleNav(dest)}
+                    title="Googleマップでナビ起動"
+                  >
+                    🚗 Googleマップ
+                  </button>
+                  <button
+                    className="act"
+                    onClick={() => doShareDest(dest)}
+                    title="ナビリンクを共有"
+                  >
+                    共有
+                  </button>
+                  <button
+                    className="act act--clear-dest"
+                    onClick={onClearDest}
+                    title="目的地を解除"
+                  >
+                    ✕ 解除
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="dest-panel__head">🎯 目的地を設定</div>
+            )}
+
+            <div className="field">
+              <input
+                type="text"
+                aria-label="店名・住所・場所で検索"
+                placeholder="🔍 店名・住所・場所で検索"
+                value={filters.query}
+                onChange={(e) => set("query", e.target.value)}
+              />
+            </div>
+
+            {!dest && (
+              <>
+                <div className="dest-methods">
+                  <button
+                    className="dest-method"
+                    onClick={() =>
+                      setToast("地図を長押しすると、その地点を目的地に設定できます")
+                    }
+                    title="地図を長押しすると、その地点を目的地にできます"
+                  >
+                    📍 地図を長押し
+                  </button>
+                  <button
+                    className="dest-method"
+                    onClick={onGoHome}
+                    title="自宅を目的地に設定"
+                  >
+                    🏠 自宅へ
+                  </button>
+                </div>
+
+                {recents.length > 0 && !filters.query && (
+                  <div className="recent-row">
+                    <span className="recent-row__lbl">🕘 最近の目的地</span>
+                    <div className="chips-row">
+                      {recents.map((r, i) => (
+                        <button
+                          key={`${r.lat},${r.lng},${i}`}
+                          className="chip chip--recent"
+                          onClick={() => onSetDest(r)}
+                          title={`「${r.name}」を目的地に設定`}
+                        >
+                          {r.name}
+                        </button>
+                      ))}
+                      <button
+                        className="chip chip--clear"
+                        onClick={clearRecents}
+                        title="最近の目的地の履歴を消去"
+                      >
+                        消去
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <div className="chips-row">
@@ -597,40 +730,6 @@ export default function App() {
               絞り込み {filtersOpen ? "▲" : "▼"}
             </button>
           </div>
-
-          {dest && (
-            <div className="dest-chip">
-              <span>🎯 目的地: {dest.name}</span>
-              <button onClick={() => setDest(null)} aria-label="目的地を解除">
-                ✕
-              </button>
-            </div>
-          )}
-
-          {recents.length > 0 && !filters.query && (
-            <div className="recent-row">
-              <span className="recent-row__lbl">🕘 最近の目的地</span>
-              <div className="chips-row">
-                {recents.map((r, i) => (
-                  <button
-                    key={`${r.lat},${r.lng},${i}`}
-                    className="chip chip--recent"
-                    onClick={() => onSetDest(r)}
-                    title={`「${r.name}」を目的地に設定`}
-                  >
-                    {r.name}
-                  </button>
-                ))}
-                <button
-                  className="chip chip--clear"
-                  onClick={clearRecents}
-                  title="最近の目的地の履歴を消去"
-                >
-                  消去
-                </button>
-              </div>
-            </div>
-          )}
 
           {filtersOpen && (
             <>
@@ -878,6 +977,7 @@ export default function App() {
               dest,
               onSetDest,
               onClearDest,
+              recenterDest: recenterTick, // 「地図で見る」で目的地へカメラを寄せる信号
               home, // 自宅（地図の🏠帰宅ボタン表示判定）
               onGoHome, // 🏠帰宅ボタン: 自宅を目的地に設定
               userPos: geo.pos,

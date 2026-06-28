@@ -1798,3 +1798,126 @@ body {
 .chip--clear {
   color: var(--muted);
 }
+
+/* ===== 目的地パネル（検索・地図長押し・最近・自宅を集約／設定後は目的地カード） ===== */
+.dest-panel {
+  margin: 0 0 4px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.dest-panel--active {
+  background: rgba(201, 42, 42, 0.04);
+}
+[data-theme="dark"] .dest-panel--active {
+  background: rgba(255, 255, 255, 0.03);
+}
+.dest-panel__head {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+.dest-panel .field {
+  margin: 0;
+}
+.dest-panel--active .field {
+  margin-top: 10px;
+}
+
+/* 目的地カード（設定済み） */
+.dest-card {
+  margin-bottom: 2px;
+}
+.dest-card__head {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.dest-card__name {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+}
+.dest-card__addr {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.dest-card__dist {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 5px;
+}
+.dest-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  align-items: center;
+}
+.act--clear-dest {
+  color: var(--muted);
+}
+
+/* 目的地の設定方法（地図長押しヒント・自宅） */
+.dest-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dest-method {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 7px 13px;
+  min-height: 40px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dest-panel .recent-row {
+  margin: 10px 0 0;
+}
+
+/* 地図長押しの初回ヒント（一度だけ・地図上部中央） */
+.lp-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 650;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(90%, 460px);
+  background: rgba(20, 22, 26, 0.92);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 12px 10px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.lp-hint__ok {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 14px;
+  min-height: 36px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
