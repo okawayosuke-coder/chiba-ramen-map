@@ -358,9 +358,13 @@ function ensureGradeMeter(box: HTMLElement): GradeMeter {
  *  （Phase2のジャイロvetoは既定OFF・横向き要再設計のためMapbox版では未移植）。 */
 // Phase2(v2) ジャイロveto（Leaflet版移植・既定OFF=「ジャイロで平坦補正」トグル）。設置向き非依存で
 // 端末の傾き(重力ベクトル)を見て、平坦姿勢のままDEMが坂と言う＝平坦路の偽勾配を平坦へveto（値は変えず表示のみ）。
-const PITCH_FLAT_DEG = 1.5; // g0からの姿勢差がこれ未満なら「水平」(°)。約2.6%相当（融合の平坦判定にも使用）
+const PITCH_FLAT_GRADE = 2.6; // これ未満(%)の端末勾配は「水平」とみなし平坦表示(veto)。≒ tan(1.5°)相当
 const PITCH_ACC_GATE = 0.6; // |GPS速度微分|がこれ未満の時だけ傾きを信用(m/s^2)。加減速の前後G混入を除外
-const PITCH_TURN_GATE = 6; // 進行方位の変化率がこれ未満(°/s)の時だけ傾きを信用＝旋回/バンクのローリング混入を除外
+const PITCH_TURN_GATE = 6; // 進行方位の変化率がこれ未満(°/s)の時だけ傾きを信用＝急旋回のローリング混入を除外
+const PITCH_LAT_GATE = 1.0; // 横G(=速度×方位変化率)がこれ未満(m/s^2)の時だけ傾きを信用。カーブ/車線変更/横勾配の
+//                            ローリングが勾配に化けるのを除外（5%坂で20%等の偽値の主因）
+const DEV_LP = 0.3; // 端末勾配のEMA平滑係数。瞬間スパイクを抑える（時定数≒3s@1Hz）
+const PITCH_DEV_MAXSTEP = 5; // 端末勾配の1サンプル最大変化(%)。段差/瞬間横Gのスパイクをハードに制限
 const PITCH_BLEND = 0.8; // 融合での端末傾き(実測値)の重み（残りはDEM）。端末は現在の実姿勢＝主、DEMは従＋符号
 const G0_GAIN = 0.05; // 平坦基準g0学習の低域通過ゲイン
 const GRAV_LP = 0.9; // 重力ベクトル抽出の低域通過係数
@@ -370,6 +374,8 @@ const _pitch = {
   g0: null as number[] | null, // 平坦・直進巡航時に学習した基準姿勢
   accel: 0, // GPS速度の微分(m/s^2)
   headingRate: 0, // 進行方位の変化率(°/s)。旋回検出（高いと傾きを信用しない）
+  lateralAccel: 0, // 横G(=速度×方位変化率, m/s^2)。カーブ/横勾配のローリング混入検出
+  devGrade: 0, // 端末傾き由来の勾配%をEMA平滑した値（スパイク除去後の現在値）
   demFlat: true, // 直近のDEM勾配が平坦か(g0学習ゲート)
   lastSign: 1 as 1 | -1, // 直近の勾配符号（DEM平坦時の上り/下り判定に保持）
   enabled: false, // 設定トグル（既定OFF）
@@ -418,15 +424,18 @@ function updateGradeMeter(
     _pitch.g != null &&
     _pitch.g0 != null &&
     Math.abs(_pitch.accel) < PITCH_ACC_GATE &&
-    _pitch.headingRate < PITCH_TURN_GATE
+    _pitch.headingRate < PITCH_TURN_GATE &&
+    _pitch.lateralAccel < PITCH_LAT_GATE // 横G中（カーブ/車線変更/横勾配）は横傾きが混入するので信用しない
   ) {
-    const pitchDeg = gravAngleDeg(_pitch.g, _pitch.g0); // g0(平坦基準)からの傾き角
-    if (pitchDeg < PITCH_FLAT_DEG) {
-      // 端末が水平＝路面は平坦。DEMが坂と言っても偽勾配として平坦化（veto）。
-      eff = 0;
+    // 端末の傾き角→勾配%。1サンプル変化を制限＋EMAで平滑し、瞬間スパイク(段差/横G)で20%等の偽値が出るのを防ぐ。
+    const pitchDeg = gravAngleDeg(_pitch.g, _pitch.g0);
+    const raw = Math.min(GRADE_MAX_PLAUSIBLE, Math.tan((pitchDeg * Math.PI) / 180) * 100);
+    const stepped = Math.max(_pitch.devGrade - PITCH_DEV_MAXSTEP, Math.min(_pitch.devGrade + PITCH_DEV_MAXSTEP, raw));
+    _pitch.devGrade += DEV_LP * (stepped - _pitch.devGrade);
+    const mDev = _pitch.devGrade;
+    if (mDev < PITCH_FLAT_GRADE) {
+      eff = 0; // 端末ほぼ水平＝路面平坦（DEMの偽勾配を平坦化）
     } else {
-      // 端末が傾いている＝実際に坂。傾き角→勾配%を主、DEMは符号＋軽い従。
-      const mDev = Math.min(GRADE_MAX_PLAUSIBLE, Math.tan((pitchDeg * Math.PI) / 180) * 100);
       if (Math.abs(med) >= GRADE_FLAT) _pitch.lastSign = med >= 0 ? 1 : -1; // DEMが坂を見たら符号を更新・保持
       const sign = Math.abs(med) >= GRADE_FLAT ? (med >= 0 ? 1 : -1) : _pitch.lastSign; // DEM平坦時は直近符号
       eff = sign * (PITCH_BLEND * mDev + (1 - PITCH_BLEND) * Math.abs(med)); // 端末主(PITCH_BLEND)・DEM従
@@ -2368,6 +2377,9 @@ function RamenMapbox(props: Props) {
         if (prevHdg != null && dtFix > 0.05) {
           const dHdg = Math.abs(((lastHeading - prevHdg + 540) % 360) - 180); // 最短角差
           _pitch.headingRate = dHdg / dtFix;
+          // 横G(向心加速度) ≒ 速度[m/s] × 角速度[rad/s]。カーブ/車線変更でのローリング(横傾き)検出に使う。
+          const spd = sp != null && sp >= 0 ? sp : 0;
+          _pitch.lateralAccel = spd * ((_pitch.headingRate * Math.PI) / 180);
         }
         prevHdg = lastHeading;
       }
