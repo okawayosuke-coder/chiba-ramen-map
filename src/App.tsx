@@ -40,6 +40,8 @@ import {
   usePoiKinds,
   useSafetyAck,
   useShowTrack,
+  useTraffic,
+  useThreeD,
   useTheme,
 } from "./storage";
 import { useGeolocation, useMovementDetector } from "./hooks";
@@ -150,6 +152,8 @@ export default function App() {
   const [bigLabels, setBigLabels] = useBigLabels();
   const [gyroGrade, setGyroGrade] = useGyroGrade();
   const [headingUp, setHeadingUp] = useHeadingUp();
+  const [traffic, setTraffic] = useTraffic();
+  const [threeD, setThreeD] = useThreeD();
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState<Dest | null>(null);
@@ -769,6 +773,8 @@ export default function App() {
               gyroGrade,
               headingUp,
               theme: theme.resolved, // 夜間/ライト: Mapboxは地図スタイルをdark/lightに切替（Leafletはタイルにフィルタ）
+              traffic, // リアルタイム渋滞表示（Mapbox Traffic v1）
+              threeD, // 3D表示（地形＋3D建物＋俯瞰ピッチ）
               hwOverride,
               onCycleHwOverride: cycleHwOverride,
               dest,
@@ -841,6 +847,10 @@ export default function App() {
           setGyroGrade={setGyroGrade}
           headingUp={headingUp}
           setHeadingUp={setHeadingUp}
+          traffic={traffic}
+          setTraffic={setTraffic}
+          threeD={threeD}
+          setThreeD={setThreeD}
           showPoi={showPoi}
           setShowPoi={setShowPoi}
           poiKinds={poiKinds}

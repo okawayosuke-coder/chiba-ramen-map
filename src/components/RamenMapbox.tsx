@@ -32,6 +32,8 @@ interface Props {
   gyroGrade: boolean;
   headingUp?: boolean; // 走行中の地図の向き: true=ヘディングアップ / false=ノースアップ(既定)
   theme?: string; // "dark" | "light"。夜間は地図スタイルをdarkへ切替（Leaflet版はタイルにCSSフィルタ）
+  traffic?: boolean; // リアルタイム渋滞表示（Mapbox Traffic v1）
+  threeD?: boolean; // 3D表示（地形＋3D建物＋俯瞰ピッチ）。任意・既定OFF
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -616,6 +618,9 @@ function RamenMapbox(props: Props) {
       pitch: v.pitch,
       maxZoom: 19,
       attributionControl: true,
+      // 日本語(漢字/かな)ラベルを端末ローカルフォントで生成＝CJKグリフのサーバDLが0に。
+      // 読み込み高速化・通信減・描画負荷軽減（発熱対策にも寄与）。iOSのヒラギノを優先。
+      localIdeographFontFamily: "'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans CJK JP', sans-serif",
     });
     mapRef.current = map;
     (window as unknown as Record<string, unknown>).__mbmap = map; // 検証/デバッグ用（試験エンジン時のみ）
@@ -725,6 +730,13 @@ function RamenMapbox(props: Props) {
     map.setStyle(want);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.theme]);
+
+  // リアルタイム渋滞表示のON/OFF（traffic レイヤの visibility 切替）。レイヤは setupLayers で常設。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !map.getLayer("traffic")) return;
+    map.setLayoutProperty("traffic", "visibility", props.traffic ? "visible" : "none");
+  }, [mapReady, props.traffic]);
 
   // 地点標高プローブ（Leaflet ElevationProbe 移植）: 地図をタップ/ホバーした地点の標高を
   // 5秒間表示（タッチはmouseoutが無いので自動消去）。ボタン/情報ボックス上は不感エリア。常時有効。
@@ -2370,6 +2382,38 @@ function RamenMapbox(props: Props) {
   // ---- 以下はクロージャ内ヘルパ（関数宣言＝巻き上げ済み。propsRef で最新値を読む） ----
 
   function setupLayers(map: mapboxgl.Map) {
+    // リアルタイム渋滞（Mapbox Traffic v1）。道路の上・ラベルの下に挿入。混雑(moderate以上)のみ色分けし
+    // 「流れている道(low)」は出さず見やすく＆軽く。表示ON/OFFは props.traffic で visibility 切替。
+    if (!map.getSource("traffic")) {
+      map.addSource("traffic", { type: "vector", url: "mapbox://mapbox.mapbox-traffic-v1" });
+      const firstSymbol = map.getStyle().layers?.find((l) => l.type === "symbol")?.id;
+      map.addLayer(
+        {
+          id: "traffic",
+          type: "line",
+          source: "traffic",
+          "source-layer": "traffic",
+          layout: {
+            "line-cap": "round",
+            visibility: propsRef.current.traffic ? "visible" : "none",
+          },
+          filter: ["match", ["get", "congestion"], ["moderate", "heavy", "severe"], true, false],
+          paint: {
+            "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 16, 5],
+            "line-offset": ["interpolate", ["linear"], ["zoom"], 10, 1, 16, 3],
+            "line-color": [
+              "match",
+              ["get", "congestion"],
+              "moderate", "#f0b400", // 黄: やや混雑
+              "heavy", "#e8590c", // 橙: 混雑
+              "severe", "#c0202d", // 赤: 渋滞
+              "#f0b400",
+            ],
+          },
+        },
+        firstSymbol
+      );
+    }
     map.addSource("shops", {
       type: "geojson",
       data: shopsGeoJSON(propsRef.current.shops),

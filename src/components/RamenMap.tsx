@@ -2395,6 +2395,9 @@ interface Props {
   headingUp?: boolean;
   /** Mapbox版のみ使用（dark/lightスタイル切替）。Leaflet版はCSSフィルタで暗転のため無視。 */
   theme?: string;
+  /** Mapbox版のみ使用（渋滞表示・3D表示）。Leaflet版は無視。 */
+  traffic?: boolean;
+  threeD?: boolean;
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;

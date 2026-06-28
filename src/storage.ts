@@ -15,6 +15,8 @@ const K = {
   bigLabels: "crm_biglabels", // 地図の文字を大きく（テスト・2倍拡大）
   gyroGrade: "crm_gyrograde", // 傾斜メーター: ジャイロで平坦路の偽勾配を抑制（テスト）
   headingUp: "crm_headingup", // 走行中の地図の向き: true=ヘディングアップ / false=ノースアップ(既定)
+  traffic: "crm_traffic", // リアルタイム渋滞表示（mapbox-traffic-v1）の表示ON/OFF（既定OFF）
+  threeD: "crm_3d", // 3D表示（地形起伏＋3D建物＋俯瞰ピッチ）。任意機能・既定OFF
 };
 
 export type HwOverride = "auto" | "on" | "off";
@@ -143,6 +145,26 @@ export function useGyroGrade(): [boolean, (v: boolean) => void] {
   const set = useCallback((v: boolean) => {
     setOn(v);
     write(K.gyroGrade, v);
+  }, []);
+  return [on, set];
+}
+
+/** リアルタイム渋滞表示（Mapbox Traffic v1）。道路を渋滞度で色分け。既定OFF。 */
+export function useTraffic(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => read<boolean>(K.traffic, false));
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    write(K.traffic, v);
+  }, []);
+  return [on, set];
+}
+
+/** 3D表示（地形起伏＋3D建物＋俯瞰ピッチ）。任意機能・既定OFF（基本は平面）。 */
+export function useThreeD(): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => read<boolean>(K.threeD, false));
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    write(K.threeD, v);
   }, []);
   return [on, set];
 }

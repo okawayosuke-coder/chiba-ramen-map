@@ -35,6 +35,10 @@ interface Props {
   setGyroGrade: (v: boolean) => void;
   headingUp: boolean;
   setHeadingUp: (v: boolean) => void;
+  traffic: boolean;
+  setTraffic: (v: boolean) => void;
+  threeD: boolean;
+  setThreeD: (v: boolean) => void;
   showPoi: boolean;
   setShowPoi: (v: boolean) => void;
   poiKinds: PoiKind[];
@@ -58,6 +62,10 @@ export default function Settings({
   setGyroGrade,
   headingUp,
   setHeadingUp,
+  traffic,
+  setTraffic,
+  threeD,
+  setThreeD,
   showPoi,
   setShowPoi,
   poiKinds,
@@ -231,6 +239,28 @@ export default function Settings({
           </div>
           <p className="modal__small">
             端末の傾き（ジャイロ）を使い、<strong>平坦な道で勾配が誤表示される</strong>のを抑えます。端末が水平で加減速も小さい時は、地図標高が坂と判定しても平坦と表示します。勾配の数値計算は従来どおり。OFFで標高のみの判定（中央値＋ヒステリシス）に戻ります。
+          </p>
+        </section>
+
+        <section className="set-sec">
+          <h3>渋滞・3D表示</h3>
+          <div className="set-row">
+            <button
+              className={`chip${traffic ? " chip--on" : ""}`}
+              onClick={() => setTraffic(!traffic)}
+            >
+              🚗 渋滞表示 {traffic ? "ON" : "OFF"}
+            </button>
+            <button
+              className={`chip${threeD ? " chip--on" : ""}`}
+              onClick={() => setThreeD(!threeD)}
+            >
+              🏙 3D表示 {threeD ? "ON" : "OFF"}
+            </button>
+          </div>
+          <p className="modal__small">
+            <strong>渋滞表示</strong>＝道路を渋滞度で色分け（Mapbox Traffic・約8分毎更新）。
+            <strong>3D表示</strong>＝地形の起伏と3D建物を俯瞰視点で表示（任意機能・既定は平面）。3DはGPU負荷が高め＝発熱しやすいので、必要な時だけのご利用を推奨。
           </p>
         </section>
 
