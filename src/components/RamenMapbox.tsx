@@ -1346,7 +1346,7 @@ function RamenMapbox(props: Props) {
     };
 
     const HW_SNAP_KM = 0.3;
-    const HW_LOOK = 6;
+    const HW_LOOK = 4; // 表示する前方施設数（多いとストリップが画面上端で見切れるため抑制）
     const HW_BADGE: Record<HwKind, string> = { sa: "SA", pa: "PA", ic: "IC", jct: "JCT" };
     const AMEN_EMOJI: Record<string, string> = { conv: "🏪", fuel: "⛽", food: "🍴", cafe: "☕", shop: "🛍️", toilet: "🚻", ev: "⚡" };
     const HW_ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
@@ -1362,7 +1362,7 @@ function RamenMapbox(props: Props) {
       return `<span class="hw-amen-em">${AMEN_EMOJI[a] || ""}</span>`;
     };
     let hwFacilities: HwFacility[] | null = null;
-    let routeFacilities: { f: HwFacility; distKm: number }[] = [];
+    let routeFacilities: { f: HwFacility; distKm: number; devKm: number }[] = [];
     const escHtml = (s: string) => s.replace(/[&<>]/g, (c) => (c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"));
     const computeRouteFacilities = () => {
       routeFacilities = [];
@@ -1382,21 +1382,23 @@ function RamenMapbox(props: Props) {
         if (f.lat < s - M || f.lat > n + M || f.lng < w - M || f.lng > e + M) continue;
         const prj = projectOnRoute(rCoords, rSuffix, { lat: f.lat, lng: f.lng });
         if (prj.devKm > HW_SNAP_KM) continue;
-        routeFacilities.push({ f, distKm: rKm - prj.remKm });
+        routeFacilities.push({ f, distKm: rKm - prj.remKm, devKm: prj.devKm });
       }
-      routeFacilities.sort((a, b) => a.distKm - b.distKm);
+      // 施設名から方向/路線名の枝番を除いた基準名（全角→半角・括弧/空白除去・上り/下り/内外回り(廻り)を除去）
       const baseName = (nm: string) =>
         nm
           .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
           .replace(/[\s（）()]/g, "")
-          .replace(/(上り|下り|内回り|外回り)$/, "");
-      const seen = new Set<string>();
-      routeFacilities = routeFacilities.filter((rf) => {
+          .replace(/(上り|下り|内回り|外回り|内廻り|外廻り)$/, "");
+      // 同名（上り/下り違い含む）は1つに集約。**ルート線に最も近い(devKm最小)＝自車の車線＝進行方向側**を残す。
+      // （従来は最短距離順の先頭を残したため、対向車線(上り)の施設が残ることがあった＝下り走行で上りSA表示の不具合）
+      const best = new Map<string, { f: HwFacility; distKm: number; devKm: number }>();
+      for (const rf of routeFacilities) {
         const k = `${rf.f.kind}:${baseName(rf.f.name)}`;
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
+        const cur = best.get(k);
+        if (!cur || rf.devKm < cur.devKm) best.set(k, rf);
+      }
+      routeFacilities = Array.from(best.values()).sort((a, b) => a.distKm - b.distKm);
     };
     const updateHwStrip = (carDistKm: number) => {
       if (!effHighway || routeFacilities.length === 0) {
