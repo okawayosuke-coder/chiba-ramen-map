@@ -1606,6 +1606,115 @@ function RamenMapbox(props: Props) {
     hwToggleLabelRef.current?.(); // トグルのラベル更新（フリー走行時もここで反映）
   }, [props.hwOverride]);
 
+  // フリー走行(ルート無し)＋高速モードON時の高速施設ストリップ。経路に投影できないので、
+  // 現在地と進行方位から「前方(±75°)・40km以内」の施設を距離順に表示（ユーザー要望: 走行の向きで判断）。
+  // 経路effectはdest必須なので別系統。dest設定中はこちらは無効（経路effect側が出す）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !props.follow || destKey || props.hwOverride !== "on") return;
+    let aborted = false;
+    let watchId: number | null = null;
+    let facilities: HwFacility[] | null = null;
+    const LOOK = 4;
+    const MAXKM = 40;
+    const BADGE: Record<HwKind, string> = { sa: "SA", pa: "PA", ic: "IC", jct: "JCT" };
+    const EMO: Record<string, string> = { conv: "🏪", fuel: "⛽", food: "🍴", cafe: "☕", shop: "🛍️", toilet: "🚻", ev: "⚡" };
+    const ICON = `${import.meta.env.BASE_URL}poi-icons/`;
+    const esc = (s: string) => s.replace(/[&<>]/g, (c) => (c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"));
+    const bn = (nm: string) =>
+      nm
+        .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+        .replace(/[\s（）()]/g, "")
+        .replace(/(上り|下り|内回り|外回り|内廻り|外廻り)$/, "");
+    const amen = (a: string, f: HwFacility) => {
+      if (a === "conv") return `<img class="hw-amen-ic hw-amen-conv" src="${ICON}${poiIconFile("conv", f.convBrand || "")}" alt="">`;
+      if (a === "fuel") {
+        const file = poiIconFile("fuel", f.fuelBrand || "");
+        if (file) return `<img class="hw-amen-ic hw-amen-gs" src="${ICON}${file}" alt="">`;
+      }
+      return `<span class="hw-amen-em">${EMO[a] || ""}</span>`;
+    };
+    const strip = document.createElement("div");
+    strip.className = "hw-strip";
+    strip.style.display = "none";
+    map.getContainer().appendChild(strip);
+    let lastHd: number | null = null;
+    let prevPt: Pt | null = null;
+    let lastKmh = 0;
+    const render = (here: Pt, hd: number) => {
+      if (!facilities) {
+        strip.style.display = "none";
+        return;
+      }
+      const cands: { f: HwFacility; d: number }[] = [];
+      for (const f of facilities) {
+        const d = haversineKm(here, { lat: f.lat, lng: f.lng });
+        if (d > MAXKM || d < 0.05) continue;
+        const rel = Math.abs(((bearingDeg(here, { lat: f.lat, lng: f.lng }) - hd + 540) % 360) - 180);
+        if (rel > 75) continue; // 前方のみ（後方・側方は除外）
+        cands.push({ f, d });
+      }
+      cands.sort((a, b) => a.d - b.d);
+      const best = new Map<string, { f: HwFacility; d: number }>();
+      for (const c of cands) {
+        const k = `${c.f.kind}:${bn(c.f.name)}`;
+        if (!best.has(k)) best.set(k, c); // 距離順に先頭＝最も近い同名を残す
+      }
+      const ahead = Array.from(best.values()).slice(0, LOOK);
+      if (!ahead.length) {
+        strip.style.display = "none";
+        return;
+      }
+      strip.style.display = "";
+      strip.innerHTML = ahead
+        .map((c) => {
+          const f = c.f;
+          const dist = c.d < 10 ? c.d.toFixed(1) : Math.round(c.d).toString();
+          const min = lastKmh > 5 ? Math.round((c.d / lastKmh) * 60) : null;
+          const am = f.amenities;
+          const amenRow =
+            (f.kind === "sa" || f.kind === "pa") && am && am.length
+              ? `<div class="hw-amen">${am.map((a) => amen(a, f)).join("")}</div>`
+              : "";
+          const minTxt = min != null ? ` ・ ${min}<small>分</small>` : "";
+          return (
+            `<div class="hw-row hw-${f.kind}"><div class="hw-top"><span class="hw-badge">${BADGE[f.kind]}</span>` +
+            `<span class="hw-name">${esc(f.name)}</span></div>${amenRow}` +
+            `<div class="hw-dist">${dist}<small>km</small>${minTxt}</div></div>`
+          );
+        })
+        .join("");
+    };
+    loadHighway()
+      .then((d) => {
+        if (!aborted) facilities = d.facilities;
+      })
+      .catch(() => {});
+    const onPos = (p: GeolocationPosition) => {
+      const here: Pt = { lat: p.coords.latitude, lng: p.coords.longitude };
+      const h = p.coords.heading;
+      if (h != null && isFinite(h) && h >= 0) lastHd = h;
+      else if (prevPt && haversineKm(prevPt, here) >= 0.015) lastHd = bearingDeg(prevPt, here);
+      if (!prevPt || haversineKm(prevPt, here) >= 0.015) prevPt = here;
+      const sp = p.coords.speed;
+      if (sp != null && sp >= 0) lastKmh = sp * 3.6;
+      if (lastHd == null) {
+        strip.style.display = "none";
+        return;
+      }
+      render(here, lastHd);
+    };
+    if ("geolocation" in navigator && window.isSecureContext) {
+      watchId = navigator.geolocation.watchPosition(onPos, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+    }
+    return () => {
+      aborted = true;
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      strip.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, props.follow, destKey, props.hwOverride]);
+
   // 高速道路切替トグル(.hw-toggle)。Leaflet版(active={follow})と同じく走行(follow)中は常に表示
   // ＝経路の有無に関わらずフリー走行でも出す。フリー走行では手動「高速:ON」で勾配計を抑制できる。
   useEffect(() => {
