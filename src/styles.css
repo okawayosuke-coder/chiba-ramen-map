@@ -1242,20 +1242,20 @@ body {
   color: #fff;
   border: 2px solid #6b7280;
   border-radius: 999px;
-  padding: 9px 15px;
-  min-height: 48px;
+  padding: 6px 11px;
+  min-height: 40px;
   cursor: pointer;
   box-shadow: 0 2px 9px rgba(0, 0, 0, 0.4);
 }
 .hw-toggle__t {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
   opacity: 0.9;
 }
 .hw-toggle__v {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 800;
-  padding: 2px 12px;
+  padding: 1px 9px;
   border-radius: 999px;
   background: #6b7280;
   color: #fff;
