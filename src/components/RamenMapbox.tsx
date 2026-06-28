@@ -50,6 +50,7 @@ interface Props {
 const STYLE_LIGHT = "mapbox://styles/mapbox/streets-v12";
 const STYLE_DARK = "mapbox://styles/mapbox/dark-v11"; // 夜間用。streets-v12と同じMapbox Streetsソース＝日本語化(name_ja)も同様に効く
 const styleFor = (t?: string): string => (t === "dark" ? STYLE_DARK : STYLE_LIGHT);
+const PITCH_3D = 60; // 3D表示ON時の俯瞰ピッチ角（度）。OFFは0=真上から平面
 const MB_VIEW_KEY = "crm_mapview_mb"; // Mapbox 用（bearing/pitch も保存）
 const LEAFLET_VIEW_KEY = "crm_mapview"; // 互換: Leaflet 版の保存位置を初期復元に流用
 
@@ -737,6 +738,51 @@ function RamenMapbox(props: Props) {
     if (!map || !mapReady || !map.getLayer("traffic")) return;
     map.setLayoutProperty("traffic", "visibility", props.traffic ? "visible" : "none");
   }, [mapReady, props.traffic]);
+
+  // 3D表示（任意・既定OFF）: 地形起伏(raster-dem terrain)＋3D建物(fill-extrusion)＋俯瞰ピッチ。
+  // dark/light切替の setStyle で source/layer は消えるが、mapReady false→true の再実行で再構築される。
+  // ピッチは follow effect 側も propsRef.current.threeD を見て first/cleanup で設定（走行中も3D俯瞰に）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    if (props.threeD) {
+      if (!map.getSource("mapbox-dem")) {
+        map.addSource("mapbox-dem", {
+          type: "raster-dem",
+          url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+          tileSize: 512,
+          maxzoom: 14,
+        });
+      }
+      map.setTerrain({ source: "mapbox-dem", exaggeration: 1.3 });
+      if (!map.getLayer("3d-buildings")) {
+        const firstSymbol = map.getStyle().layers?.find((l) => l.type === "symbol")?.id;
+        map.addLayer(
+          {
+            id: "3d-buildings",
+            type: "fill-extrusion",
+            source: "composite",
+            "source-layer": "building",
+            filter: ["==", ["get", "extrude"], "true"],
+            minzoom: 14,
+            paint: {
+              "fill-extrusion-color": "#8c98a8",
+              "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["get", "height"]],
+              "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["get", "min_height"]],
+              "fill-extrusion-opacity": 0.6,
+            },
+          },
+          firstSymbol
+        );
+      }
+      map.easeTo({ pitch: PITCH_3D, duration: 600 });
+    } else {
+      map.setTerrain(null);
+      if (map.getLayer("3d-buildings")) map.removeLayer("3d-buildings");
+      map.easeTo({ pitch: 0, duration: 600 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, props.threeD]);
 
   // 地点標高プローブ（Leaflet ElevationProbe 移植）: 地図をタップ/ホバーした地点の標高を
   // 5秒間表示（タッチはmouseoutが無いので自動消去）。ボタン/情報ボックス上は不感エリア。常時有効。
@@ -2047,7 +2093,7 @@ function RamenMapbox(props: Props) {
         first = false;
         // 追従開始時はユーザーの現在ズームを保持（150m等の設定を尊重）。広域閲覧中(<14)なら運転用にDRIVE_ZOOMへ寄せる。
         const startZoom = map.getZoom() >= 14 ? map.getZoom() : DRIVE_ZOOM;
-        map.easeTo({ center: here, bearing, pitch: 0, zoom: startZoom, offset: [0, leadPx()], duration: 800 });
+        map.easeTo({ center: here, bearing, pitch: propsRef.current.threeD ? PITCH_3D : 0, zoom: startZoom, offset: [0, leadPx()], duration: 800 });
         prevCam = here;
       } else {
         // GPSグリッチ/トンネル復帰で前回カメラ位置から150m超ジャンプしたら、滑らかに追わず即スナップ
@@ -2223,8 +2269,8 @@ function RamenMapbox(props: Props) {
       destBox.remove();
       box.remove();
       window.clearInterval(speedoAnim);
-      // ブラウズ表示へ戻す（北向き・水平）
-      map.easeTo({ bearing: 0, pitch: 0, duration: 600 });
+      // ブラウズ表示へ戻す（北向き）。3D表示中はピッチを保持（平面時のみ水平に戻す）。
+      map.easeTo({ bearing: 0, pitch: propsRef.current.threeD ? PITCH_3D : 0, duration: 600 });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, props.follow, props.headingUp]);
