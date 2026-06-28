@@ -938,7 +938,8 @@ function RamenMapbox(props: Props) {
       geometry: { type: "LineString", coordinates: coords.map((c) => [c[1], c[0]]) },
     });
     if (!map.getSource("route")) {
-      map.addSource("route", { type: "geojson", data: lineData([]) });
+      // lineMetrics:true は line-trim-offset（走行済み区間のGPUトリム）に必須。
+      map.addSource("route", { type: "geojson", lineMetrics: true, data: lineData([]) });
       const before = map.getLayer("clusters") ? "clusters" : undefined;
       map.addLayer(
         {
@@ -946,7 +947,8 @@ function RamenMapbox(props: Props) {
           type: "line",
           source: "route",
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": "#0b57d0", "line-width": 7, "line-opacity": 0.95 },
+          // line-trim-offset で走行済み区間[0,frac]をGPU側で透明化（線を再スライスせず高頻度に更新可）
+          paint: { "line-color": "#0b57d0", "line-width": 7, "line-opacity": 0.95, "line-trim-offset": [0, 0] },
         },
         before
       );
@@ -954,6 +956,50 @@ function RamenMapbox(props: Props) {
     const setLine = (coords: [number, number][]) => {
       (map.getSource("route") as mapboxgl.GeoJSONSource | undefined)?.setData(lineData(coords));
     };
+
+    // 走行済みルートの消去を自車(カメラ)と同じ補間で滑らかに。
+    // 旧実装はGPSフィックス毎(1Hz)に線を再スライス＝自車は60fpsで滑らかなのに消去だけ1Hzでカクついた。
+    // line-trim-offset(GPU側トリム・再テッセレーション無し)を rAF で targetFrac へ補間し、毎フレーム更新する。
+    let trimFrac = 0; // 現在のトリム率（line-trim-offset の end）
+    let trimFrom = 0;
+    let trimTo = 0;
+    let trimStart = 0;
+    let trimRaf = 0;
+    const TRIM_DUR = 1100; // follow カメラの easeTo と同じ補間時間
+    const applyTrim = (f: number) => {
+      if (!map.getLayer("route-line")) return;
+      map.setPaintProperty("route-line", "line-trim-offset", [0, Math.max(0, Math.min(1, f))]);
+    };
+    const tickTrim = () => {
+      const t = Math.min(1, (performance.now() - trimStart) / TRIM_DUR);
+      trimFrac = trimFrom + (trimTo - trimFrom) * t;
+      applyTrim(trimFrac);
+      trimRaf = t < 1 ? requestAnimationFrame(tickTrim) : 0;
+    };
+    const animateTrimTo = (target: number) => {
+      trimTo = Math.max(0, Math.min(1, target));
+      trimFrom = trimFrac;
+      trimStart = performance.now();
+      if (!trimRaf) trimRaf = requestAnimationFrame(tickTrim);
+    };
+    const resetTrim = () => {
+      if (trimRaf) cancelAnimationFrame(trimRaf);
+      trimRaf = 0;
+      trimFrac = trimFrom = trimTo = 0;
+      applyTrim(0);
+    };
+    // sim/debug: rAFがヘッドレスで抑制されてもトリムの目標値/paint反映を決定論検証するフック
+    if (new URLSearchParams(window.location.search).get("sim") === "drive" || new URLSearchParams(window.location.search).get("debug") === "1") {
+      (window as unknown as Record<string, unknown>).__trim = {
+        offset: () => map.getPaintProperty("route-line", "line-trim-offset"),
+        state: () => ({ frac: trimFrac, from: trimFrom, to: trimTo }),
+        force: () => {
+          trimFrac = trimTo;
+          applyTrim(trimFrac);
+          return map.getPaintProperty("route-line", "line-trim-offset");
+        },
+      };
+    }
 
     // 残距離/ETA ボックス（左上・既存CSS .route-box）
     const box = document.createElement("div");
@@ -1175,8 +1221,9 @@ function RamenMapbox(props: Props) {
         const dist = pr.remKm < 10 ? pr.remKm.toFixed(1) : Math.round(pr.remKm).toString();
         box.textContent = `🛣 残り ${dist}km ・ ${fmtEta(remMin)}着`;
       }
-      // 走行済み区間を消す（投影点→以降の頂点）
-      setLine([[pr.proj.lat, pr.proj.lng], ...rCoords.slice(pr.segIdx + 1)]);
+      // 走行済み区間の消去は line-trim-offset を自車(カメラ)と同じ補間で動かす（線は再スライスしない）。
+      // 全ルートを描いたまま [0, 道なり進行率] をGPU側で透明化＝自車の滑らかさに同期して消える。
+      animateTrimTo(rKm > 0 ? (rKm - pr.remKm) / rKm : 0);
       // 経路スナップ用に投影点＋道路セグメント方位を共有（followが自車位置/向きに使う）
       let segBearing = routeSnapRef.current?.bearing ?? 0;
       if (pr.segIdx + 1 < rCoords.length) {
@@ -1203,6 +1250,7 @@ function RamenMapbox(props: Props) {
           return;
         }
         setLine(r.coords);
+        resetTrim(); // 新ルート(初回/再ルート)は全線を描き直しトリムを0へ戻す
         rCoords = r.coords;
         rKm = r.km;
         rMin = r.min;
@@ -1261,6 +1309,7 @@ function RamenMapbox(props: Props) {
     return () => {
       aborted = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      if (trimRaf) cancelAnimationFrame(trimRaf); // トリム補間のrAFを停止
       destMarker.remove();
       box.remove();
       clearBtn.remove();
