@@ -645,6 +645,117 @@ function RamenMapbox(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.bigLabels]);
 
+  // 地点標高プローブ（Leaflet ElevationProbe 移植）: 地図をタップ/ホバーした地点の標高を
+  // 5秒間表示（タッチはmouseoutが無いので自動消去）。ボタン/情報ボックス上は不感エリア。常時有効。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const box = document.createElement("div");
+    box.className = "elev-box";
+    box.style.display = "none";
+    map.getContainer().appendChild(box);
+    let timer = 0;
+    let hideTimer = 0;
+    let reqId = 0;
+    let dragging = false;
+    const hide = () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(hideTimer);
+      box.style.display = "none";
+      box.textContent = "";
+    };
+    const place = (px: number, py: number) => {
+      const c = map.getContainer();
+      const W = c.clientWidth;
+      const H = c.clientHeight;
+      if (px < W - 150) {
+        box.style.left = `${px + 14}px`;
+        box.style.right = "";
+      } else {
+        box.style.right = `${W - px + 14}px`;
+        box.style.left = "";
+      }
+      if (py < H - 44) {
+        box.style.top = `${py + 14}px`;
+        box.style.bottom = "";
+      } else {
+        box.style.bottom = `${H - py + 14}px`;
+        box.style.top = "";
+      }
+    };
+    // ボタン/情報ボックスの上＋周囲16pxは発火させない（UIタップが地図に貫通して誤標高を出さない）
+    const DEAD = 16;
+    const UI_SEL =
+      ".mapboxgl-ctrl,.recenter-btn,.clear-dest-btn,.hw-toggle,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.weather-bar,.poi-hint";
+    const overUI = (cx: number, cy: number): boolean => {
+      const cont = map.getContainer();
+      const cr = cont.getBoundingClientRect();
+      const els = cont.querySelectorAll(UI_SEL);
+      for (let i = 0; i < els.length; i++) {
+        const r = els[i].getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        if (
+          cx >= r.left - cr.left - DEAD &&
+          cx <= r.right - cr.left + DEAD &&
+          cy >= r.top - cr.top - DEAD &&
+          cy <= r.bottom - cr.top + DEAD
+        )
+          return true;
+      }
+      return false;
+    };
+    const show = (e: mapboxgl.MapMouseEvent) => {
+      if (dragging) return;
+      const px = e.point.x;
+      const py = e.point.y;
+      if (overUI(px, py)) {
+        hide();
+        return;
+      }
+      // 店舗ピン/クラスタ上はポップアップに任せる（標高は出さない）
+      const pinLayers = ["clusters", "shops-pin"].filter((l) => map.getLayer(l));
+      if (pinLayers.length && map.queryRenderedFeatures([px, py], { layers: pinLayers }).length) {
+        hide();
+        return;
+      }
+      place(px, py);
+      box.style.display = "";
+      if (!box.textContent) box.textContent = "標高 計測中…";
+      const { lat, lng } = e.lngLat;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(async () => {
+        const id = ++reqId;
+        const t = await fetchElevationStr(lat, lng);
+        if (id === reqId) box.textContent = t ? `標高 ${t}` : "標高 取得不可";
+      }, 280);
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(hide, 5000); // タッチはmouseoutが無いので5秒で自動消去
+    };
+    const onDragStart = () => {
+      dragging = true;
+      hide();
+    };
+    const onDragEnd = () => {
+      dragging = false;
+    };
+    map.on("click", show); // タップ（タッチ）＝主用途
+    map.on("mousemove", show); // PCホバー追従（おまけ）
+    map.on("dragstart", onDragStart);
+    map.on("dragend", onDragEnd);
+    map.on("zoomstart", hide);
+    return () => {
+      map.off("click", show);
+      map.off("mousemove", show);
+      map.off("dragstart", onDragStart);
+      map.off("dragend", onDragEnd);
+      map.off("zoomstart", hide);
+      window.clearTimeout(timer);
+      window.clearTimeout(hideTimer);
+      box.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady]);
+
   // 現在地の天気バー（画面下部中央・常時表示・タップで7日間展開）。Open-Meteo（無料）。
   useEffect(() => {
     const map = mapRef.current;
