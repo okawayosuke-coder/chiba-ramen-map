@@ -1083,6 +1083,21 @@ body {
 .mapboxgl-ctrl-top-left .mapboxgl-ctrl-group button .mapboxgl-ctrl-icon {
   background-size: 28px 28px;
 }
+/* 縮尺ボタンの下の「3D」ボタン（2D/3D切替）。46px=縮尺ボタンと同寸。ON時は青く点灯。
+   セレクタはMapbox既定(.mapboxgl-ctrl-group button)より詳細度を上げて確実に色を当てる。 */
+.mapboxgl-ctrl-group button.crm-3d-btn {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #1a73e8;
+  background: #fff;
+  border: none;
+  cursor: pointer;
+}
+.mapboxgl-ctrl-group button.crm-3d-btn--on {
+  background: #1a73e8;
+  color: #fff;
+}
 
 /* ===== 縮尺バー（ScaleControl・右下）。実距離が一目で分かるよう大きめ・高コントラスト ===== */
 .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-scale {

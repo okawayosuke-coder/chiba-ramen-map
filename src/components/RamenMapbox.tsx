@@ -34,6 +34,7 @@ interface Props {
   theme?: string; // "dark" | "light"。夜間は地図スタイルをdarkへ切替（Leaflet版はタイルにCSSフィルタ）
   traffic?: boolean; // リアルタイム渋滞表示（Mapbox Traffic v1）
   threeD?: boolean; // 3D表示（地形＋3D建物＋俯瞰ピッチ）。任意・既定OFF
+  onToggle3D?: () => void; // 地図上「3D」ボタン（縮尺ボタンの下）から2D/3D切替
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -248,6 +249,38 @@ class HalfStepZoomControl implements mapboxgl.IControl {
   onRemove(): void {
     this._c?.remove();
     this._c = undefined;
+  }
+}
+
+/** 縮尺(+/-)ボタンの下に置く「3D」ボタン＝2D/3D切替。ON時は青く点灯。 */
+class ThreeDToggleControl implements mapboxgl.IControl {
+  private _c?: HTMLDivElement;
+  private _btn?: HTMLButtonElement;
+  constructor(private opts: { isOn: () => boolean; onToggle: () => void }) {}
+  onAdd(): HTMLElement {
+    const c = document.createElement("div");
+    c.className = "mapboxgl-ctrl mapboxgl-ctrl-group";
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "crm-3d-btn";
+    b.setAttribute("aria-label", "2D/3D切替");
+    b.textContent = "3D";
+    b.addEventListener("click", () => this.opts.onToggle());
+    c.appendChild(b);
+    this._c = c;
+    this._btn = b;
+    this.setActive(this.opts.isOn());
+    return c;
+  }
+  setActive(on: boolean): void {
+    if (!this._btn) return;
+    this._btn.classList.toggle("crm-3d-btn--on", on);
+    this._btn.setAttribute("aria-pressed", String(on));
+  }
+  onRemove(): void {
+    this._c?.remove();
+    this._c = undefined;
+    this._btn = undefined;
   }
 }
 
@@ -584,6 +617,7 @@ function RamenMapbox(props: Props) {
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
   const hwToggleLabelRef = useRef<(() => void) | null>(null); // 高速トグルのラベル更新（follow基準effectが設定）
   const styleRef = useRef<string>(""); // 現在適用中の地図スタイルURL（テーマ切替の重複setStyle防止）
+  const threeDCtrlRef = useRef<ThreeDToggleControl | null>(null); // 地図上「3D」ボタン（点灯状態の同期用）
   const hwActiveRef = useRef(false); // 現在「高速道路扱い」か（経路effectが書き、勾配effectが勾配抑制に読む）
   // この先の急勾配予告: 経路effectが前方GRADE_LOOKマークの標高から最急(≥GRADE_STEEP%)を書き、勾配effectが表示に読む
   const aheadGradeRef = useRef<{ grade: number; distM: number } | null>(null);
@@ -637,6 +671,13 @@ function RamenMapbox(props: Props) {
     // ズーム+/- は左上（Leaflet版と同じ位置）。コンパスは出さない。Leaflet同様の半段(0.5)ズーム＝
     // 1タップ0.5段（標準1段だと「2段階」に感じる）＋縮尺150mを飛ばさない。CSSで大きくタップしやすく。
     map.addControl(new HalfStepZoomControl(), "top-left");
+    // 縮尺ボタンの直下に「3D」ボタン（2D/3D切替）。同じ top-left に後から足すと縮尺の下へ積まれる。
+    const threeDCtrl = new ThreeDToggleControl({
+      isOn: () => !!propsRef.current.threeD,
+      onToggle: () => propsRef.current.onToggle3D?.(),
+    });
+    map.addControl(threeDCtrl, "top-left");
+    threeDCtrlRef.current = threeDCtrl;
     // 縮尺バー（実距離m/km）。右下＝著作権表示の上。150mを出せる自作版（Leaflet ScaleWith150 移植）。
     map.addControl(new Scale150Control(), "bottom-right");
     map.touchZoomRotate.enableRotation(); // 2本指回転（ヘディングアップの素地）
@@ -754,6 +795,7 @@ function RamenMapbox(props: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
+    threeDCtrlRef.current?.setActive(!!props.threeD); // 地図上「3D」ボタンの点灯を同期
     if (props.threeD) {
       if (!map.getSource("mapbox-dem")) {
         map.addSource("mapbox-dem", {

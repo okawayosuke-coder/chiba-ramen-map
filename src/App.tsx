@@ -775,6 +775,7 @@ export default function App() {
               theme: theme.resolved, // 夜間/ライト: Mapboxは地図スタイルをdark/lightに切替（Leafletはタイルにフィルタ）
               traffic, // リアルタイム渋滞表示（Mapbox Traffic v1）
               threeD, // 3D表示（地形＋3D建物＋俯瞰ピッチ）
+              onToggle3D: () => setThreeD(!threeD), // 地図上の「3D」ボタン用（縮尺ボタンの下）
               hwOverride,
               onCycleHwOverride: cycleHwOverride,
               dest,

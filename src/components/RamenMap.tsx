@@ -2398,6 +2398,7 @@ interface Props {
   /** Mapbox版のみ使用（渋滞表示・3D表示）。Leaflet版は無視。 */
   traffic?: boolean;
   threeD?: boolean;
+  onToggle3D?: () => void;
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
