@@ -17,13 +17,28 @@ const ORS_KEY = (import.meta.env.VITE_ORS_KEY as string | undefined) || "";
 const OSRM = "https://router.project-osrm.org/route/v1/driving";
 const ORS = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
 const ORS_GET = "https://api.openrouteservice.org/v2/directions/driving-car";
+// Mapbox Directions（driving-traffic＝渋滞・規制考慮）。地図と同じトークンを使用（env優先→PWAのlocalStorage）。
+const MAPBOX_DIR = "https://api.mapbox.com/directions/v5/mapbox/driving-traffic";
+function mapboxToken(): string {
+  const env = (import.meta.env.VITE_MAPBOX_TOKEN as string | undefined) || "";
+  if (env) return env;
+  try {
+    return localStorage.getItem("mapbox_poc_token") || "";
+  } catch {
+    return "";
+  }
+}
 
 // 自車の前方この距離(m)に経由地を置き、出発を進行方向へ誘導してリルートのUターン(引き返し)を防ぐ。
 // ※ORSのbearingsはcyclingプロファイル限定でdriving-carでは無視されるため、経由地方式を採る。
 const AHEAD_M = 150;
 
-/** ルーティング提供元の表示名（attribution用）。 */
-export const routeProvider = ORS_KEY ? "OpenRouteService" : "OSRM demo";
+/** ルーティング提供元の表示名（attribution用）。Mapbox を最優先で使うため、トークンがあれば Mapbox 表記。 */
+export const routeProvider = (import.meta.env.VITE_MAPBOX_TOKEN as string | undefined)
+  ? "Mapbox"
+  : ORS_KEY
+  ? "OpenRouteService"
+  : "OSRM demo";
 
 type Heading = number | null | undefined;
 const validHeading = (h: Heading): h is number =>
@@ -128,14 +143,61 @@ function parseORS(j: unknown): RouteResult | null {
   };
 }
 
+// Mapbox Directions（driving-traffic）。渋滞・通行規制を考慮した経路と所要を返す。
+// bearings で出発の進行方位を拘束し、リルート時のUターン(引き返し)を抑止する（ORS driving-carと違い driving系で有効）。
+// 高速/有料区間の範囲(hwRanges)は basic Directions では取得不可 → undefined を返し、速度ベースの高速判定にフォールバックする。
+async function fetchMapbox(
+  from: Pt,
+  to: Pt,
+  heading: Heading
+): Promise<RouteResult | null> {
+  const token = mapboxToken();
+  if (!token) return null;
+  const path = `${from.lng},${from.lat};${to.lng},${to.lat}`;
+  const params = new URLSearchParams({
+    alternatives: "false",
+    geometries: "geojson",
+    overview: "full",
+    steps: "false",
+    access_token: token,
+  });
+  // bearings は座標数と同数（;区切り）。出発のみ方位±45°で拘束、目的地は空（無拘束）。
+  if (validHeading(heading)) {
+    const deg = Math.round(((heading % 360) + 360) % 360);
+    params.set("bearings", `${deg},45;`);
+  }
+  try {
+    const r = await fetch(`${MAPBOX_DIR}/${path}?${params.toString()}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const rt = j?.routes?.[0];
+    const co = rt?.geometry?.coordinates;
+    if (!Array.isArray(co) || co.length < 2) return null;
+    return {
+      coords: co.map((c: number[]) => [c[1], c[0]] as [number, number]),
+      km: (rt.distance ?? 0) / 1000,
+      min: Math.round((rt.duration ?? 0) / 60),
+      // hwRanges は付けない（速度ベース判定へ委譲）
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** from→to の道なり経路を取得。失敗時 null。
- *  heading（自車の進行方位）を渡すと前方に経由地を挟み、走行方向優先（Uターン抑止）のリルートにする。
- *  経由地つき取得が失敗した場合は経由地なしで再取得してフォールバック。 */
+ *  heading（自車の進行方位）を渡すと走行方向優先（Uターン抑止）のリルートにする。
+ *  ①Mapbox driving-traffic（渋滞考慮）を優先し、失敗時は ②ORS/OSRM へフォールバック。
+ *  ORS/OSRM は heading 有効時は前方150mに経由地を挟んで前進を強制（bearings非対応のため）。 */
 export async function fetchRoute(
   from: Pt,
   to: Pt,
   heading?: Heading
 ): Promise<RouteResult | null> {
+  // ① Mapbox driving-traffic（地図トークンがあれば最優先）
+  const mb = await fetchMapbox(from, to, heading);
+  if (mb) return mb;
+
+  // ② フォールバック: ORS / OSRM（従来）
   const useFwd = validHeading(heading);
   const pts = waypoints(from, to, heading);
   if (ORS_KEY) {
