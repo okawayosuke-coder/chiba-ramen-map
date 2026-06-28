@@ -1247,6 +1247,16 @@ function RamenMapbox(props: Props) {
     };
     const animateTrimTo = (target: number) => {
       trimTo = Math.max(0, Math.min(1, target));
+      // 変化が微小（停車/低速）なら rAF を回さず即適用＝GPUを起こさない（省電力・発熱低減）。
+      if (Math.abs(trimTo - trimFrac) < 0.0008) {
+        if (trimRaf) {
+          cancelAnimationFrame(trimRaf);
+          trimRaf = 0;
+        }
+        trimFrac = trimTo;
+        applyTrim(trimFrac);
+        return;
+      }
       trimFrom = trimFrac;
       trimStart = performance.now();
       if (!trimRaf) trimRaf = requestAnimationFrame(tickTrim);
@@ -1936,8 +1946,13 @@ function RamenMapbox(props: Props) {
       lastBearing = ch;
       if (lastHere) map.easeTo({ center: lastHere, bearing: ch, offset: [0, leadPx()], duration: 250 });
     };
-    window.addEventListener("deviceorientationabsolute", onOrient as EventListener, true);
-    window.addEventListener("deviceorientation", onOrient, true);
+    // コンパス(磁気/ジャイロ)はヘディングアップ時のみ起動＝停車時の地図回転に使用。
+    // ノースアップ(既定)では使わないので磁気センサーを起動せず省電力（発熱低減）。
+    // 北固定時のDRはlastTravelHeadingで直進推測にフォールバック。
+    if (headingUp) {
+      window.addEventListener("deviceorientationabsolute", onOrient as EventListener, true);
+      window.addEventListener("deviceorientation", onOrient, true);
+    }
 
     // トンネルDR: GPSが GPS_STALE_MS 途切れ、直前まで走行していたら推測走行へ。直前速度×方位で前進し地図を流す。
     const GPS_STALE_MS = 4000;
@@ -2145,8 +2160,18 @@ function RamenMapbox(props: Props) {
         timeout: 15000,
       });
     }
-    // Phase2 ジャイロveto用: 端末の重力ベクトルを低域通過で抽出（設置向き非依存のpitch検出）。
-    // 許可はApp.tsxの requestOrientationPermission が DeviceMotion も同時要求済み。
+    return () => {
+      aborted = true;
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      box.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, props.follow]);
+
+  // ジャイロ平坦補正(gyroGrade)ON時だけ devicemotion を起動。既定OFFでは加速度センサーを
+  // 起動せず省電力（発熱低減）。重力ベクトルgを低域通過抽出し updateGradeMeter の veto が読む。
+  useEffect(() => {
+    if (!mapReady || !props.follow || !props.gyroGrade) return;
     const onMotion = (e: DeviceMotionEvent) => {
       const a = e.accelerationIncludingGravity;
       if (!a || a.x == null || a.y == null || a.z == null) return;
@@ -2156,13 +2181,10 @@ function RamenMapbox(props: Props) {
     };
     window.addEventListener("devicemotion", onMotion);
     return () => {
-      aborted = true;
-      if (watchId != null) navigator.geolocation.clearWatch(watchId);
       window.removeEventListener("devicemotion", onMotion);
-      box.remove();
+      _pitch.g = null; // OFFにしたら基準をクリア（古い姿勢でvetoが誤発火しないよう）
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, props.follow]);
+  }, [mapReady, props.follow, props.gyroGrade]);
 
   // ---- 以下はクロージャ内ヘルパ（関数宣言＝巻き上げ済み。propsRef で最新値を読む） ----
 
