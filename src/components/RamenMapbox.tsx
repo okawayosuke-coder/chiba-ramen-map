@@ -571,7 +571,22 @@ function triangleImageData(color: string, scale: number): ImageData {
   return ctx.getImageData(0, 0, s, s);
 }
 
-/** 天気バーの中身HTML（Leaflet版と同一）。通常は当日のみ、.expanded で7日間。 */
+/** ミリ秒タイムスタンプ→JSTの "HH:MM"。渋滞/天気の更新時刻表示用。 */
+function fmtHM(ts: number): string {
+  try {
+    return new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date(ts));
+  } catch {
+    return "";
+  }
+}
+
+/** 天気バーの中身HTML（Leaflet版と同一）。通常は当日のみ、.expanded で7日間。
+ *  ラベル下に天気の取得時刻、渋滞ON時は渋滞タイルの取得時刻(.wx-traffic, 別途更新)を表示。 */
 function weatherBarHTML(wx: Weather): string {
   const c = wmo(wx.current.code);
   const WD = ["日", "月", "火", "水", "木", "金", "土"];
@@ -603,7 +618,7 @@ function weatherBarHTML(wx: Weather): string {
       `<span class="wx-day-temp"><b>${Math.round(t.tmax)}</b>/<span class="wx-lo">${Math.round(t.tmin)}</span></span></div>`
     : "";
   return (
-    `<div class="wx-label">📍 天気</div>${cur}${today}` +
+    `<div class="wx-label"><span class="wx-head">📍 天気 <span class="wx-upd">${fmtHM(wx.fetchedAt)}時点</span></span><span class="wx-traffic"></span></div>${cur}${today}` +
     `<div class="wx-days">${days}</div>` +
     `<span class="wx-toggle" aria-hidden="true">▾</span>`
   );
@@ -620,6 +635,7 @@ function RamenMapbox(props: Props) {
   // followeffectが自車位置/向きに使う。経路案内中だけ新鮮（at が近い）。
   const routeSnapRef = useRef<{ proj: Pt; bearing: number; at: number } | null>(null);
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
+  const lastTrafficAtRef = useRef<number>(0); // 渋滞タイルを最後に取得した時刻(ms)。天気バーに「渋滞 HH:MM時点」表示
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
   const hwToggleLabelRef = useRef<(() => void) | null>(null); // 高速トグルのラベル更新（follow基準effectが設定）
   const styleRef = useRef<string>(""); // 現在適用中の地図スタイルURL（テーマ切替の重複setStyle防止）
@@ -733,6 +749,15 @@ function RamenMapbox(props: Props) {
     };
     map.on("moveend", save);
 
+    // 渋滞タイルを取得し終えた時刻を記録（Mapbox Traffic はデータ自体に時刻が無いため取得時刻で代用）。
+    // 走行で新エリアのタイルが読まれる度に更新。天気バーの「🚗渋滞 HH:MM時点」に反映。
+    map.on("sourcedata", (e) => {
+      if (e.sourceId === "traffic" && e.isSourceLoaded) {
+        lastTrafficAtRef.current = Date.now();
+        paintTrafficTime();
+      }
+    });
+
     return () => {
       ro.disconnect();
       map.remove();
@@ -794,6 +819,7 @@ function RamenMapbox(props: Props) {
     const map = mapRef.current;
     if (!map || !mapReady || !map.getLayer("traffic")) return;
     map.setLayoutProperty("traffic", "visibility", props.traffic ? "visible" : "none");
+    paintTrafficTime(); // ON/OFFで渋滞時刻ラベルの表示を更新
   }, [mapReady, props.traffic]);
 
   // 3D表示（任意・既定OFF）: 地形起伏(raster-dem terrain)＋3D建物(fill-extrusion)＋俯瞰ピッチ。
@@ -1000,6 +1026,7 @@ function RamenMapbox(props: Props) {
       weatherBoxRef.current.innerHTML = wx
         ? weatherBarHTML(wx)
         : '<div class="wx-label">📍 天気</div><div class="wx-loading">天気を取得できませんでした</div>';
+      paintTrafficTime(); // innerHTML差替で消えた渋滞時刻ラベルを再描画
     });
     return () => {
       cancelled = true;
@@ -2505,6 +2532,16 @@ function RamenMapbox(props: Props) {
   }, [mapReady, props.follow, props.gyroGrade]);
 
   // ---- 以下はクロージャ内ヘルパ（関数宣言＝巻き上げ済み。propsRef で最新値を読む） ----
+
+  /** 天気バー内の渋滞取得時刻ラベル(.wx-traffic)を更新。渋滞ON＆取得済みのときだけ表示。 */
+  function paintTrafficTime() {
+    const span = weatherBoxRef.current?.querySelector(".wx-traffic") as HTMLElement | null;
+    if (!span) return;
+    span.textContent =
+      propsRef.current.traffic && lastTrafficAtRef.current
+        ? `🚗 渋滞 ${fmtHM(lastTrafficAtRef.current)}時点`
+        : "";
+  }
 
   function setupLayers(map: mapboxgl.Map) {
     // リアルタイム渋滞（Mapbox Traffic v1）。道路の上・ラベルの下に挿入。混雑(moderate以上)のみ色分けし

@@ -887,10 +887,29 @@ body {
   user-select: none;
 }
 .wx-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   font-size: 11px;
   color: #aeb6c0;
   font-weight: 700;
   white-space: nowrap;
+  line-height: 1.3;
+}
+/* 天気の取得時刻（ラベル行内・控えめ） */
+.wx-upd {
+  font-size: 10px;
+  font-weight: 600;
+  color: #8b94a0;
+}
+/* 渋滞タイルの取得時刻（渋滞ON時のみ・空なら非表示） */
+.wx-traffic {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffce54;
+}
+.wx-traffic:empty {
+  display: none;
 }
 .wx-cur {
   display: flex;
