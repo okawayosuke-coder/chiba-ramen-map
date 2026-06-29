@@ -1157,7 +1157,7 @@ body {
 .route-box {
   position: absolute;
   left: 10px;
-  top: 112px; /* ズーム(+/-)ボタン(約10〜102px)の下に出して重なりを回避 */
+  top: 168px; /* ズーム(+/-)10〜102px と「3D」ボタン112〜158px の下に出す（案内中に3Dボタンを隠さない） */
   z-index: 650;
   pointer-events: none;
   background: rgba(26, 115, 232, 0.92);
@@ -1685,7 +1685,7 @@ body {
 .dest-box {
   position: absolute;
   left: 10px;
-  top: 156px; /* route-box(残り距離/ETA)のすぐ下に近づけて配置（route-box下端≒154px） */
+  top: 212px; /* route-box(top:168・下端≒206px)のすぐ下。3Dボタン(〜158px)とも非重複 */
   z-index: 600;
   pointer-events: none;
   display: flex;
