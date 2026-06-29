@@ -3,54 +3,73 @@
 // データ元 OpenStreetMap (ODbL)。商用可・帰属表示「© OpenStreetMap contributors」必須。
 import { writeFileSync } from "node:fs";
 
-// 千葉中心＋接続する高速をカバー。(south,west,north,east)。広げると重くなりOverpassに弾かれやすい
-const BBOX = [34.95, 139.65, 36.1, 140.95];
+// 関東全域＋接続する高速をカバー。(south,west,north,east)。広いのでタイル分割で収集（highways-geom.jsonと同範囲）。
+const BBOX = [34.85, 138.4, 37.25, 141.0];
+const TILE = 0.5;
 const MIRRORS = [
   "https://overpass.osm.jp/api/interpreter", // 日本インスタンス（国内データに好適・別レート枠）
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
-  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
-
-const ql = `[out:json][timeout:180];
-(
-  node["highway"="motorway_junction"](${BBOX.join(",")});
-  way["highway"="services"](${BBOX.join(",")});
-  way["highway"="rest_area"](${BBOX.join(",")});
-  relation["highway"="services"](${BBOX.join(",")});
-  relation["highway"="rest_area"](${BBOX.join(",")});
-);
-out center tags;`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function overpass() {
-  // 3ラウンド×全ミラーを試行。429/混雑時はラウンド間でバックオフ。
-  for (let round = 0; round < 4; round++) {
+// 1タイル分の高速施設（IC/JCT=motorway_junction / SA/PA=services/rest_area）を取得。
+async function fetchTile(s, w, n, e) {
+  const ql = `[out:json][timeout:120];
+(
+  node["highway"="motorway_junction"](${s},${w},${n},${e});
+  way["highway"="services"](${s},${w},${n},${e});
+  way["highway"="rest_area"](${s},${w},${n},${e});
+  relation["highway"="services"](${s},${w},${n},${e});
+  relation["highway"="rest_area"](${s},${w},${n},${e});
+);
+out center tags;`;
+  for (let round = 0; round < 3; round++) {
     for (const url of MIRRORS) {
       try {
-        console.log(`query r${round}`, url);
         const r = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: "data=" + encodeURIComponent(ql),
         });
-        if (!r.ok) {
-          console.log("  ng", r.status);
-          continue;
-        }
+        if (!r.ok) continue;
         const j = await r.json();
         if (Array.isArray(j.elements)) return j.elements;
-      } catch (e) {
-        console.log("  err", e.message);
+      } catch {
+        /* 次のミラー */
       }
     }
-    const wait = 8000 * (round + 1);
-    console.log(`  全ミラー不可。${wait / 1000}秒待って再試行...`);
-    await sleep(wait);
+    await sleep(5000 * (round + 1));
   }
-  throw new Error("all mirrors failed");
+  throw new Error(`tile ${s},${w} all mirrors failed`);
+}
+
+// タイルを巡回し element を id（type+id）で重複除去して集める。
+async function overpass() {
+  const byId = new Map();
+  let tiles = 0;
+  for (let s = BBOX[0]; s < BBOX[2]; s += TILE) {
+    for (let w = BBOX[1]; w < BBOX[3]; w += TILE) {
+      const n = Math.min(s + TILE, BBOX[2]);
+      const e = Math.min(w + TILE, BBOX[3]);
+      tiles++;
+      process.stdout.write(`tile ${tiles} (${s.toFixed(1)},${w.toFixed(1)}) ... `);
+      const els = await fetchTile(s, w, n, e);
+      let added = 0;
+      for (const el of els) {
+        const k = `${el.type}/${el.id}`;
+        if (byId.has(k)) continue;
+        byId.set(k, el);
+        added++;
+      }
+      console.log(`+${added} (計${byId.size})`);
+      await sleep(1200);
+    }
+  }
+  return [...byId.values()];
 }
 
 // 種別判定: 名称のSA/PA表記を最優先（PA/SAのランプノードがICに化けるのを防ぐ）→
