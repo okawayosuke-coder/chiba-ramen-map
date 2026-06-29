@@ -170,8 +170,10 @@ const POI_SHAPE: Record<PoiKind, string> = {
 };
 
 // ===== 勾配メーター（DEMベース・傾斜計）。Leaflet版 RamenMap.tsx から移植 =====
-const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」
-const GRADE_SLOPE_ON = 2.2; // 平坦→「坂」表示に切替える閾値（ヒステリシス帯でちらつき抑制）
+const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」（g0学習ゲート・DEM符号判定に使用）
+// 表示のヒステリシス帯（融合後 eff に適用）。実走で「敏感すぎ」報告のため [1.5,2.2]→[1.8,2.8] に拡幅。
+const GRADE_SLOPE_ON = 2.8; // 平坦→「坂」表示へ切替える閾値（これを超えて初めて坂表示）
+const GRADE_SLOPE_OFF = 1.8; // 「坂」→平坦へ戻す閾値（これ未満で平坦へ）。ON>OFFでちらつき抑制
 const GRADE_MED_N = 3; // 中央値フィルタ窓（孤立した偽勾配を無視）
 const GRADE_MAX_PLAUSIBLE = 25; // これ超はDEM/経路ノイズとして無視
 const GRADE_SPACING_KM = 0.08; // この先予告用の経路マーク間隔(80m)
@@ -413,14 +415,14 @@ function ensureGradeMeter(box: HTMLElement): GradeMeter {
  *  （Phase2のジャイロvetoは既定OFF・横向き要再設計のためMapbox版では未移植）。 */
 // Phase2(v2) ジャイロveto（Leaflet版移植・既定OFF=「ジャイロで平坦補正」トグル）。設置向き非依存で
 // 端末の傾き(重力ベクトル)を見て、平坦姿勢のままDEMが坂と言う＝平坦路の偽勾配を平坦へveto（値は変えず表示のみ）。
-const PITCH_FLAT_GRADE = 2.6; // これ未満(%)の端末勾配は「水平」とみなし平坦表示(veto)。≒ tan(1.5°)相当
+const PITCH_FLAT_GRADE = 3.0; // これ未満(%)の端末勾配は「水平」とみなし平坦表示(veto)。実走で敏感すぎのため2.6→3.0に不感帯拡大
 const PITCH_ACC_GATE = 0.6; // |GPS速度微分|がこれ未満の時だけ傾きを信用(m/s^2)。加減速の前後G混入を除外
 const PITCH_TURN_GATE = 6; // 進行方位の変化率がこれ未満(°/s)の時だけ傾きを信用＝急旋回のローリング混入を除外
 const PITCH_LAT_GATE = 1.0; // 横G(=速度×方位変化率)がこれ未満(m/s^2)の時だけ傾きを信用。カーブ/車線変更/横勾配の
 //                            ローリングが勾配に化けるのを除外（5%坂で20%等の偽値の主因）
-const DEV_LP = 0.3; // 端末勾配のEMA平滑係数。瞬間スパイクを抑える（時定数≒3s@1Hz）
-const PITCH_DEV_MAXSTEP = 5; // 端末勾配の1サンプル最大変化(%)。段差/瞬間横Gのスパイクをハードに制限
-const PITCH_BLEND = 0.8; // 融合での端末傾き(実測値)の重み（残りはDEM）。端末は現在の実姿勢＝主、DEMは従＋符号
+const DEV_LP = 0.2; // 端末勾配のEMA平滑係数。実走で敏感すぎのため0.3→0.2（時定数≒3s→5s@1Hz）でより鈍く
+const PITCH_DEV_MAXSTEP = 3; // 端末勾配の1サンプル最大変化(%)。段差/瞬間横Gのスパイクをハードに制限（5→3で強化）
+const PITCH_BLEND = 0.6; // 融合での端末傾きの重み（残りはDEM）。実走で値が高く出る報告のため0.8→0.6＝DEM(測量値)寄りに
 const G0_GAIN = 0.05; // 平坦基準g0学習の低域通過ゲイン
 const GRAV_LP = 0.9; // 重力ベクトル抽出の低域通過係数
 // grade effect が書き込み(onMotion=g / onPos=accel,heading,g0,enabled)、updateGradeMeter が demFlat 書込み＆融合読取り。
@@ -496,10 +498,10 @@ function updateGradeMeter(
       eff = sign * (PITCH_BLEND * mDev + (1 - PITCH_BLEND) * Math.abs(med)); // 端末主(PITCH_BLEND)・DEM従
     }
   }
-  // ヒステリシス（融合後の eff に対して。ちらつき防止）
+  // ヒステリシス（融合後の eff に対して。ちらつき防止）。帯 [GRADE_SLOPE_OFF, GRADE_SLOPE_ON]。
   if (m.flat) {
     if (Math.abs(eff) > GRADE_SLOPE_ON) m.flat = false;
-  } else if (Math.abs(eff) < GRADE_FLAT) {
+  } else if (Math.abs(eff) < GRADE_SLOPE_OFF) {
     m.flat = true;
   }
   const flat = m.flat;
