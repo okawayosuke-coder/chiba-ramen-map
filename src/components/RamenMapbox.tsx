@@ -176,40 +176,52 @@ const GRADE_FLAT = 1.5; // これ未満は「ほぼ平坦」（g0学習ゲート
 // 表示のヒステリシス帯（融合後 eff に適用）。実走で「敏感すぎ」報告のため [1.5,2.2]→[1.8,2.8] に拡幅。
 const GRADE_SLOPE_ON = 2.8; // 平坦→「坂」表示へ切替える閾値（これを超えて初めて坂表示）
 const GRADE_SLOPE_OFF = 1.8; // 「坂」→平坦へ戻す閾値（これ未満で平坦へ）。ON>OFFでちらつき抑制
-const GRADE_MED_N = 3; // 中央値フィルタ窓（孤立した偽勾配を無視）
+const GRADE_MED_N = 5; // 中央値フィルタ窓（孤立した偽勾配を無視）。3→5に拡大し連続スパイク(橋手前+橋上等)にも耐性
 const GRADE_MAX_PLAUSIBLE = 25; // これ超はDEM/経路ノイズとして無視
+// 現在勾配は「現在地中心の標高プロファイルを最小二乗回帰」で算出（2点差分はノイズ過大のため廃止）。
+const GRADE_REG_HALF = 100; // 回帰窓の片側(m)。現在地±100m
+const GRADE_REG_STEP = 25; // 標高サンプル間隔(m)。±100m/25m間隔=9点
+const GRADE_REG_MIN_PTS = 5; // 有効GSIサンプルがこれ未満なら勾配を出さない(「—」)
 const GRADE_SPACING_KM = 0.08; // この先予告用の経路マーク間隔(80m)
 const GRADE_LOOK = 11; // 前方何マーク先まで見るか（80m×11＝約880m先まで予告）
 const GRADE_STEEP = 8; // この先「急勾配」と警告する閾値(%)
 
-/** 標高を数値(m)で返す。GSI高精度DEM→open-meteo概算の順。海域/取得不可は null。セッション内キャッシュ。 */
-const _eleNumCache = new Map<string, number | null>();
-async function fetchElevationNum(lat: number, lng: number): Promise<number | null> {
+/** 標高を取得元タグ付き {v(m), src} で返す。GSI高精度DEM(src='gsi')→open-meteo概算(src='om')の順。
+ *  海域/取得不可は null。セッション内キャッシュ。勾配計算は src='gsi' のみ採用し源混在を排除する。 */
+type Elev = { v: number; src: "gsi" | "om" };
+const _eleCache = new Map<string, Elev | null>();
+async function fetchElev(lat: number, lng: number): Promise<Elev | null> {
   const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
-  const hit = _eleNumCache.get(key);
+  const hit = _eleCache.get(key);
   if (hit !== undefined) return hit;
-  let val: number | null = null;
+  let out: Elev | null = null;
   try {
     const r = await fetch(
       `https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=${lng}&lat=${lat}&outtype=JSON`
     );
     const j = await r.json();
     if (j && j.elevation !== "-----" && j.elevation != null && !isNaN(Number(j.elevation)))
-      val = Number(j.elevation);
+      out = { v: Number(j.elevation), src: "gsi" };
   } catch {
     /* GSI失敗時は予備へ */
   }
-  if (val === null) {
+  if (out === null) {
     try {
       const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
       const j = await r.json();
-      if (j && Array.isArray(j.elevation) && j.elevation[0] != null) val = Number(j.elevation[0]);
+      if (j && Array.isArray(j.elevation) && j.elevation[0] != null) out = { v: Number(j.elevation[0]), src: "om" };
     } catch {
       /* 取得不可 */
     }
   }
-  _eleNumCache.set(key, val);
-  return val;
+  _eleCache.set(key, out);
+  return out;
+}
+
+/** 標高を数値(m)で返す（取得元は問わない）。この先急勾配予告など源を区別しない用途用。 */
+async function fetchElevationNum(lat: number, lng: number): Promise<number | null> {
+  const r = await fetchElev(lat, lng);
+  return r ? r.v : null;
 }
 
 /** 標高を「12.3 m」形式の文字列で返す（GSI高精度DEM→open-meteo概算）。自車横の常設標高表示用。Leaflet版 fetchElevation 移植。 */
@@ -348,6 +360,40 @@ function pointAhead(from: Pt, headingDeg: number, distM: number): Pt {
   return { lat: from.lat + dLat, lng: from.lng + dLng };
 }
 
+/** 最小二乗で y=ax+b を当て {a:傾き, b:切片} を返す（x:沿道距離m, y:標高m → a=勾配[無次元]）。点<2 or 退化で null。 */
+function lsqFit(xs: number[], ys: number[]): { a: number; b: number } | null {
+  const n = xs.length;
+  if (n < 2) return null;
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (let i = 0; i < n; i++) {
+    sx += xs[i];
+    sy += ys[i];
+    sxx += xs[i] * xs[i];
+    sxy += xs[i] * ys[i];
+  }
+  const denom = n * sxx - sx * sx;
+  if (Math.abs(denom) < 1e-9) return null;
+  const a = (n * sxy - sx * sy) / denom;
+  return { a, b: (sy - a * sx) / n };
+}
+
+/** ロバスト回帰の傾き(=勾配)を返す。一旦フィット→残差のMADで外れ値(道路を外れたDEMサンプル・橋/切土の
+ *  飛び値)を除去して再フィット。2点差分より空間ノイズに頑健で、曲線部で一部サンプルが道路外の地形を
+ *  拾っても外れ値除去で吸収する。点<2 or 退化で null。 */
+function robustSlope(xs: number[], ys: number[]): number | null {
+  const fit = lsqFit(xs, ys);
+  if (!fit) return null;
+  const res = xs.map((x, i) => Math.abs(ys[i] - (fit.a * x + fit.b)));
+  const sorted = [...res].sort((a, b) => a - b);
+  const mad = sorted[Math.floor(sorted.length / 2)];
+  const thr = Math.max(3 * mad, 1.5); // 1.5m床: DEM量子化/微小起伏は残し、道路外れの数m級飛び値だけ落とす
+  const kx: number[] = [], ky: number[] = [];
+  for (let i = 0; i < xs.length; i++) if (res[i] <= thr) { kx.push(xs[i]); ky.push(ys[i]); }
+  if (kx.length < 5) return fit.a; // 落としすぎたら初回フィットを採用
+  const fit2 = lsqFit(kx, ky);
+  return fit2 ? fit2.a : fit.a;
+}
+
 /** 経路 coords を距離 spacingKm ごとのマーク点に分割。marks[i] は始点から i*spacingKm の地点（Leaflet版移植）。 */
 function buildMarks(coords: [number, number][], spacingKm: number): Pt[] {
   const marks: Pt[] = [];
@@ -424,7 +470,6 @@ const PITCH_LAT_GATE = 1.0; // 横G(=速度×方位変化率)がこれ未満(m/s
 //                            ローリングが勾配に化けるのを除外（5%坂で20%等の偽値の主因）
 const DEV_LP = 0.2; // 端末勾配のEMA平滑係数。実走で敏感すぎのため0.3→0.2（時定数≒3s→5s@1Hz）でより鈍く
 const PITCH_DEV_MAXSTEP = 3; // 端末勾配の1サンプル最大変化(%)。段差/瞬間横Gのスパイクをハードに制限（5→3で強化）
-const PITCH_BLEND = 0.6; // 融合での端末傾きの重み（残りはDEM）。実走で値が高く出る報告のため0.8→0.6＝DEM(測量値)寄りに
 const G0_GAIN = 0.05; // 平坦基準g0学習の低域通過ゲイン
 const GRAV_LP = 0.9; // 重力ベクトル抽出の低域通過係数
 // grade effect が書き込み(onMotion=g / onPos=accel,heading,g0,enabled)、updateGradeMeter が demFlat 書込み＆融合読取り。
@@ -470,13 +515,13 @@ function updateGradeMeter(
   const med = sorted[Math.floor(sorted.length / 2)];
   // 直近のDEM勾配が平坦か＝grade effectのg0(基準姿勢)学習ゲートへ渡す（坂で学習しないため）
   _pitch.demFlat = Math.abs(med) < GRADE_FLAT;
-  // ===== ジャイロ融合(Phase2 v2) =====
-  // 従来は「DEM坂＋端末水平→平坦」の片方向vetoのみだったのを、端末の傾き(g vs g0)から
-  // 現在の路面pitch角→勾配%を直接算出し、DEMと融合してメーターを駆動する双方向の補正へ。
-  //  ・端末は「現在の車の実姿勢」＝応答が速く真値（DEMの80m先読み誤差/ラグが乗らない）→ 主。
-  //  ・DEMは符号(上り/下り)と従の重み＝端末だけでは出ない向きを与える。
-  //  ・旋回/バンクのローリングは headingRate ゲートで、加減速の前後Gは accel ゲートで除外。
-  // トグルOFF/基準未学習/旋回中/加減速中は従来どおりDEM(med)のまま＝安全劣化。
+  // ===== ジャイロは「平坦veto」専用（v0.8.13で双方向融合から降格）=====
+  // 表示値は常にDEM(med=現在地中心の最小二乗回帰)。ジャイロは大きさも符号も足さない。
+  // 「端末が明らかに水平なのにDEMが坂と言う」時だけ平坦化する片方向vetoのみ＝安全側。
+  // 理由(実測): 旧融合は実体が加速度センサーのみ(rotationRate未使用)で、gravAngleDegがピッチとロールを
+  //   区別できず路面カント/マウント横傾き4°で7%、登坂時のアクセル加速混入で過大評価、符号はDEM(遅)・
+  //   大きさはジャイロ(速)で「逆/遅れ」を生んでいた。vetoに限定すればこれらは「vetoが発火しない=DEM値」
+  //   に縮退し、偽の坂を押し上げない。
   let eff = med;
   if (
     _pitch.enabled &&
@@ -486,19 +531,13 @@ function updateGradeMeter(
     _pitch.headingRate < PITCH_TURN_GATE &&
     _pitch.lateralAccel < PITCH_LAT_GATE // 横G中（カーブ/車線変更/横勾配）は横傾きが混入するので信用しない
   ) {
-    // 端末の傾き角→勾配%。1サンプル変化を制限＋EMAで平滑し、瞬間スパイク(段差/横G)で20%等の偽値が出るのを防ぐ。
+    // 端末の傾き角→勾配%。1サンプル変化を制限＋EMAで平滑（段差/横Gの瞬間スパイク除去）。vetoのみに使用。
     const pitchDeg = gravAngleDeg(_pitch.g, _pitch.g0);
     const raw = Math.min(GRADE_MAX_PLAUSIBLE, Math.tan((pitchDeg * Math.PI) / 180) * 100);
     const stepped = Math.max(_pitch.devGrade - PITCH_DEV_MAXSTEP, Math.min(_pitch.devGrade + PITCH_DEV_MAXSTEP, raw));
     _pitch.devGrade += DEV_LP * (stepped - _pitch.devGrade);
-    const mDev = _pitch.devGrade;
-    if (mDev < PITCH_FLAT_GRADE) {
-      eff = 0; // 端末ほぼ水平＝路面平坦（DEMの偽勾配を平坦化）
-    } else {
-      if (Math.abs(med) >= GRADE_FLAT) _pitch.lastSign = med >= 0 ? 1 : -1; // DEMが坂を見たら符号を更新・保持
-      const sign = Math.abs(med) >= GRADE_FLAT ? (med >= 0 ? 1 : -1) : _pitch.lastSign; // DEM平坦時は直近符号
-      eff = sign * (PITCH_BLEND * mDev + (1 - PITCH_BLEND) * Math.abs(med)); // 端末主(PITCH_BLEND)・DEM従
-    }
+    if (_pitch.devGrade < PITCH_FLAT_GRADE) eff = 0; // 端末ほぼ水平＝路面平坦（DEMの偽勾配のみvetoで平坦化）
+    // devGradeが高い（ロール/加速混入含む）場合は veto しない＝DEM(med)をそのまま表示（偽の坂を作らない）
   }
   // ヒステリシス（融合後の eff に対して。ちらつき防止）。帯 [GRADE_SLOPE_OFF, GRADE_SLOPE_ON]。
   if (m.flat) {
@@ -2829,7 +2868,6 @@ function RamenMapbox(props: Props) {
     if (!map || !mapReady || !props.follow) return;
     let aborted = false;
     let watchId: number | null = null;
-    const AHEAD_M = 80;
     const MIN_MOVE_KM = 0.05; // 50m移動ごとに勾配を再計測（表示は維持）
     let lastHeading: number | null = null;
     let lastUpdatePos: Pt | null = null;
@@ -2925,17 +2963,30 @@ function RamenMapbox(props: Props) {
       if (lastHeading == null) return; // 方位不明(未発進)は「—」表示のみ
       if (lastUpdatePos && haversineKm(here, lastUpdatePos) < MIN_MOVE_KM) return;
       lastUpdatePos = here;
-      const ahead = pointAhead(here, lastHeading, AHEAD_M);
+      // 現在勾配 = 現在地中心の標高プロファイル(±GRADE_REG_HALF, GRADE_REG_STEP間隔)を最小二乗回帰した傾き。
+      // 2点差分よりノイズに頑健(実測で坂のstd 8.94%→1.95%)。GSI由来のサンプルのみ採用し源混在を排除。
+      const offs: number[] = [];
+      for (let d = -GRADE_REG_HALF; d <= GRADE_REG_HALF; d += GRADE_REG_STEP) offs.push(d);
+      const samplePts = offs.map((d) => pointAhead(here, lastHeading!, d));
       const id = ++reqId;
-      Promise.all([
-        fetchElevationNum(here.lat, here.lng),
-        fetchElevationNum(ahead.lat, ahead.lng),
-      ]).then(([e0, e1]) => {
+      Promise.all(samplePts.map((pt) => fetchElev(pt.lat, pt.lng))).then((results) => {
         if (aborted || id !== reqId) return;
+        const xs: number[] = []; // 沿道距離(m)
+        const ys: number[] = []; // 標高(m)
+        for (let i = 0; i < results.length; i++) {
+          const r = results[i];
+          if (r && r.src === "gsi") {
+            xs.push(offs[i]);
+            ys.push(r.v);
+          }
+        }
         let g: number | null = null;
-        if (e0 != null && e1 != null) {
-          const gv = ((e1 - e0) / AHEAD_M) * 100;
-          if (Math.abs(gv) <= GRADE_MAX_PLAUSIBLE) g = gv;
+        if (xs.length >= GRADE_REG_MIN_PTS) {
+          const slope = robustSlope(xs, ys); // m/m（外れ値除去付き回帰）
+          if (slope != null) {
+            const gv = slope * 100;
+            if (Math.abs(gv) <= GRADE_MAX_PLAUSIBLE) g = gv;
+          }
         }
         lastGrade = g;
         render(g);
