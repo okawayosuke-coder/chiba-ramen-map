@@ -6,6 +6,7 @@ import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest 
 import { fetchRoute, projectOnRoute } from "../route";
 import { loadHighway, type HwFacility, type HwKind } from "../highwayData";
 import { loadHighwayGeom, nearestHighway, type HighwayGeom } from "../highwayGeom";
+import { loadSurfaceGeom, nearestSurface, type SurfaceGeom } from "../surfaceGeom";
 import { fetchPois, poiBrandStyle, poiIconFile, type Poi, type PoiKind, type BBox } from "../poi";
 import {
   loadLocalPois,
@@ -2111,6 +2112,8 @@ function RamenMapbox(props: Props) {
     let fast = 0;
     let slow = 0;
     let hwGeom: HighwayGeom | null = null; // 高速道路センターライン形状（位置判定用・遅延読込）
+    let sgGeom: SurfaceGeom | null = null; // 高速近傍の一般道形状（357等・高速誤認の打ち消し用）
+    let surfHits = 0; // 「一般道が明確に近い」が連続したフィックス数（誤OFFのちらつき防止）
     let autoEff = false; // 実効の自動判定（位置スナップ優先・速度フォールバック）
     let curRoad = ""; // 現在走行中の路線名（位置スナップで把握）。施設を路線名で絞り並走道路を除外する
     const updateAutoHw = (kmh: number) => {
@@ -2214,6 +2217,11 @@ function RamenMapbox(props: Props) {
         if (!aborted) hwGeom = g;
       })
       .catch(() => {});
+    loadSurfaceGeom()
+      .then((g) => {
+        if (!aborted) sgGeom = g;
+      })
+      .catch(() => {});
     const onPos = (p: GeolocationPosition) => {
       const here: Pt = { lat: p.coords.latitude, lng: p.coords.longitude };
       const h = p.coords.heading;
@@ -2236,18 +2244,28 @@ function RamenMapbox(props: Props) {
         prevT = p.timestamp;
       }
       // 位置スナップ判定（優先）。形状読込後、現在地と最寄り高速の距離で確定／曖昧は速度へフォールバック。
+      // さらに「最寄り一般道(357等) vs 最寄り高速」を比べ、一般道が明確に近ければ高速判定を打ち消す
+      // （高架の真下/真横を走る一般道の高速誤認対策）。引き分け(真下で重なる区間)は速度に委ねる→手動OFFで対応。
       let posOn: boolean | null = null;
       if (hwGeom) {
         const snap = nearestHighway(hwGeom, here.lat, here.lng);
         if (!snap) {
           posOn = false; // 近傍に高速が無い＝高速外
           curRoad = "";
+          surfHits = 0;
         } else {
-          if (snap.distM < 35) posOn = true; // 高速上
-          else if (snap.distM > 90) posOn = false; // 明確に高速外（35〜90mは曖昧→速度に委ねる）
-          // 現在路線名: 名前付き路線が80m以内なら更新／200m超なら離脱とみなしクリア（その間はsticky=直前を維持）
-          if (snap.name && snap.namedDistM < 80) curRoad = snap.name;
-          else if (snap.namedDistM > 200) curRoad = "";
+          const MARGIN = 14; // 一般道/高速の距離差がこの値を超えて初めて「明確に近い」と判定
+          const sd = sgGeom ? nearestSurface(sgGeom, here.lat, here.lng) : null;
+          const surfCloser = sd != null && sd + MARGIN < snap.distM; // 一般道が明確に近い
+          const hwCloser = sd == null || snap.distM + MARGIN < sd; // 高速が明確に近い
+          surfHits = surfCloser ? Math.min(surfHits + 1, 5) : 0;
+          if (surfHits >= 3) posOn = false; // 一般道が連続して明確に近い＝一般道走行
+          else if (snap.distM < 35 && hwCloser) posOn = true; // 高速が明確に近く高速上
+          else if (snap.distM > 90) posOn = false; // 明確に高速外
+          // それ以外(35〜90m / 高架の真下で引き分けの<35m)は曖昧→速度に委ねる
+          // 現在路線名: 一般道判定でなく、名前付き路線が80m以内なら更新／200m超or一般道判定でクリア
+          if (posOn !== false && snap.name && snap.namedDistM < 80) curRoad = snap.name;
+          else if (posOn === false || snap.namedDistM > 200) curRoad = "";
         }
       }
       autoEff = posOn != null ? posOn : autoHw;
