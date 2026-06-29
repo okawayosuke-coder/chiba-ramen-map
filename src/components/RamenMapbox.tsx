@@ -5,6 +5,7 @@ import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
 import { fetchRoute, projectOnRoute } from "../route";
 import { loadHighway, type HwFacility, type HwKind } from "../highwayData";
+import { loadHighwayGeom, nearestHighway, type HighwayGeom } from "../highwayGeom";
 import { fetchPois, poiBrandStyle, poiIconFile, type Poi, type PoiKind, type BBox } from "../poi";
 import {
   loadLocalPois,
@@ -2058,10 +2059,11 @@ function RamenMapbox(props: Props) {
   }, [props.hwOverride]);
 
   // フリー走行(ルート無し)の高速施設ストリップ＋高速の自動判定。
-  // ・高速判定: hwOverride=「高速」は常時ON／「自動」は速度ヒステリシス(≥65km/hが8フィックス→ON, <50が60→OFF)で自動ON。
-  //   端末が coords.speed を返さない場合は前回位置との差分から速度を算出(自動が「全く効かない」のを防ぐ)。
-  // ・どの高速か: 自車位置＋進行方位の「前方コリドー(横ズレが小さい施設のみ)」で判定し、並走する別の高速
-  //   (例: 東関東道の隣の京葉道路)の施設を除外する。
+  // ・高速判定(自動): ①位置スナップ優先＝現在地を高速道路センターライン(highways-geom.json)に投影し、
+  //   <35mなら高速ON / >90mなら高速OFF（一般道を飛ばしても誤検知せず、渋滞徐行でも高速と判る）。
+  //   ②曖昧(35〜90m)・形状未読込・範囲外は速度ヒステリシス(≥65km/hが8フィックス→ON, <50が60→OFF)へフォールバック
+  //   （coords.speed が無い端末は前回位置との差分から速度算出）。hwOverride=「高速」は常時ON。
+  // ・施設の絞り込み(どの高速か): 自車位置＋進行方位の前方コリドー(横ズレが小さい施設のみ)で並走道路(京葉道路 等)を除外。
   // 経路effectはdest必須なので別系統。dest設定中はこちらは無効（経路effect側が経路に投影して出す）。
   useEffect(() => {
     const map = mapRef.current;
@@ -2096,10 +2098,12 @@ function RamenMapbox(props: Props) {
     let prevPt: Pt | null = null;
     let prevT = 0;
     let lastKmh = 0;
-    // 速度ベースの高速自動判定（手動「高速」は常時ON）。ヒステリシスでちらつき防止。
+    // 速度ベースの高速自動判定（位置判定が曖昧/未読込のときのフォールバック）。ヒステリシスでちらつき防止。
     let autoHw = false;
     let fast = 0;
     let slow = 0;
+    let hwGeom: HighwayGeom | null = null; // 高速道路センターライン形状（位置判定用・遅延読込）
+    let autoEff = false; // 実効の自動判定（位置スナップ優先・速度フォールバック）
     const updateAutoHw = (kmh: number) => {
       if (!isFinite(kmh)) return;
       if (kmh >= 65) {
@@ -2118,7 +2122,7 @@ function RamenMapbox(props: Props) {
     // 高速モードが実効ONか（手動「高速」＝常時／「自動」＝速度判定）
     const effOn = () =>
       propsRef.current.hwOverride === "on" ||
-      (propsRef.current.hwOverride === "auto" && autoHw);
+      (propsRef.current.hwOverride === "auto" && autoEff);
     const toRad = (d: number) => (d * Math.PI) / 180;
     const render = (here: Pt, hd: number) => {
       if (!facilities || !effOn()) {
@@ -2179,6 +2183,11 @@ function RamenMapbox(props: Props) {
         if (!aborted) facilities = d.facilities;
       })
       .catch(() => {});
+    loadHighwayGeom()
+      .then((g) => {
+        if (!aborted) hwGeom = g;
+      })
+      .catch(() => {});
     const onPos = (p: GeolocationPosition) => {
       const here: Pt = { lat: p.coords.latitude, lng: p.coords.longitude };
       const h = p.coords.heading;
@@ -2200,6 +2209,16 @@ function RamenMapbox(props: Props) {
         prevPt = here;
         prevT = p.timestamp;
       }
+      // 位置スナップ判定（優先）。形状読込後、現在地と最寄り高速の距離で確定／曖昧は速度へフォールバック。
+      let posOn: boolean | null = null;
+      if (hwGeom) {
+        const snap = nearestHighway(hwGeom, here.lat, here.lng);
+        if (!snap) posOn = false; // 近傍に高速が無い＝高速外
+        else if (snap.distM < 35) posOn = true; // 高速上
+        else if (snap.distM > 90) posOn = false; // 明確に高速外
+        // 35〜90m は曖昧→null（速度判定に委ねる）
+      }
+      autoEff = posOn != null ? posOn : autoHw;
       // 高速モード(手動/自動)に合わせ勾配メーターの抑制を同期（高速はDEM標高が不正確なため）
       hwActiveRef.current = effOn();
       if (lastHd == null || !effOn()) {
