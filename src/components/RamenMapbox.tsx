@@ -2111,6 +2111,7 @@ function RamenMapbox(props: Props) {
     let slow = 0;
     let hwGeom: HighwayGeom | null = null; // 高速道路センターライン形状（位置判定用・遅延読込）
     let autoEff = false; // 実効の自動判定（位置スナップ優先・速度フォールバック）
+    let curRoad = ""; // 現在走行中の路線名（位置スナップで把握）。施設を路線名で絞り並走道路を除外する
     const updateAutoHw = (kmh: number) => {
       if (!isFinite(kmh)) return;
       if (kmh >= 65) {
@@ -2136,18 +2137,23 @@ function RamenMapbox(props: Props) {
         strip.style.display = "none";
         return;
       }
+      const useRoad = !!curRoad; // 現在路線が確定していれば「路線名一致」で厳密に絞る（並走道路を確実に除外）
       const cands: { f: HwFacility; fwd: number }[] = [];
       for (const f of facilities) {
         const fp = { lat: f.lat, lng: f.lng };
         const d = haversineKm(here, fp);
         if (d > MAXKM || d < 0.05) continue;
         const diff = Math.abs(((bearingDeg(here, fp) - hd + 540) % 360) - 180); // 0=正面
-        if (diff > 80) continue; // 後方・側方は除外
+        if (diff > 90) continue; // 後方は除外（前方のみ）
         const fwd = d * Math.cos(toRad(diff)); // 進行方向の前方距離(km)
-        const lateral = d * Math.sin(toRad(diff)); // 進行ラインからの横ズレ(km)
-        // 並走する別の高速(京葉道路 等)を除外＝横ズレが小さい施設のみ。
-        // 遠方ほどカーブを許容して緩めるが、並走道路の間隔(~1km)に達しないよう上限1.0km。
-        if (lateral > Math.min(0.45 + 0.05 * fwd, 1.0)) continue;
+        if (useRoad && f.road) {
+          // 走行中の路線に属す施設だけ表示（京葉道路 等の並走道路を確実に除外）
+          if (f.road !== curRoad) continue;
+        } else {
+          // 現在路線が不明 or 施設に路線名が無い → 従来の前方コリドー（横ズレが小さい施設のみ）にフォールバック
+          const lateral = d * Math.sin(toRad(diff));
+          if (lateral > Math.min(0.45 + 0.05 * fwd, 1.0)) continue;
+        }
         cands.push({ f, fwd });
       }
       cands.sort((a, b) => a.fwd - b.fwd);
@@ -2220,10 +2226,16 @@ function RamenMapbox(props: Props) {
       let posOn: boolean | null = null;
       if (hwGeom) {
         const snap = nearestHighway(hwGeom, here.lat, here.lng);
-        if (!snap) posOn = false; // 近傍に高速が無い＝高速外
-        else if (snap.distM < 35) posOn = true; // 高速上
-        else if (snap.distM > 90) posOn = false; // 明確に高速外
-        // 35〜90m は曖昧→null（速度判定に委ねる）
+        if (!snap) {
+          posOn = false; // 近傍に高速が無い＝高速外
+          curRoad = "";
+        } else {
+          if (snap.distM < 35) posOn = true; // 高速上
+          else if (snap.distM > 90) posOn = false; // 明確に高速外（35〜90mは曖昧→速度に委ねる）
+          // 現在路線名: 名前付き路線が80m以内なら更新／200m超なら離脱とみなしクリア（その間はsticky=直前を維持）
+          if (snap.name && snap.namedDistM < 80) curRoad = snap.name;
+          else if (snap.namedDistM > 200) curRoad = "";
+        }
       }
       autoEff = posOn != null ? posOn : autoHw;
       // 高速モード(手動/自動)に合わせ勾配メーターの抑制を同期（高速はDEM標高が不正確なため）

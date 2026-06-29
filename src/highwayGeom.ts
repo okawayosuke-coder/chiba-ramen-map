@@ -19,9 +19,9 @@ export interface HighwayGeom {
 }
 /** 現在地スナップ結果 */
 export interface HwSnap {
-  distM: number; // 最寄り高速までの距離(m)
-  ref: string;
-  name: string;
+  distM: number; // 最寄り高速（無名link含む）までの距離(m)＝高速ON/OFF判定用
+  name: string; // 最寄り「名前付き」路線名（施設フィルタ用。name||ref。無ければ""）
+  namedDistM: number; // その名前付き路線までの距離(m)
 }
 
 let cache: Promise<HighwayGeom> | null = null;
@@ -49,7 +49,8 @@ export function loadHighwayGeom(): Promise<HighwayGeom> {
             if (p[1] < w) w = p[1];
             if (p[1] > e) e = p[1];
           }
-          roads.push({ ref: r.ref, name: r.name, c: r.c, s, w, n, e });
+          // 路線名は name||ref に統一（施設側 assign-facility-roads.mjs と同じ規則で突合できるように）
+          roads.push({ name: (r.name || r.ref || "").trim(), c: r.c, s, w, n, e });
         }
         return { roads };
       });
@@ -62,14 +63,16 @@ export function loadHighwayGeom(): Promise<HighwayGeom> {
 
 const PAD = 0.002; // bbox プレフィルタの余白（約220m）。スナップ閾値(<90m)より広く取り取りこぼし防止
 
-/** 現在地から最寄りの高速道路センターラインまでの距離(m)＋路線名を返す。
- *  近傍に高速が無ければ null（＝高速から離れている）。点-線分距離は現在地まわりの等距円筒近似。 */
+/** 現在地から最寄りの高速道路までの距離(m)＝高速ON/OFF判定 と、最寄り「名前付き路線」の名前＝施設フィルタ用を返す。
+ *  近傍に高速が無ければ null。点-線分距離は現在地まわりの等距円筒近似。
+ *  無名link(ランプ)は距離(距M)には使うが路線名には使わない（IC/SAは名前付き本線に属すため）。 */
 export function nearestHighway(g: HighwayGeom, lat: number, lng: number): HwSnap | null {
   const latRad = (lat * Math.PI) / 180;
   const mPerLat = 110540;
   const mPerLng = 111320 * Math.cos(latRad);
-  let best = Infinity;
-  let bestRoad: Road | null = null;
+  let bestAll = Infinity; // 無名link含む最寄り（ON/OFF用）
+  let bestNamed = Infinity; // 名前付き路線の最寄り（路線名用）
+  let bestName = "";
   for (const road of g.roads) {
     if (
       lat < road.s - PAD ||
@@ -78,6 +81,7 @@ export function nearestHighway(g: HighwayGeom, lat: number, lng: number): HwSnap
       lng > road.e + PAD
     )
       continue; // 近傍bbox外は飛ばす
+    const named = !!road.name;
     const c = road.c;
     for (let i = 0; i < c.length - 1; i++) {
       // 現在地を原点としたローカル直交座標(m)で点-線分距離
@@ -93,12 +97,13 @@ export function nearestHighway(g: HighwayGeom, lat: number, lng: number): HwSnap
       const cx = ax + t * dx;
       const cy = ay + t * dy;
       const d = Math.hypot(cx, cy);
-      if (d < best) {
-        best = d;
-        bestRoad = road;
+      if (d < bestAll) bestAll = d;
+      if (named && d < bestNamed) {
+        bestNamed = d;
+        bestName = road.name || "";
       }
     }
   }
-  if (!bestRoad || !isFinite(best)) return null;
-  return { distM: best, ref: bestRoad.ref || "", name: bestRoad.name || "" };
+  if (!isFinite(bestAll)) return null;
+  return { distM: bestAll, name: bestName, namedDistM: bestNamed };
 }

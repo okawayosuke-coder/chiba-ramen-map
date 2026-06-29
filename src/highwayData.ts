@@ -15,6 +15,7 @@ export interface HwFacility {
   amenities?: HwAmenity[]; // SA/PAのみ。OSMに設備データがある施設だけ付与。
   convBrand?: string; // SA/PA内コンビニのブランド名（見た目判別用・poiIconFileに渡す）
   fuelBrand?: string; // SA/PA内GSのブランド名（同上）
+  road?: string; // 所属する高速の路線名（scripts/assign-facility-roads.mjs が付与）。走行中の現在路線と突合して並走道路を除外。
 }
 export interface HighwayData {
   generated: string;
