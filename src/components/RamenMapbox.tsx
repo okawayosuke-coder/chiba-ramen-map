@@ -1875,6 +1875,10 @@ function RamenMapbox(props: Props) {
           );
         })
         .join("");
+      // 設備アイコン付き(背の高い)施設が並ぶと縦に溢れて上端で見切れるため、入り切らない遠い施設から落とす（最寄り優先を維持）
+      while (hwStrip.children.length > 1 && hwStrip.scrollHeight > hwStrip.clientHeight + 1) {
+        hwStrip.removeChild(hwStrip.lastElementChild!);
+      }
     };
     loadHighway()
       .then((d) => {
@@ -2165,6 +2169,10 @@ function RamenMapbox(props: Props) {
           );
         })
         .join("");
+      // 設備アイコン付き(背の高い)施設が並ぶと縦に溢れて上端で見切れるため、入り切らない遠い施設から落とす（最寄り優先を維持）
+      while (strip.children.length > 1 && strip.scrollHeight > strip.clientHeight + 1) {
+        strip.removeChild(strip.lastElementChild!);
+      }
     };
     loadHighway()
       .then((d) => {
