@@ -81,11 +81,93 @@ body,
   background: var(--bg);
 }
 
+/* 上部固定は「検索＋チップ（＋目的地ミニカード）」だけに最小化＝一覧の可視高さを最大化。
+   ヘッダー/ツールバー/目的地設定の補助/絞り込み展開はスクロール領域へ（固定しない）。 */
 .sidebar__controls {
   position: sticky;
   top: 0;
   z-index: 5;
   background: var(--panel);
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+.sidebar__controls .field input[type="text"] {
+  font-size: 15px;
+}
+
+/* 目的地ミニカード（設定済み時だけ上部固定に表示・コンパクト） */
+.dest-mini {
+  background: #eaf6ee;
+  border: 1px solid #b7e0c4;
+  border-radius: 10px;
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+[data-theme="dark"] .dest-mini {
+  background: #14301e;
+  border-color: #2f6b45;
+}
+.dest-mini__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dest-mini__name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dest-mini__x {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 6px;
+  min-height: 32px;
+}
+.dest-mini__dist {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.dest-mini__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* 目的地設定の補助（未設定時・スクロール領域）。地図長押し/自宅/最近（既定折りたたみ） */
+.dest-setup {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dest-setup__head {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.dest-setup .recent-row {
+  margin: 0;
+}
+.dest-method--on {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 .sidebar__header {

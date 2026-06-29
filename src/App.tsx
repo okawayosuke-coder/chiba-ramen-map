@@ -46,7 +46,7 @@ import {
   useRecentDests,
   useTheme,
 } from "./storage";
-import { geocodeAddress, reverseAddressNoBanchi } from "./geocode";
+import { geocodeAddress } from "./geocode";
 import { useGeolocation, useMovementDetector } from "./hooks";
 import { downloadTrackGPX, trackStats } from "./track";
 import {
@@ -146,6 +146,7 @@ export default function App() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [recentsOpen, setRecentsOpen] = useState(false); // 最近の目的地は既定折りたたみ（固定部を空ける）
   const [follow, setFollow] = useState(false);
   const [paneHidden, setPaneHidden] = useState(false);
   const [showPoi, setShowPoi] = useState(true); // 周辺POIレイヤーの全体ON/OFF（既定ON）
@@ -162,7 +163,6 @@ export default function App() {
   // 検索ボックスの入力を住所として解決した候補（ラーメン店に限らず任意地点を目的地化）
   const [addrSuggest, setAddrSuggest] = useState<{ lat: number; lng: number; title: string } | null>(null);
   const addrReqRef = useRef(0); // 住所ジオコーディングの競合（古い応答）を捨てるための連番
-  const [destAddr, setDestAddr] = useState<string | null>(null); // 目的地カードの補足住所（逆ジオ・番地なし）
   const [recenterTick, setRecenterTick] = useState(0); // 「地図で見る」で地図を目的地へ寄せる信号
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -411,22 +411,6 @@ export default function App() {
     [dest]
   );
 
-  // 目的地カードの補足住所（番地なし）を逆ジオで取得。店舗ならエリア名、住所/地図長押し
-  // なら名称がほぼ住所なので（重複は表示側で抑制）。dest 解除でクリア。
-  useEffect(() => {
-    if (!dest) {
-      setDestAddr(null);
-      return;
-    }
-    let alive = true;
-    reverseAddressNoBanchi(dest.lat, dest.lng).then((a) => {
-      if (alive) setDestAddr(a);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [dest]);
-
   // 目的地までの直線距離（現在地があるときだけ）
   const destDist = dest && geo.pos ? haversineKm(geo.pos, dest) : null;
 
@@ -528,7 +512,7 @@ export default function App() {
           onClick={() => setSheetOpen((o) => !o)}
           aria-label="一覧を開閉"
         />
-        <div className="sidebar__controls">
+        {/* ブランディング＋ツールバーはスクロールで退避（固定領域を空けて一覧を最大化） */}
         <div className="sidebar__header">
           <h1>🍜 千葉ラーメンMAP</h1>
           <p>千葉県＋江東区・江戸川区＋茨城県南（つくば・土浦ほか）／カーナビ起動対応</p>
@@ -602,115 +586,60 @@ export default function App() {
           </button>
         </nav>
 
-        <div className="filters">
-          {/* 目的地パネル: 検索・地図長押し・最近・自宅をまとめ、設定後は目的地カードを表示 */}
-          <div className={`dest-panel${dest ? " dest-panel--active" : ""}`}>
-            {dest ? (
-              <div className="dest-card">
-                <div className="dest-card__head">🎯 目的地</div>
-                <div className="dest-card__name">{dest.name}</div>
-                {destAddr &&
-                  !dest.name.includes(destAddr) &&
-                  !destAddr.includes(dest.name) && (
-                    <div className="dest-card__addr">{destAddr}</div>
-                  )}
-                {destDist != null && (
-                  <div className="dest-card__dist">
-                    📍 直線{fmtDistance(destDist)}・車約{roughMinutes(destDist)}分（目安）
-                  </div>
-                )}
-                <div className="dest-card__actions">
-                  <button
-                    className="act act--route"
-                    onClick={onShowDestOnMap}
-                    title="地図で目的地・ルートを表示"
-                  >
-                    🧭 地図で見る
-                  </button>
-                  <button
-                    className="act act--nav"
-                    onClick={() => startGoogleNav(dest)}
-                    title="Googleマップでナビ起動"
-                  >
-                    🚗 Googleマップ
-                  </button>
-                  <button
-                    className="act"
-                    onClick={() => doShareDest(dest)}
-                    title="ナビリンクを共有"
-                  >
-                    共有
-                  </button>
-                  <button
-                    className="act act--clear-dest"
-                    onClick={onClearDest}
-                    title="目的地を解除"
-                  >
-                    ✕ 解除
-                  </button>
-                </div>
+        {/* 上部固定（最小）: 検索＋チップ＋(設定済みのみ)目的地ミニカード。一覧を最大化するためここだけ固定 */}
+        <div className="sidebar__controls">
+          {dest && (
+            <div className="dest-mini">
+              <div className="dest-mini__top">
+                <span className="dest-mini__name">🎯 {dest.name}</span>
+                <button
+                  className="dest-mini__x"
+                  onClick={onClearDest}
+                  aria-label="目的地を解除"
+                  title="目的地を解除"
+                >
+                  ✕
+                </button>
               </div>
-            ) : (
-              <div className="dest-panel__head">🎯 目的地を設定</div>
-            )}
-
-            <div className="field">
-              <input
-                type="text"
-                aria-label="店名・住所・場所で検索"
-                placeholder="🔍 店名・住所・場所で検索"
-                value={filters.query}
-                onChange={(e) => set("query", e.target.value)}
-              />
-            </div>
-
-            {!dest && (
-              <>
-                <div className="dest-methods">
-                  <button
-                    className="dest-method"
-                    onClick={() =>
-                      setToast("地図を長押しすると、その地点を目的地に設定できます")
-                    }
-                    title="地図を長押しすると、その地点を目的地にできます"
-                  >
-                    📍 地図を長押し
-                  </button>
-                  <button
-                    className="dest-method"
-                    onClick={onGoHome}
-                    title="自宅を目的地に設定"
-                  >
-                    🏠 自宅へ
-                  </button>
+              {destDist != null && (
+                <div className="dest-mini__dist">
+                  📍 直線{fmtDistance(destDist)}・車約{roughMinutes(destDist)}分
                 </div>
+              )}
+              <div className="dest-mini__actions">
+                <button
+                  className="act act--route"
+                  onClick={onShowDestOnMap}
+                  title="地図で目的地・ルートを表示"
+                >
+                  🧭 地図で見る
+                </button>
+                <button
+                  className="act act--nav"
+                  onClick={() => startGoogleNav(dest)}
+                  title="Googleマップでナビ起動"
+                >
+                  🚗 ナビ
+                </button>
+                <button
+                  className="act"
+                  onClick={() => doShareDest(dest)}
+                  title="ナビリンクを共有"
+                >
+                  共有
+                </button>
+              </div>
+            </div>
+          )}
 
-                {recents.length > 0 && !filters.query && (
-                  <div className="recent-row">
-                    <span className="recent-row__lbl">🕘 最近の目的地</span>
-                    <div className="chips-row">
-                      {recents.map((r, i) => (
-                        <button
-                          key={`${r.lat},${r.lng},${i}`}
-                          className="chip chip--recent"
-                          onClick={() => onSetDest(r)}
-                          title={`「${r.name}」を目的地に設定`}
-                        >
-                          {r.name}
-                        </button>
-                      ))}
-                      <button
-                        className="chip chip--clear"
-                        onClick={clearRecents}
-                        title="最近の目的地の履歴を消去"
-                      >
-                        消去
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+          <div className="field">
+            <input
+              type="text"
+              aria-label="店名・住所・場所で検索"
+              placeholder="🔍 店名・住所・場所で検索"
+              value={filters.query}
+              onChange={(e) => set("query", e.target.value)}
+            />
           </div>
 
           <div className="chips-row">
@@ -730,9 +659,68 @@ export default function App() {
               絞り込み {filtersOpen ? "▲" : "▼"}
             </button>
           </div>
+        </div>
 
-          {filtersOpen && (
-            <>
+        {/* ここから下はスクロール領域（固定しない）＝絞り込みを開いても一覧を押し出さない */}
+        {!dest && (
+          <div className="dest-setup">
+            <div className="dest-setup__head">🎯 目的地を設定（店以外も）</div>
+            <div className="dest-methods">
+              <button
+                className="dest-method"
+                onClick={() =>
+                  setToast("地図を長押しすると、その地点を目的地に設定できます")
+                }
+                title="地図を長押しすると、その地点を目的地にできます"
+              >
+                📍 地図を長押し
+              </button>
+              <button
+                className="dest-method"
+                onClick={onGoHome}
+                title="自宅を目的地に設定"
+              >
+                🏠 自宅へ
+              </button>
+              {recents.length > 0 && (
+                <button
+                  className={`dest-method${recentsOpen ? " dest-method--on" : ""}`}
+                  onClick={() => setRecentsOpen((o) => !o)}
+                  aria-expanded={recentsOpen}
+                  title="最近の目的地"
+                >
+                  🕘 最近{recentsOpen ? " ▲" : `（${recents.length}）▼`}
+                </button>
+              )}
+            </div>
+            {recents.length > 0 && recentsOpen && (
+              <div className="recent-row">
+                <div className="chips-row">
+                  {recents.map((r, i) => (
+                    <button
+                      key={`${r.lat},${r.lng},${i}`}
+                      className="chip chip--recent"
+                      onClick={() => onSetDest(r)}
+                      title={`「${r.name}」を目的地に設定`}
+                    >
+                      {r.name}
+                    </button>
+                  ))}
+                  <button
+                    className="chip chip--clear"
+                    onClick={clearRecents}
+                    title="最近の目的地の履歴を消去"
+                  >
+                    消去
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {filtersOpen && (
+          <div className="filters">
               <div className="field">
                 <label>エリア</label>
                 <select
@@ -808,9 +796,8 @@ export default function App() {
                   <option value="name">店名順</option>
                 </select>
               </div>
-            </>
-          )}
-        </div>
+          </div>
+        )}
 
         {geoNotice && (
           <div className="notice" role="status" aria-live="polite">
@@ -848,7 +835,6 @@ export default function App() {
             🍜🚗 お気に入り{shops.length}件で「はしご」ルートを作成（Googleマップ）
           </button>
         )}
-        </div>
 
         <div className="list">
           {addrSuggest && (
