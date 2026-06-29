@@ -2051,17 +2051,20 @@ function RamenMapbox(props: Props) {
     hwToggleLabelRef.current?.(); // トグルのラベル更新（フリー走行時もここで反映）
   }, [props.hwOverride]);
 
-  // フリー走行(ルート無し)＋高速モードON時の高速施設ストリップ。経路に投影できないので、
-  // 現在地と進行方位から「前方(±75°)・40km以内」の施設を距離順に表示（ユーザー要望: 走行の向きで判断）。
-  // 経路effectはdest必須なので別系統。dest設定中はこちらは無効（経路effect側が出す）。
+  // フリー走行(ルート無し)の高速施設ストリップ＋高速の自動判定。
+  // ・高速判定: hwOverride=「高速」は常時ON／「自動」は速度ヒステリシス(≥65km/hが8フィックス→ON, <50が60→OFF)で自動ON。
+  //   端末が coords.speed を返さない場合は前回位置との差分から速度を算出(自動が「全く効かない」のを防ぐ)。
+  // ・どの高速か: 自車位置＋進行方位の「前方コリドー(横ズレが小さい施設のみ)」で判定し、並走する別の高速
+  //   (例: 東関東道の隣の京葉道路)の施設を除外する。
+  // 経路effectはdest必須なので別系統。dest設定中はこちらは無効（経路effect側が経路に投影して出す）。
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapReady || !props.follow || destKey || props.hwOverride !== "on") return;
+    if (!map || !mapReady || !props.follow || destKey || props.hwOverride === "off") return;
     let aborted = false;
     let watchId: number | null = null;
     let facilities: HwFacility[] | null = null;
     const LOOK = 4;
-    const MAXKM = 40;
+    const MAXKM = 25;
     const BADGE: Record<HwKind, string> = { sa: "SA", pa: "PA", ic: "IC", jct: "JCT" };
     const EMO: Record<string, string> = { conv: "🏪", fuel: "⛽", food: "🍴", cafe: "☕", shop: "🛍️", toilet: "🚻", ev: "⚡" };
     const ICON = `${import.meta.env.BASE_URL}poi-icons/`;
@@ -2085,25 +2088,56 @@ function RamenMapbox(props: Props) {
     map.getContainer().appendChild(strip);
     let lastHd: number | null = null;
     let prevPt: Pt | null = null;
+    let prevT = 0;
     let lastKmh = 0;
+    // 速度ベースの高速自動判定（手動「高速」は常時ON）。ヒステリシスでちらつき防止。
+    let autoHw = false;
+    let fast = 0;
+    let slow = 0;
+    const updateAutoHw = (kmh: number) => {
+      if (!isFinite(kmh)) return;
+      if (kmh >= 65) {
+        fast++;
+        slow = 0;
+        if (fast >= 8) autoHw = true;
+      } else if (kmh < 50) {
+        slow++;
+        fast = 0;
+        if (slow >= 60) autoHw = false;
+      } else {
+        fast = 0;
+        slow = 0;
+      }
+    };
+    // 高速モードが実効ONか（手動「高速」＝常時／「自動」＝速度判定）
+    const effOn = () =>
+      propsRef.current.hwOverride === "on" ||
+      (propsRef.current.hwOverride === "auto" && autoHw);
+    const toRad = (d: number) => (d * Math.PI) / 180;
     const render = (here: Pt, hd: number) => {
-      if (!facilities) {
+      if (!facilities || !effOn()) {
         strip.style.display = "none";
         return;
       }
-      const cands: { f: HwFacility; d: number }[] = [];
+      const cands: { f: HwFacility; fwd: number }[] = [];
       for (const f of facilities) {
-        const d = haversineKm(here, { lat: f.lat, lng: f.lng });
+        const fp = { lat: f.lat, lng: f.lng };
+        const d = haversineKm(here, fp);
         if (d > MAXKM || d < 0.05) continue;
-        const rel = Math.abs(((bearingDeg(here, { lat: f.lat, lng: f.lng }) - hd + 540) % 360) - 180);
-        if (rel > 75) continue; // 前方のみ（後方・側方は除外）
-        cands.push({ f, d });
+        const diff = Math.abs(((bearingDeg(here, fp) - hd + 540) % 360) - 180); // 0=正面
+        if (diff > 80) continue; // 後方・側方は除外
+        const fwd = d * Math.cos(toRad(diff)); // 進行方向の前方距離(km)
+        const lateral = d * Math.sin(toRad(diff)); // 進行ラインからの横ズレ(km)
+        // 並走する別の高速(京葉道路 等)を除外＝横ズレが小さい施設のみ。
+        // 遠方ほどカーブを許容して緩めるが、並走道路の間隔(~1km)に達しないよう上限1.0km。
+        if (lateral > Math.min(0.45 + 0.05 * fwd, 1.0)) continue;
+        cands.push({ f, fwd });
       }
-      cands.sort((a, b) => a.d - b.d);
-      const best = new Map<string, { f: HwFacility; d: number }>();
+      cands.sort((a, b) => a.fwd - b.fwd);
+      const best = new Map<string, { f: HwFacility; fwd: number }>();
       for (const c of cands) {
         const k = `${c.f.kind}:${bn(c.f.name)}`;
-        if (!best.has(k)) best.set(k, c); // 距離順に先頭＝最も近い同名を残す
+        if (!best.has(k)) best.set(k, c); // 前方距離順に最も近い同名を残す
       }
       const ahead = Array.from(best.values()).slice(0, LOOK);
       if (!ahead.length) {
@@ -2114,8 +2148,8 @@ function RamenMapbox(props: Props) {
       strip.innerHTML = ahead
         .map((c) => {
           const f = c.f;
-          const dist = c.d < 10 ? c.d.toFixed(1) : Math.round(c.d).toString();
-          const min = lastKmh > 5 ? Math.round((c.d / lastKmh) * 60) : null;
+          const dist = c.fwd < 10 ? c.fwd.toFixed(1) : Math.round(c.fwd).toString();
+          const min = lastKmh > 5 ? Math.round((c.fwd / lastKmh) * 60) : null;
           const am = f.amenities;
           const amenRow =
             (f.kind === "sa" || f.kind === "pa") && am && am.length
@@ -2140,10 +2174,25 @@ function RamenMapbox(props: Props) {
       const h = p.coords.heading;
       if (h != null && isFinite(h) && h >= 0) lastHd = h;
       else if (prevPt && haversineKm(prevPt, here) >= 0.015) lastHd = bearingDeg(prevPt, here);
-      if (!prevPt || haversineKm(prevPt, here) >= 0.015) prevPt = here;
+      // 速度: coords.speed があれば優先。無い端末は前回位置との差分から算出して自動判定に使う。
       const sp = p.coords.speed;
-      if (sp != null && sp >= 0) lastKmh = sp * 3.6;
-      if (lastHd == null) {
+      let kmh: number | null = null;
+      if (sp != null && isFinite(sp) && sp >= 0) kmh = sp * 3.6;
+      else if (prevPt && prevT) {
+        const dt = (p.timestamp - prevT) / 1000;
+        if (dt > 0.5) kmh = (haversineKm(prevPt, here) / dt) * 3600;
+      }
+      if (kmh != null && isFinite(kmh)) {
+        lastKmh = kmh;
+        updateAutoHw(kmh);
+      }
+      if (!prevPt || haversineKm(prevPt, here) >= 0.015) {
+        prevPt = here;
+        prevT = p.timestamp;
+      }
+      // 高速モード(手動/自動)に合わせ勾配メーターの抑制を同期（高速はDEM標高が不正確なため）
+      hwActiveRef.current = effOn();
+      if (lastHd == null || !effOn()) {
         strip.style.display = "none";
         return;
       }
@@ -2156,6 +2205,7 @@ function RamenMapbox(props: Props) {
       aborted = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
       strip.remove();
+      hwActiveRef.current = false; // 高速モード状態を解放（勾配メーターの抑制も解除）
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, props.follow, destKey, props.hwOverride]);
