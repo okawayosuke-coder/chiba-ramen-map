@@ -1684,13 +1684,20 @@ function RamenMapbox(props: Props) {
     let trimTo = 0;
     let trimStart = 0;
     let trimRaf = 0;
-    const TRIM_DUR = 1100; // follow カメラの easeTo と同じ補間時間
+    let trimLastFrame = 0;
+    const TRIM_DUR = 1100; // follow カメラと同じ補間時間
     const applyTrim = (f: number) => {
       if (!map.getLayer("route-line")) return;
       map.setPaintProperty("route-line", "line-trim-offset", [0, Math.max(0, Math.min(1, f))]);
     };
     const tickTrim = () => {
-      const t = Math.min(1, (performance.now() - trimStart) / TRIM_DUR);
+      const now = performance.now();
+      if (now - trimLastFrame < 33) {
+        trimRaf = requestAnimationFrame(tickTrim); // 約30fpsに間引き（追従カメラと統一・省電力）
+        return;
+      }
+      trimLastFrame = now;
+      const t = Math.min(1, (now - trimStart) / TRIM_DUR);
       trimFrac = trimFrom + (trimTo - trimFrom) * t;
       applyTrim(trimFrac);
       trimRaf = t < 1 ? requestAnimationFrame(tickTrim) : 0;
@@ -2450,6 +2457,59 @@ function RamenMapbox(props: Props) {
       if (b) b.style.transform = `rotate(${carRot}deg)`;
     };
 
+    // 追従カメラの補間を「自前30fpsループ」で行う（Mapbox easeTo は描画FPS上限を指定できず60fpsで回るため、
+    // 省電力・発熱低減目的で半分に間引く）。各フレームは easeTo(duration:0)＝offset維持の即時移動。時間ベースなので
+    // フレームを間引いても自車の動き(位置)・速度・判定は不変。停車/到達後はループを止めてGPUを起こさない。
+    const CAM_DUR = 1100; // フィックス間を繋ぐ補間時間（従来の easeTo duration と同じ）
+    const CAM_FRAME_MS = 33; // 約30fps（前フレームから33ms未満は描画スキップ）
+    let camRaf = 0;
+    let camFrom: [number, number] | null = null;
+    let camTo: [number, number] | null = null;
+    let camFromB = 0;
+    let camToB = 0;
+    let camStart = 0;
+    let camLastFrame = 0;
+    let camCur: [number, number] | null = null; // 直近適用した補間中心（＝自車の表示位置）
+    let camCurB = 0;
+    const applyFollow = (c: [number, number], b: number) =>
+      map.easeTo({ center: c, bearing: b, offset: [0, leadPx()], duration: 0 });
+    const camTick = () => {
+      const now = performance.now();
+      if (now - camLastFrame < CAM_FRAME_MS) {
+        camRaf = requestAnimationFrame(camTick); // まだ33ms経っていない＝描画せず次フレームへ
+        return;
+      }
+      camLastFrame = now;
+      const t = Math.min(1, (now - camStart) / CAM_DUR);
+      const lng = camFrom![0] + (camTo![0] - camFrom![0]) * t;
+      const lat = camFrom![1] + (camTo![1] - camFrom![1]) * t;
+      const b = norm360(camFromB + angDiff(camToB, camFromB) * t);
+      camCur = [lng, lat];
+      camCurB = b;
+      applyFollow(camCur, b);
+      camRaf = t < 1 ? requestAnimationFrame(camTick) : 0; // 到達したら停止（省電力）
+    };
+    const followTo = (to: [number, number], b: number) => {
+      camFrom = camCur || to; // 補間途中なら現在位置から（戻りジャンプ防止）
+      camFromB = camCur ? camCurB : b;
+      camTo = to;
+      camToB = b;
+      camStart = performance.now();
+      if (!camRaf) {
+        camLastFrame = 0;
+        camRaf = requestAnimationFrame(camTick);
+      }
+    };
+    const followJump = (to: [number, number], b: number) => {
+      if (camRaf) {
+        cancelAnimationFrame(camRaf);
+        camRaf = 0;
+      }
+      camCur = to;
+      camCurB = b;
+      applyFollow(to, b); // >150mジャンプ等は即スナップ
+    };
+
     const onFix = (p: GeolocationPosition) => {
       if (aborted) return;
       if (drMode) {
@@ -2541,18 +2601,21 @@ function RamenMapbox(props: Props) {
         const startZoom = map.getZoom() >= 14 ? map.getZoom() : DRIVE_ZOOM;
         map.easeTo({ center: here, bearing, pitch: propsRef.current.threeD ? PITCH_3D : 0, zoom: startZoom, offset: [0, leadPx()], duration: 800 });
         prevCam = here;
+        camCur = here; // 自前補間の起点を初期化（次フィックスからここを基準に補間）
+        camCurB = bearing;
       } else {
         // GPSグリッチ/トンネル復帰で前回カメラ位置から150m超ジャンプしたら、滑らかに追わず即スナップ
         // （誤った遠方へ1.1秒かけて流れて戻る不快な動きを防ぐ。Leaflet版の>150m即スナップ移植）。
         const movedKm = prevCam ? haversineKm({ lng: prevCam[0], lat: prevCam[1] }, { lng: here[0], lat: here[1] }) : 0;
         const isJump = !!prevCam && movedKm > 0.15;
         const stationary = kmh == null || kmh <= MOVE_KMH;
-        // 停車中＋ほぼ不動(20m未満)はパンを打たない（毎フィックスのeaseToによる微ジッタ・電力を抑制。Leaflet版同様）。
+        // 停車中＋ほぼ不動(20m未満)はパンを打たない（毎フィックスの微ジッタ・電力を抑制。Leaflet版同様）。
         if (!isJump && stationary && prevCam && movedKm < 0.02) {
           /* 据え置き（パンしない） */
         } else {
-          // 1Hzフィックス間を線形イージング(間隔より少し長い1100ms)で繋ぎ、画面固定の自車に地図がなめらかに流れる。
-          map.easeTo({ center: here, bearing, offset: [0, leadPx()], duration: isJump ? 0 : 1100, easing: (t) => t });
+          // 1Hzフィックス間を自前の30fps補間で繋ぐ（画面固定の自車に地図がなめらかに流れる・easeTo60fpsより省電力）。
+          if (isJump) followJump(here, bearing);
+          else followTo(here, bearing);
           prevCam = here;
         }
       }
@@ -2645,13 +2708,7 @@ function RamenMapbox(props: Props) {
       lastHere = [drLng, drLat];
       geoMarker.setLngLat(lastHere);
       if (headingUp) lastBearing = compassHeading() ?? hdg;
-      map.easeTo({
-        center: lastHere,
-        bearing: headingUp ? lastBearing : 0,
-        offset: [0, leadPx()],
-        duration: 1000,
-        easing: (t) => t,
-      });
+      followTo(lastHere, headingUp ? lastBearing : 0); // DRも自前30fps補間で前進（省電力・追従と統一）
       prevCam = lastHere; // DRの前進もカメラ追従先として記録（GPS復帰時のジャンプ判定を正しく）
     }, 1000);
 
@@ -2699,6 +2756,7 @@ function RamenMapbox(props: Props) {
       aborted = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
       window.clearInterval(staleTimer);
+      if (camRaf) cancelAnimationFrame(camRaf); // 追従カメラの30fps補間を停止
       window.removeEventListener("deviceorientationabsolute", onOrient as EventListener, true);
       window.removeEventListener("deviceorientation", onOrient, true);
       document.removeEventListener("visibilitychange", onVis);
