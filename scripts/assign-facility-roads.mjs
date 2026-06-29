@@ -4,12 +4,26 @@
 // 入出力: public/highway.json を読んで road を足して上書き。データ元 OSM(ODbL)。
 import { readFileSync, writeFileSync } from "node:fs";
 
+// ── 路線名正規化（src/roadName.ts と同一実装の複製。片方を直したら必ず同期すること）──
+const ALIASES = [["首都圏中央連絡自動車道", /^(首都圏中央連絡自動車道|圏央道)$/]];
+function isRampName(s) {
+  return /(出口|入口|ランプ|ロータリー|バス停)$/.test(s) || s === "ETC専用" || /^[0-9]+$/.test(s);
+}
+function canonicalRoad(raw) {
+  let s = (raw || "").trim();
+  if (!s) return "";
+  s = s.split(";")[0].trim(); // 複合名「本線;支線」→ 本線(先頭)
+  if (!s || isRampName(s)) return "";
+  for (const [canon, re] of ALIASES) if (re.test(s)) return canon;
+  return s;
+}
+
 const facFile = new URL("../public/highway.json", import.meta.url);
 const geomFile = new URL("../public/highways-geom.json", import.meta.url);
 const data = JSON.parse(readFileSync(facFile, "utf8"));
 const geom = JSON.parse(readFileSync(geomFile, "utf8"));
 
-// 路線にbbox前計算（runtimeのnearestHighwayと同じプレフィルタ）
+// 路線にbbox前計算（runtimeのnearestHighwayと同じプレフィルタ）。名前は canonicalRoad で正規化。
 const roads = [];
 for (const r of geom.roads) {
   if (!Array.isArray(r.c) || r.c.length < 2) continue;
@@ -20,7 +34,7 @@ for (const r of geom.roads) {
     if (p[1] < w) w = p[1];
     if (p[1] > e) e = p[1];
   }
-  roads.push({ name: (r.name || r.ref || "").trim(), c: r.c, s, w, n, e });
+  roads.push({ name: canonicalRoad(r.name || r.ref), c: r.c, s, w, n, e });
 }
 
 const PAD = 0.003; // 約330m。施設はランプ/エリア中心で本線から100m超のことがあるので広めに

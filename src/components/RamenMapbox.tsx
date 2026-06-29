@@ -2078,6 +2078,7 @@ function RamenMapbox(props: Props) {
     let aborted = false;
     let watchId: number | null = null;
     let facilities: HwFacility[] | null = null;
+    let roadSet: Set<string> = new Set(); // 施設が実在する路線名の集合（curRoadの信頼性判定用）
     const LOOK = 4;
     const MAXKM = 25;
     const BADGE: Record<HwKind, string> = { sa: "SA", pa: "PA", ic: "IC", jct: "JCT" };
@@ -2137,25 +2138,34 @@ function RamenMapbox(props: Props) {
         strip.style.display = "none";
         return;
       }
-      const useRoad = !!curRoad; // 現在路線が確定していれば「路線名一致」で厳密に絞る（並走道路を確実に除外）
-      const cands: { f: HwFacility; fwd: number }[] = [];
-      for (const f of facilities) {
-        const fp = { lat: f.lat, lng: f.lng };
-        const d = haversineKm(here, fp);
-        if (d > MAXKM || d < 0.05) continue;
-        const diff = Math.abs(((bearingDeg(here, fp) - hd + 540) % 360) - 180); // 0=正面
-        if (diff > 90) continue; // 後方は除外（前方のみ）
-        const fwd = d * Math.cos(toRad(diff)); // 進行方向の前方距離(km)
-        if (useRoad && f.road) {
-          // 走行中の路線に属す施設だけ表示（京葉道路 等の並走道路を確実に除外）
-          if (f.road !== curRoad) continue;
-        } else {
-          // 現在路線が不明 or 施設に路線名が無い → 従来の前方コリドー（横ズレが小さい施設のみ）にフォールバック
-          const lateral = d * Math.sin(toRad(diff));
-          if (lateral > Math.min(0.45 + 0.05 * fwd, 1.0)) continue;
+      // 現在路線が確定し、かつその名前の施設が実在する(=信頼できる)ときだけ路線名で厳密に絞る。
+      // curRoadが施設0件の別名/化けた名のときは信用せず従来コリドーへ（黙ってストリップを空にしない）。
+      const useRoad = !!curRoad && roadSet.has(curRoad);
+      // byRoad=true: 走行中の路線に属す施設だけ（並走道路を確実に除外）。
+      // byRoad=false: 従来の前方コリドー（横ズレが小さい施設のみ）。
+      const collect = (byRoad: boolean) => {
+        const out: { f: HwFacility; fwd: number }[] = [];
+        for (const f of facilities!) {
+          const fp = { lat: f.lat, lng: f.lng };
+          const d = haversineKm(here, fp);
+          if (d > MAXKM || d < 0.05) continue;
+          const diff = Math.abs(((bearingDeg(here, fp) - hd + 540) % 360) - 180); // 0=正面
+          if (diff > 90) continue; // 後方は除外（前方のみ）
+          const fwd = d * Math.cos(toRad(diff)); // 進行方向の前方距離(km)
+          if (byRoad && f.road) {
+            if (f.road !== curRoad) continue; // 走行中の路線(京葉 等の並走道路を確実に除外)
+          } else {
+            const lateral = d * Math.sin(toRad(diff));
+            if (lateral > Math.min(0.45 + 0.05 * fwd, 1.0)) continue;
+          }
+          out.push({ f, fwd });
         }
-        cands.push({ f, fwd });
-      }
+        return out;
+      };
+      let cands = collect(useRoad);
+      // 路線名で絞った結果が空（その路線に前方施設が無い／curRoadの取りこぼし等）なら、
+      // 黙って空表示にせず従来コリドーへフォールバックする（安全網）。
+      if (useRoad && !cands.length) cands = collect(false);
       cands.sort((a, b) => a.fwd - b.fwd);
       const best = new Map<string, { f: HwFacility; fwd: number }>();
       for (const c of cands) {
@@ -2193,7 +2203,10 @@ function RamenMapbox(props: Props) {
     };
     loadHighway()
       .then((d) => {
-        if (!aborted) facilities = d.facilities;
+        if (!aborted) {
+          facilities = d.facilities;
+          roadSet = new Set(d.facilities.map((f) => f.road).filter(Boolean) as string[]);
+        }
       })
       .catch(() => {});
     loadHighwayGeom()

@@ -1,6 +1,7 @@
 // 高速道路センターライン（public/highways-geom.json）を読み込み、現在地を最寄りの高速道路へ
 // スナップして「高速上か（距離m）＋どの高速か（路線名）」を位置ベースで判定する。
 // 速度ヒステリシス判定のフォールバック／上書きに使う（提案書⑧）。データ元 OSM(ODbL)。
+import { canonicalRoad } from "./roadName";
 
 interface RoadRaw {
   ref?: string;
@@ -49,8 +50,9 @@ export function loadHighwayGeom(): Promise<HighwayGeom> {
             if (p[1] < w) w = p[1];
             if (p[1] > e) e = p[1];
           }
-          // 路線名は name||ref に統一（施設側 assign-facility-roads.mjs と同じ規則で突合できるように）
-          roads.push({ name: (r.name || r.ref || "").trim(), c: r.c, s, w, n, e });
+          // 路線名は canonicalRoad で正規化（複合名の先頭採用・別名統合・ランプ名除外）。
+          // 施設側 assign-facility-roads.mjs と同一規則で突合できるようにする。ランプ/通称は ""。
+          roads.push({ name: canonicalRoad(r.name || r.ref), c: r.c, s, w, n, e });
         }
         return { roads };
       });
