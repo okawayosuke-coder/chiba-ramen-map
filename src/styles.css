@@ -184,6 +184,17 @@ body,
   align-items: center;
   gap: 8px;
 }
+/* TECHMAGIC ロゴ（白ワードマークSVG）＋「Navi」。ヘッダーの色背景に白で映える */
+.brand__logo {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+.brand__navi {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
 
 .sidebar__header p {
   margin: 4px 0 0;

@@ -508,7 +508,14 @@ export default function App() {
         />
         {/* ブランディング＋ツールバーはスクロールで退避（固定領域を空けて一覧を最大化） */}
         <div className="sidebar__header">
-          <h1>🍜 千葉ラーメンMAP</h1>
+          <h1 className="brand">
+            <img
+              className="brand__logo"
+              src={`${import.meta.env.BASE_URL}techmagic-logo.svg`}
+              alt="TECHMAGIC"
+            />
+            <span className="brand__navi">Navi</span>
+          </h1>
           <p>千葉県＋江東区・江戸川区＋茨城県南（つくば・土浦ほか）／カーナビ起動対応</p>
         </div>
 
