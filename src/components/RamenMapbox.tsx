@@ -2433,7 +2433,8 @@ function RamenMapbox(props: Props) {
     geoEl.style.position = "relative"; // 標高ラベル(absolute)の位置基準
     geoEl.innerHTML = CAR_HTML;
     geoEl.style.display = "none";
-    const geoMarker = new mapboxgl.Marker({ element: geoEl, anchor: "center" });
+    // pitchAlignment:"map" ＝ 3D表示(pitch)時に地理マーカー(追従パン時の自車)も地図平面へ寝かせる
+    const geoMarker = new mapboxgl.Marker({ element: geoEl, anchor: "center", pitchAlignment: "map" });
     const c0 = propsRef.current.userPos ?? { lat: map.getCenter().lat, lng: map.getCenter().lng };
     geoMarker.setLngLat([c0.lng, c0.lat]).addTo(map);
 
@@ -3270,7 +3271,8 @@ function RamenMapbox(props: Props) {
       const el = document.createElement("div");
       el.className = "userloc";
       el.innerHTML = `<div class="userloc__dot"></div>`;
-      userMarkerRef.current = new mapboxgl.Marker({ element: el })
+      // pitchAlignment:"map" ＝ 3D表示(pitch)時にドットを地図平面へ寝かせる（2Dのまま立たない）
+      userMarkerRef.current = new mapboxgl.Marker({ element: el, pitchAlignment: "map" })
         .setLngLat([pos.lng, pos.lat])
         .addTo(map);
     } else {
