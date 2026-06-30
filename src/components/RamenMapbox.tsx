@@ -1709,7 +1709,8 @@ function RamenMapbox(props: Props) {
           type: "line",
           source: "route",
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": "#ffffff", "line-width": 12, "line-opacity": 0.9, "line-trim-offset": [0, 0] },
+          // line-emissive-strength:1 ＝ Standardのナイトライティングで暗転させず本来の色で発光表示（夜に黒くならない）
+          paint: { "line-color": "#ffffff", "line-width": 12, "line-opacity": 0.9, "line-emissive-strength": 1, "line-trim-offset": [0, 0] },
         },
         before
       );
@@ -1719,8 +1720,9 @@ function RamenMapbox(props: Props) {
           type: "line",
           source: "route",
           layout: { "line-cap": "round", "line-join": "round" },
+          // line-emissive-strength:1 ＝ Standardのナイトライティングで暗転させず本来の青で表示（夜に黒くならない）。
           // line-trim-offset で走行済み区間[0,frac]をGPU側で透明化（線を再スライスせず高頻度に更新可）
-          paint: { "line-color": "#0b57d0", "line-width": 7, "line-opacity": 0.95, "line-trim-offset": [0, 0] },
+          paint: { "line-color": "#0b57d0", "line-width": 7, "line-opacity": 0.95, "line-emissive-strength": 1, "line-trim-offset": [0, 0] },
         },
         before
       );
