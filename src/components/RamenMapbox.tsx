@@ -7,6 +7,7 @@ import { fetchRoute, projectOnRoute } from "../route";
 import { loadHighway, type HwFacility, type HwKind } from "../highwayData";
 import { loadHighwayGeom, nearestHighway, type HighwayGeom } from "../highwayGeom";
 import { loadSurfaceGeom, nearestSurface, type SurfaceGeom } from "../surfaceGeom";
+import { buildPathIndex, buildForwardPath, projectToPath, type ForwardPathIndex } from "../forwardPath";
 import { fetchPois, poiBrandStyle, poiIconFile, type Poi, type PoiKind, type BBox } from "../poi";
 import {
   loadLocalPois,
@@ -2121,6 +2122,8 @@ function RamenMapbox(props: Props) {
     let roadSet: Set<string> = new Set(); // 施設が実在する路線名の集合（curRoadの信頼性判定用）
     const LOOK = 4;
     const MAXKM = 25;
+    const FP_MIN_KM = 3; // 前方経路がこの長さ以上構築できた時だけ経路投影を採用（短ければ従来ロジックへ）
+    const FP_LATERAL_M = 250; // 施設が前方経路からこの横距離以内なら「その経路上の施設」とみなす
     const BADGE: Record<HwKind, string> = { sa: "SA", pa: "PA", ic: "IC", jct: "JCT" };
     const EMO: Record<string, string> = { conv: "🏪", fuel: "⛽", food: "🍴", cafe: "☕", shop: "🛍️", toilet: "🚻", ev: "⚡" };
     const ICON = `${import.meta.env.BASE_URL}poi-icons/`;
@@ -2151,6 +2154,7 @@ function RamenMapbox(props: Props) {
     let fast = 0;
     let slow = 0;
     let hwGeom: HighwayGeom | null = null; // 高速道路センターライン形状（位置判定用・遅延読込）
+    let hwPathIdx: ForwardPathIndex | null = null; // 前方経路構築用の端点インデックス（hwGeom読込時に作成）
     let sgGeom: SurfaceGeom | null = null; // 高速近傍の一般道形状（357等・高速誤認の打ち消し用）
     let surfHits = 0; // 「一般道が明確に近い」が連続したフィックス数（誤OFFのちらつき防止）
     let autoEff = false; // 実効の自動判定（位置スナップ優先・速度フォールバック）
@@ -2204,10 +2208,29 @@ function RamenMapbox(props: Props) {
         }
         return out;
       };
-      let cands = collect(useRoad);
-      // 路線名で絞った結果が空（その路線に前方施設が無い／curRoadの取りこぼし等）なら、
-      // 黙って空表示にせず従来コリドーへフォールバックする（安全網）。
-      if (useRoad && !cands.length) cands = collect(false);
+      // ① 前方経路投影（最優先）: 高速センターラインを現在地から前方へ辿った経路に施設を投影し、
+      //    沿道距離順に並べる。路線名境界(東関東道→湾岸線)・カーブ・JCTを越えて「この先この高速を
+      //    走り続ける」前提で前方施設を安定表示（並走道路は経路から外れ除外）。
+      // ② 経路が十分構築できない区間（細切れ/端点ギャップ/起点ランプ等）は従来の路線名＋コリドーへ。
+      const collectPath = (): { f: HwFacility; fwd: number }[] | null => {
+        if (!hwGeom || !hwPathIdx) return null;
+        const path = buildForwardPath(hwGeom, hwPathIdx, here.lat, here.lng, hd, MAXKM, curRoad);
+        if (!path || path.length < 2 || path[path.length - 1].dist < FP_MIN_KM) return null;
+        const out: { f: HwFacility; fwd: number }[] = [];
+        for (const f of facilities!) {
+          const pr = projectToPath(path, f.lat, f.lng);
+          if (!pr || pr.lateralM > FP_LATERAL_M || pr.alongKm <= 0.05 || pr.alongKm > MAXKM) continue;
+          out.push({ f, fwd: pr.alongKm });
+        }
+        return out;
+      };
+      let cands = collectPath();
+      if (!cands || !cands.length) {
+        cands = collect(useRoad);
+        // 路線名で絞った結果が空（その路線に前方施設が無い／curRoadの取りこぼし等）なら、
+        // 黙って空表示にせず従来コリドーへフォールバックする（安全網）。
+        if (useRoad && !cands.length) cands = collect(false);
+      }
       cands.sort((a, b) => a.fwd - b.fwd);
       const best = new Map<string, { f: HwFacility; fwd: number }>();
       for (const c of cands) {
@@ -2253,7 +2276,10 @@ function RamenMapbox(props: Props) {
       .catch(() => {});
     loadHighwayGeom()
       .then((g) => {
-        if (!aborted) hwGeom = g;
+        if (!aborted) {
+          hwGeom = g;
+          hwPathIdx = buildPathIndex(g); // 前方経路用の端点インデックスを一度だけ構築
+        }
       })
       .catch(() => {});
     loadSurfaceGeom()
