@@ -112,15 +112,25 @@ export async function shareNav(
   }
 }
 
-// iOSは方位/モーションセンサー利用に許可が必要。必ずユーザー操作(タップ)内で呼ぶこと
+// iOSは方位/モーションセンサー利用に許可が必要。必ずユーザー操作(タップ)内で呼ぶこと。
+// 許可取得後はワンスガードで再要求しない（同一セッションで何度タップしてもダイアログを出さない）。
+// ※iOS(特にホーム画面PWA)は許可をセッション跨ぎで保持しないため、起動ごとに1回は出得る＝OS仕様。
+let _orientGranted = false;
 export function requestOrientationPermission() {
+  if (_orientGranted) return;
   const DOE = window.DeviceOrientationEvent as unknown as {
     requestPermission?: () => Promise<string>;
   };
   if (DOE && typeof DOE.requestPermission === "function") {
-    DOE.requestPermission().catch(() => {});
+    DOE.requestPermission()
+      .then((s) => {
+        if (s === "granted") _orientGranted = true; // 許可されたら以後は要求しない
+      })
+      .catch(() => {});
+  } else {
+    _orientGranted = true; // 非iOS(許可APIなし)=許可不要なので以後スキップ
   }
-  // 傾斜メーターのジャイロ補正(重力ベクトル)用に DeviceMotion 許可も同時に要求（iOSは別API）
+  // 傾斜メーターのジャイロ補正(重力ベクトル)用に DeviceMotion 許可も同時に要求（iOSは別API。ダイアログは統合）
   const DME = window.DeviceMotionEvent as unknown as {
     requestPermission?: () => Promise<string>;
   };

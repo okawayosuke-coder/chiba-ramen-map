@@ -241,15 +241,9 @@ export default function App() {
     if (follow) setSheetOpen(false);
   }, [follow]);
 
-  // 初回タップ時に方位センサー許可を取得（iOSはジェスチャ必須。自動走行でもコンパスを使えるように）
-  useEffect(() => {
-    const once = () => {
-      requestOrientationPermission();
-      window.removeEventListener("pointerdown", once);
-    };
-    window.addEventListener("pointerdown", once, { once: true });
-    return () => window.removeEventListener("pointerdown", once);
-  }, []);
+  // 方位センサー許可は「走行モードON」の意図的タップ内でのみ要求する（App.tsx の走行ボタン）。
+  // 以前はページ最初のpointerdown(どのタップでも)で要求していたが、起動直後に予期せずダイアログが
+  // 出て煩わしいため廃止。コンパス自体は走行モードに入れば従来どおり常時有効。
 
   // 「日の入りで自動」テーマ選択時、現在地が未取得なら一度だけ取得
   useEffect(() => {
