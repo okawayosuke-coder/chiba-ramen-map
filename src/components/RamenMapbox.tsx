@@ -2553,16 +2553,26 @@ function RamenMapbox(props: Props) {
     // 自車の向き表示: ヘディングアップは地図が回るので矢印は上向き固定。
     // ノースアップ(既定)は地図が北固定なので、自車「矢印」を進行方位へ回す（Leaflet版と同じ）。
     // 走行中はGPS/経路方位、停車中はコンパス方位。最短回転(carRot)でなめらかに。
+    // 追従中の自車マーク(画面固定オーバーレイ)を地図のpitchに合わせて寝かせる。3D時は地面に沿って傾く。
+    // 向き(rotate)と傾き(rotateX=camPitch)を合成。ノースアップは進行方位へrotate、ヘディングアップは上向き固定。
+    const updateCarTilt = () => {
+      const a = carEl.querySelector(".car-arrow") as HTMLElement | null;
+      if (!a) return;
+      const rot = headingUp ? 0 : carRot;
+      a.style.transform =
+        camPitch > 0.5
+          ? `perspective(640px) rotateX(${camPitch.toFixed(1)}deg) rotate(${rot.toFixed(1)}deg)`
+          : `rotate(${rot.toFixed(1)}deg)`; // 平面時は従来どおり(perspective無し)
+    };
     const applyCarRotation = () => {
       if (headingUp) return;
       const moving = targetKmh > MOVE_KMH;
       const hd = moving ? lastTravelHeading : compassHeading() ?? lastTravelHeading;
       if (hd == null) return;
       carRot += angDiff(hd, carRot);
-      const a = carEl.querySelector(".car-arrow") as HTMLElement | null;
+      updateCarTilt(); // 画面固定の自車(carEl)は傾き込みで更新
       const b = geoEl.querySelector(".car-arrow") as HTMLElement | null;
-      if (a) a.style.transform = `rotate(${carRot}deg)`;
-      if (b) b.style.transform = `rotate(${carRot}deg)`;
+      if (b) b.style.transform = `rotate(${carRot}deg)`; // 地理マーカー(非追従時)は従来どおり回転のみ
     };
 
     // 追従カメラの補間を「自前30fpsループ」で行う（Mapbox easeTo は描画FPS上限を指定できず60fpsで回るため、
@@ -2603,6 +2613,7 @@ function RamenMapbox(props: Props) {
       camPitch += (pt - camPitch) * 0.15;
       if (Math.abs(pt - camPitch) < 0.4) camPitch = pt;
       applyFollow(camCur, b);
+      updateCarTilt(); // 自車マークも地図のpitchに合わせて寝かせる（3D時は地面に沿って傾く）
       // 位置・方位が到達してもピッチ補間中はループ継続（3D立ち上げ/解除を滑らかに完遂させる）。
       camRaf = t < 1 || camPitch !== pitchTarget() ? requestAnimationFrame(camTick) : 0;
     };
