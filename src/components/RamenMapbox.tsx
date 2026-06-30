@@ -2579,8 +2579,12 @@ function RamenMapbox(props: Props) {
     let camLastFrame = 0;
     let camCur: [number, number] | null = null; // 直近適用した補間中心（＝自車の表示位置）
     let camCurB = 0;
+    // ピッチ(3D俯瞰)も追従ループが所有する。毎フレームの easeTo(duration:0) が pitch を含まないと、
+    // 3Dトグルの easeTo({pitch,600}) を33msごとにキャンセルしてしまい走行中に3Dへ切り替わらないため。
+    let camPitch = propsRef.current.threeD ? PITCH_3D : 0; // 補間中の現在ピッチ
+    const pitchTarget = () => (propsRef.current.threeD ? PITCH_3D : 0);
     const applyFollow = (c: [number, number], b: number) =>
-      map.easeTo({ center: c, bearing: b, offset: [0, leadPx()], duration: 0 });
+      map.easeTo({ center: c, bearing: b, pitch: camPitch, offset: [0, leadPx()], duration: 0 });
     const camTick = () => {
       const now = performance.now();
       if (now - camLastFrame < CAM_FRAME_MS) {
@@ -2594,8 +2598,13 @@ function RamenMapbox(props: Props) {
       const b = norm360(camFromB + angDiff(camToB, camFromB) * t);
       camCur = [lng, lat];
       camCurB = b;
+      // ピッチを目標へEMA補間（係数0.15＝約600msで到達@30fps）。微小差はスナップ。
+      const pt = pitchTarget();
+      camPitch += (pt - camPitch) * 0.15;
+      if (Math.abs(pt - camPitch) < 0.4) camPitch = pt;
       applyFollow(camCur, b);
-      camRaf = t < 1 ? requestAnimationFrame(camTick) : 0; // 到達したら停止（省電力）
+      // 位置・方位が到達してもピッチ補間中はループ継続（3D立ち上げ/解除を滑らかに完遂させる）。
+      camRaf = t < 1 || camPitch !== pitchTarget() ? requestAnimationFrame(camTick) : 0;
     };
     const followTo = (to: [number, number], b: number) => {
       camFrom = camCur || to; // 補間途中なら現在位置から（戻りジャンプ防止）
@@ -2605,6 +2614,7 @@ function RamenMapbox(props: Props) {
       camStart = performance.now();
       if (!camRaf) {
         camLastFrame = 0;
+        camPitch = map.getPitch(); // ループ再開時は実ピッチへ同期（停車中に3Dトグルで変わった分を引き継ぐ）
         camRaf = requestAnimationFrame(camTick);
       }
     };
@@ -2615,6 +2625,7 @@ function RamenMapbox(props: Props) {
       }
       camCur = to;
       camCurB = b;
+      camPitch = pitchTarget(); // ジャンプ時はピッチも即目標へ
       applyFollow(to, b); // >150mジャンプ等は即スナップ
     };
 
