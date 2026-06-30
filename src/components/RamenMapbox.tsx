@@ -1701,6 +1701,18 @@ function RamenMapbox(props: Props) {
       // lineMetrics:true は line-trim-offset（走行済み区間のGPUトリム）に必須。
       map.addSource("route", { type: "geojson", lineMetrics: true, data: lineData([]) });
       const before = map.getLayer("clusters") ? "clusters" : undefined;
+      // ケーシング(白い縁取り): ルート線の下に少し太い白線を敷き、夜の濃紺地図でも輪郭が立つように。
+      // 色は変えず(青#0b57d0のまま)。先に追加＝route-lineより下。走行済みトリムは route-line と同期(applyTrim)。
+      map.addLayer(
+        {
+          id: "route-casing",
+          type: "line",
+          source: "route",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#ffffff", "line-width": 12, "line-opacity": 0.9, "line-trim-offset": [0, 0] },
+        },
+        before
+      );
       map.addLayer(
         {
           id: "route-line",
@@ -1728,8 +1740,10 @@ function RamenMapbox(props: Props) {
     let trimLastFrame = 0;
     const TRIM_DUR = 1100; // follow カメラと同じ補間時間
     const applyTrim = (f: number) => {
-      if (!map.getLayer("route-line")) return;
-      map.setPaintProperty("route-line", "line-trim-offset", [0, Math.max(0, Math.min(1, f))]);
+      const v: [number, number] = [0, Math.max(0, Math.min(1, f))];
+      if (map.getLayer("route-line")) map.setPaintProperty("route-line", "line-trim-offset", v);
+      // ケーシングも同期トリム（走行済み区間の白縁が残らないように）
+      if (map.getLayer("route-casing")) map.setPaintProperty("route-casing", "line-trim-offset", v);
     };
     const tickTrim = () => {
       const now = performance.now();
@@ -2095,6 +2109,7 @@ function RamenMapbox(props: Props) {
       hwActiveRef.current = false;
       aheadGradeRef.current = null; // 経路解除で予告をクリア（古い警告を残さない）
       if (map.getLayer("route-line")) map.removeLayer("route-line");
+      if (map.getLayer("route-casing")) map.removeLayer("route-casing"); // ケーシングもsource削除前に除去
       if (map.getSource("route")) map.removeSource("route");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
