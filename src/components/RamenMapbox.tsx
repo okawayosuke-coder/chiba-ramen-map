@@ -1856,6 +1856,13 @@ function RamenMapbox(props: Props) {
     box.textContent = "🛣 現在地を取得中…";
     map.getContainer().appendChild(box);
 
+    // 高速・有料道路を含む経路の案内バッジ（含む時だけ表示。区間はルート線を緑で色分け）
+    const hwNotice = document.createElement("div");
+    hwNotice.className = "route-hwnote";
+    hwNotice.textContent = "🛣 高速・有料道路を含む";
+    hwNotice.style.display = "none";
+    map.getContainer().appendChild(hwNotice);
+
     // ルート解除ボタン
     const clearBtn = document.createElement("button");
     clearBtn.type = "button";
@@ -1886,6 +1893,67 @@ function RamenMapbox(props: Props) {
 
     let hwRanges: [number, number][] = [];
     const isHwSeg = (segIdx: number) => hwRanges.some(([a, b]) => segIdx >= a && segIdx < b);
+
+    // 経路の高速/有料区間: ORS waycategory があればそれ、無ければ(Mapbox等)同梱の高速形状で経路座標を判定。
+    let routeHwGeom: HighwayGeom | null = null;
+    loadHighwayGeom().then((g) => { routeHwGeom = g; }).catch(() => {});
+    const geomHwRanges = (coords: [number, number][]): [number, number][] => {
+      const g = routeHwGeom;
+      if (!g) return [];
+      const HW_M = 45; // 経路座標がこの距離以内に高速センターラインがあれば高速/有料区間とみなす
+      const out: [number, number][] = [];
+      let start = -1;
+      for (let i = 0; i < coords.length; i++) {
+        const snap = nearestHighway(g, coords[i][0], coords[i][1]);
+        const onHw = !!snap && snap.distM < HW_M;
+        if (onHw && start < 0) start = i;
+        else if (!onHw && start >= 0) { out.push([start, i]); start = -1; }
+      }
+      if (start >= 0) out.push([start, coords.length - 1]);
+      return out;
+    };
+    // hwRanges(高速/有料の頂点index範囲)からルート線を色分け(緑=高速/有料・青=一般)＋案内バッジを出す。
+    // 走行済みトリム(line-trim-offset)と両立させるため単一線の line-gradient(step) で塗る。rSuffix=各点→終点の残距離。
+    const applyRouteColor = () => {
+      if (!map.getLayer("route-line")) return;
+      const total = rSuffix[0] || 0;
+      const BLUE = "#0b57d0", GREEN = "#1aa64b";
+      // index範囲→line-progress分数[f0,f1]（昇順・近接マージ）
+      const merged: [number, number][] = [];
+      if (hwRanges.length && total > 0) {
+        const segs: [number, number][] = [];
+        for (const [a, b] of hwRanges) {
+          const ia = Math.max(0, Math.min(rSuffix.length - 1, a));
+          const ib = Math.max(0, Math.min(rSuffix.length - 1, b));
+          let f0 = (total - rSuffix[ia]) / total, f1 = (total - rSuffix[ib]) / total;
+          if (f1 < f0) { const t = f0; f0 = f1; f1 = t; }
+          f0 = Math.max(0, Math.min(1, f0)); f1 = Math.max(0, Math.min(1, f1));
+          if (f1 - f0 > 0.001) segs.push([f0, f1]);
+        }
+        segs.sort((x, y) => x[0] - y[0]);
+        for (const s of segs) {
+          const last = merged[merged.length - 1];
+          if (last && s[0] <= last[1] + 0.002) last[1] = Math.max(last[1], s[1]);
+          else merged.push([s[0], s[1]]);
+        }
+      }
+      if (!merged.length) {
+        map.setPaintProperty("route-line", "line-gradient", undefined); // 高速なし→青(line-color)へ戻す
+        hwNotice.style.display = "none";
+        return;
+      }
+      // step式: 既定BLUE、各[f0,f1]でGREEN、区間後BLUE。入力(stop)は厳密増加が必須。
+      const expr: unknown[] = ["step", ["line-progress"], BLUE];
+      let prev = 0;
+      for (const [f0, f1] of merged) {
+        const a = Math.max(f0, prev + 1e-4);
+        const b = Math.min(Math.max(f1, a + 1e-4), 0.9999);
+        expr.push(a, GREEN, b, BLUE);
+        prev = b;
+      }
+      map.setPaintProperty("route-line", "line-gradient", expr as never);
+      hwNotice.style.display = "";
+    };
     let onHighway = false;
     let fastCount = 0;
     let slowCount = 0;
@@ -2111,7 +2179,8 @@ function RamenMapbox(props: Props) {
               { lat: r.coords[i + 1][0], lng: r.coords[i + 1][1] }
             );
         }
-        hwRanges = r.hwRanges ?? []; // 経路の高速/有料区間（ORS waycategory）
+        hwRanges = r.hwRanges ?? geomHwRanges(r.coords); // ORS waycategory、無ければ同梱高速形状で判定
+        applyRouteColor(); // 高速/有料区間をルート線に緑で色分け＋案内バッジ
         gradeMarks = buildMarks(r.coords, GRADE_SPACING_KM); // この先急勾配の予告用マーク（再ルートで作り直し）
         eleAtMark = []; // 経路が変わったので標高キャッシュをリセット
         computeRouteFacilities(); // 経路沿いの高速施設を再計算
@@ -2160,6 +2229,7 @@ function RamenMapbox(props: Props) {
       if (trimRaf) cancelAnimationFrame(trimRaf); // トリム補間のrAFを停止
       destMarker.remove();
       box.remove();
+      hwNotice.remove();
       clearBtn.remove();
       hwStrip.remove();
       routeSnapRef.current = null;
