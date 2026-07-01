@@ -2184,7 +2184,9 @@ function RamenMapbox(props: Props) {
 
     // 高速あり/一般道の選択UIの表示更新（＋高速案内バッジ hwNotice の排他制御）。
     const updateSelector = () => {
-      const showSel = !propsRef.current.follow && fastHasHw && !!fastRoute && !!localRoute;
+      // 高速を使う経路で一般道の代替が取れている時は「常に」選択UIを表示（走行中も。要望）。
+      // follow(走行モード)には依存させない＝同一店舗なら状態に関わらず一貫して選択UIが出る。
+      const showSel = fastHasHw && !!fastRoute && !!localRoute;
       if (showSel) {
         altFastBtn.innerHTML =
           `<span class="route-alt__lb">🛣 高速あり</span><span class="route-alt__t">${fastRoute!.min}<small>分</small>・${Math.round(fastRoute!.km)}<small>km</small></span>`;
@@ -2248,11 +2250,18 @@ function RamenMapbox(props: Props) {
       if (!avoidHw && localRoute) { avoidHw = true; applyRoute(localRoute, lastHereHw, true); }
     };
 
+    // fetchRoute を最大 tries 回リトライ（APIの一時失敗で片方の案が欠けると選択UIが黙って出ない対策）。
+    const fetchRouteRetry = (from: Pt, avoid: boolean, tries = 3): Promise<RouteResult | null> =>
+      fetchRoute(from, to, lastHeading, avoid).then((r) => {
+        if (r || aborted || tries <= 1) return r;
+        return new Promise<null>((res) => setTimeout(() => res(null), 900)).then(() => fetchRouteRetry(from, avoid, tries - 1));
+      });
+
     // 初回に「高速あり」「一般道のみ」の両案を確保し、高速あり案が高速を使う時だけ選択UIを出す。
     const fetchAlternatives = (from: Pt) => {
       const jobs: Promise<void>[] = [];
-      if (!fastRoute) jobs.push(fetchRoute(from, to, lastHeading, false).then((r) => { if (r) fastRoute = r; }));
-      if (!localRoute) jobs.push(fetchRoute(from, to, lastHeading, true).then((r) => { if (r) localRoute = r; }));
+      if (!fastRoute) jobs.push(fetchRouteRetry(from, false).then((r) => { if (r) fastRoute = r; }));
+      if (!localRoute) jobs.push(fetchRouteRetry(from, true).then((r) => { if (r) localRoute = r; }));
       Promise.all(jobs).then(() => {
         if (aborted) return;
         fastHasHw = !!fastRoute && (fastRoute.hwRanges ?? geomHwRanges(fastRoute.coords)).length > 0;
