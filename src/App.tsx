@@ -396,6 +396,7 @@ export default function App() {
   // 候補行をタップ → 即ルート化せず、まず地図にプレビュー（ピン＋確認ポップアップ）。
   // 地図上で「🧭 ここへ案内」を押して初めて目的地確定＝ルート化（RamenMapbox の candidate effect が担当）。
   const onSetDestFromPlace = useCallback((p: PlaceHit) => {
+    setFollow(false); // 追従(走行)モードを解除＝カメラを解放し、目的地プレビューを地図に出せるようにする
     setCandidate({ lat: p.lat, lng: p.lng, name: p.title, subtitle: p.subtitle });
     setPlaceHits([]); // 候補リストを閉じる
     setSheetOpen(false); // 狭い画面ではサイドシートを閉じて地図を見せる

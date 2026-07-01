@@ -1231,8 +1231,9 @@ function RamenMapbox(props: Props) {
     const map = mapRef.current;
     const cand = props.candidate;
     if (!map || !mapReady || !cand) return;
-    // カメラを候補地点（＋現在地）へ寄せて「まず地図に出す」。走行追従中はカメラを奪わない。
-    if (!propsRef.current.follow) fitCameraToDest(map, { lat: cand.lat, lng: cand.lng }, propsRef.current.userPos);
+    // カメラを候補「目的地そのもの」へ寄せて「まず地図に出す」（現在地と両方を収めるのではなく目的地中心）。
+    // App 側で候補プレビュー時に追従(follow)を解除しているため、この flyTo は追従ループに上書きされない。
+    map.flyTo({ center: [cand.lng, cand.lat], zoom: 15, duration: 800 });
     const pinEl = document.createElement("div");
     pinEl.className = "cand-pin";
     pinEl.textContent = "📍";
@@ -1250,6 +1251,7 @@ function RamenMapbox(props: Props) {
     if (cand.subtitle) addrEl.textContent = cand.subtitle;
     else addrEl.style.display = "none";
     let closed = false;
+    let cleaningUp = false; // アンマウント/再実行の cleanup で popup.remove() が発火する "close" を取消扱いにしないためのフラグ
     const close = () => {
       if (closed) return;
       closed = true;
@@ -1264,8 +1266,12 @@ function RamenMapbox(props: Props) {
       .setLngLat([cand.lng, cand.lat])
       .setDOMContent(el)
       .addTo(map);
-    popup.on("close", () => close()); // ✕ で閉じても取消扱い
+    // ✕（ユーザー操作）で閉じたら取消扱い。ただし cleanup 由来の popup.remove() は無視（自己クリア防止）。
+    popup.on("close", () => {
+      if (!cleaningUp) close();
+    });
     return () => {
+      cleaningUp = true;
       marker.remove();
       popup.remove();
     };
