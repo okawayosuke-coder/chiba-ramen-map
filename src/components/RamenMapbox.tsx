@@ -2638,7 +2638,7 @@ function RamenMapbox(props: Props) {
     let carRot = 0; // ノースアップ時の自車矢印の連続回転角（最短回転）
 
     const CAR_SVG =
-      '<svg class="car-arrow" width="54" height="54" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
+      '<svg class="car-arrow" width="64" height="64" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
       '<circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/>' +
       '<path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
     // 自車の右に標高(m)を常設表示（Leaflet版＝自車マーク横ツールチップ「標高 ◯m」移植）。約40m毎更新。
@@ -2657,8 +2657,10 @@ function RamenMapbox(props: Props) {
     geoEl.style.position = "relative"; // 標高ラベル(absolute)の位置基準
     geoEl.innerHTML = CAR_HTML;
     geoEl.style.display = "none";
-    // pitchAlignment:"map" ＝ 3D表示(pitch)時に地理マーカー(追従パン時の自車)も地図平面へ寝かせる
-    const geoMarker = new mapboxgl.Marker({ element: geoEl, anchor: "center", pitchAlignment: "map" });
+    // 追従パン時の自車(地理マーカー)。3D時の傾きは carEl と同じく updateCarTilt で「少し起こして」手動付与する。
+    // pitchAlignment:"map" は地図平面へ完全に寝かせる＝pitch分だけ寝すぎるため使わず、既定(viewport)で要素は正対のまま
+    // 内側の矢印に rotateX(実pitch×係数) を掛けて少しだけ傾ける。
+    const geoMarker = new mapboxgl.Marker({ element: geoEl, anchor: "center" });
     const c0 = propsRef.current.userPos ?? { lat: map.getCenter().lat, lng: map.getCenter().lng };
     geoMarker.setLngLat([c0.lng, c0.lat]).addTo(map);
 
@@ -2780,14 +2782,22 @@ function RamenMapbox(props: Props) {
     // 走行中はGPS/経路方位、停車中はコンパス方位。最短回転(carRot)でなめらかに。
     // 追従中の自車マーク(画面固定オーバーレイ)を地図のpitchに合わせて寝かせる。3D時は地面に沿って傾く。
     // 向き(rotate)と傾き(rotateX=camPitch)を合成。ノースアップは進行方位へrotate、ヘディングアップは上向き固定。
+    // 自車マーク(画面固定carEl＋地理geoEl)を地図のpitchに合わせて寝かせる。ただし地図平面まで寝かせると
+    // 「寝すぎ」て見づらいので、実ピッチの CAR_TILT_FACTOR 倍だけ傾ける（＝少し起こす）。pitchは map.getPitch()
+    // を都度参照するので、停車中に3Dトグルしても(走行していなくても)地図のpitch変化に連動して即傾く/起きる。
+    const CAR_TILT_FACTOR = 0.65;
+    const carArrowTransform = (rot: number) => {
+      const p = map.getPitch();
+      return p > 0.5
+        ? `perspective(640px) rotateX(${(p * CAR_TILT_FACTOR).toFixed(1)}deg) rotate(${rot.toFixed(1)}deg)`
+        : `rotate(${rot.toFixed(1)}deg)`; // 平面時は従来どおり(perspective無し)
+    };
     const updateCarTilt = () => {
-      const a = carEl.querySelector(".car-arrow") as HTMLElement | null;
-      if (!a) return;
       const rot = headingUp ? 0 : carRot;
-      a.style.transform =
-        camPitch > 0.5
-          ? `perspective(640px) rotateX(${camPitch.toFixed(1)}deg) rotate(${rot.toFixed(1)}deg)`
-          : `rotate(${rot.toFixed(1)}deg)`; // 平面時は従来どおり(perspective無し)
+      const a = carEl.querySelector(".car-arrow") as HTMLElement | null;
+      if (a) a.style.transform = carArrowTransform(rot); // 画面固定の自車
+      const b = geoEl.querySelector(".car-arrow") as HTMLElement | null;
+      if (b) b.style.transform = carArrowTransform(rot); // 追従パン中の地理マーカー
     };
     const applyCarRotation = () => {
       if (headingUp) return;
@@ -2795,10 +2805,12 @@ function RamenMapbox(props: Props) {
       const hd = moving ? lastTravelHeading : compassHeading() ?? lastTravelHeading;
       if (hd == null) return;
       carRot += angDiff(hd, carRot);
-      updateCarTilt(); // 画面固定の自車(carEl)は傾き込みで更新
-      const b = geoEl.querySelector(".car-arrow") as HTMLElement | null;
-      if (b) b.style.transform = `rotate(${carRot}deg)`; // 地理マーカー(非追従時)は従来どおり回転のみ
+      updateCarTilt(); // carEl・geoEl とも向き＋傾き込みで更新
     };
+    // 地図のpitch変化(3Dトグルの easeTo・追従ループのpitch補間)に連動して自車マークを寝かせ直す。
+    // これで走行していなくても3D切替時に即マップ連動で傾く（従来は追従ループ内でしか更新されず、
+    // 走らないと切り替わらなかった）。
+    map.on("pitch", updateCarTilt);
 
     // 追従カメラの補間を「自前30fpsループ」で行う（Mapbox easeTo は描画FPS上限を指定できず60fpsで回るため、
     // 省電力・発熱低減目的で半分に間引く）。各フレームは easeTo(duration:0)＝offset維持の即時移動。時間ベースなので
@@ -3121,6 +3133,7 @@ function RamenMapbox(props: Props) {
         /* 無視 */
       }
       map.off("dragstart", onUserPan);
+      map.off("pitch", updateCarTilt);
       carEl.remove();
       geoMarker.remove();
       recBtn.remove();
