@@ -55,3 +55,66 @@ export async function geocodeAddress(
     return null;
   }
 }
+
+/** Mapboxトークン解決（RamenMapbox の resolveToken と同じ規則）。地名/施設名検索(geocodePlaces)用。 */
+function mapboxToken(): string | null {
+  const env = (import.meta.env as Record<string, string | undefined>).VITE_MAPBOX_TOKEN;
+  if (env && /^pk\./.test(env)) return env;
+  try {
+    const t = localStorage.getItem("mapbox_poc_token");
+    if (t && /^pk\./.test(t)) return t;
+  } catch {
+    /* localStorage 不可は無視 */
+  }
+  return null;
+}
+
+export interface PlaceHit {
+  lat: number;
+  lng: number;
+  title: string; // 施設/地名（例: 京成佐倉駅）
+  subtitle: string; // 住所（例: 千葉県佐倉市栄町）
+}
+
+/** Mapbox Search Box API(/forward) で「キーワード → 地名/駅/施設/住所」を複数候補で返す。
+ *  GSI住所ジオコーダは住所専用で「佐倉駅」等のPOI/駅名/ランドマークを解決できないため、
+ *  目的地のキーワード検索はこちらを使う。proximity(現在地)で近い候補を上位に。日本・日本語固定。
+ *  トークン未設定/失敗/2文字未満は空配列。 */
+export async function geocodePlaces(
+  query: string,
+  proximity?: { lat: number; lng: number } | null
+): Promise<PlaceHit[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const tok = mapboxToken();
+  if (!tok) return [];
+  const prox = proximity ? `&proximity=${proximity.lng},${proximity.lat}` : "";
+  try {
+    const r = await fetch(
+      `https://api.mapbox.com/search/searchbox/v1/forward?q=${encodeURIComponent(q)}` +
+        `&country=jp&language=ja&limit=6${prox}&access_token=${tok}`
+    );
+    if (!r.ok) return [];
+    const j = (await r.json()) as {
+      features?: Array<{
+        geometry?: { coordinates?: [number, number] };
+        properties?: { name?: string; place_formatted?: string };
+      }>;
+    };
+    const feats = Array.isArray(j.features) ? j.features : [];
+    const out: PlaceHit[] = [];
+    for (const f of feats) {
+      const c = f.geometry?.coordinates;
+      if (!c || c.length < 2) continue;
+      out.push({
+        lat: c[1],
+        lng: c[0],
+        title: f.properties?.name || q,
+        subtitle: f.properties?.place_formatted || "",
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}

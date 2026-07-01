@@ -46,7 +46,7 @@ import {
   useRecentDests,
   useTheme,
 } from "./storage";
-import { geocodeAddress } from "./geocode";
+import { geocodePlaces, type PlaceHit } from "./geocode";
 import { useGeolocation, useMovementDetector } from "./hooks";
 import { downloadTrackGPX, trackStats } from "./track";
 import {
@@ -160,9 +160,9 @@ export default function App() {
   const [threeD, setThreeD] = useThreeD();
   const [home, setHome] = useHome(); // 自宅（端末内のみ保存）。🏠帰宅ボタンの目的地
   const { recents, push: pushRecent, clear: clearRecents } = useRecentDests(); // 最近の目的地（端末内のみ）
-  // 検索ボックスの入力を住所として解決した候補（ラーメン店に限らず任意地点を目的地化）
-  const [addrSuggest, setAddrSuggest] = useState<{ lat: number; lng: number; title: string } | null>(null);
-  const addrReqRef = useRef(0); // 住所ジオコーディングの競合（古い応答）を捨てるための連番
+  // 検索ボックスの入力を地名/駅/施設/住所として解決した候補（ラーメン店に限らず任意地点を目的地化）
+  const [placeHits, setPlaceHits] = useState<PlaceHit[]>([]);
+  const addrReqRef = useRef(0); // ジオコーディングの競合（古い応答）を捨てるための連番
   const [recenterTick, setRecenterTick] = useState(0); // 「地図で見る」で地図を目的地へ寄せる信号
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -373,29 +373,29 @@ export default function App() {
     [pushRecent]
   );
 
-  // 検索ボックスの入力を住所として順ジオコーディング（デバウンス）。解決できたら
-  // 検索結果の先頭に「📍 この住所へ案内」行を出す（自動では目的地化しない＝誤爆防止）。
-  // 店名検索（shops.json 照合）はこれと独立に従来どおり並行動作する。
+  // 検索ボックスの入力を地名/駅/施設/住所として解決（Mapbox Search Box・デバウンス）。解決できたら
+  // 検索結果の先頭に候補行（📍地名・住所）を複数出す（自動では目的地化しない＝誤爆防止）。「佐倉駅」等の
+  // キーワード/POIも解決できる。店名検索（shops.json 照合）はこれと独立に従来どおり並行動作する。
   useEffect(() => {
     const q = filters.query.trim();
     if (q.length < 2) {
-      setAddrSuggest(null);
+      setPlaceHits([]);
       return;
     }
     const id = ++addrReqRef.current;
     const t = setTimeout(async () => {
-      const r = await geocodeAddress(q);
+      const r = await geocodePlaces(q, geo.pos); // 現在地を近接ヒントに（近い候補を上位へ）
       if (id !== addrReqRef.current) return; // 古い応答は捨てる
-      setAddrSuggest(r);
-    }, 450);
+      setPlaceHits(r);
+    }, 400);
     return () => clearTimeout(t);
-  }, [filters.query]);
+  }, [filters.query, geo.pos]);
 
-  // 住所サジェスト行をタップ → その地点を目的地に設定
-  const onSetDestFromAddr = useCallback(() => {
-    if (!addrSuggest) return;
-    onSetDest({ lat: addrSuggest.lat, lng: addrSuggest.lng, name: addrSuggest.title });
-  }, [addrSuggest, onSetDest]);
+  // 候補行をタップ → その地点を目的地に設定
+  const onSetDestFromPlace = useCallback(
+    (p: PlaceHit) => onSetDest({ lat: p.lat, lng: p.lng, name: p.title }),
+    [onSetDest]
+  );
 
   // この店が現在の目的地か（座標一致で判定）。最近の目的地チップ等で dest が
   // 店オブジェクトと別参照になっても「🧭 ルート」ボタンを正しく点灯させる。
@@ -838,22 +838,23 @@ export default function App() {
         )}
 
         <div className="list">
-          {addrSuggest && (
+          {placeHits.map((p, i) => (
             <button
+              key={`${p.lat},${p.lng},${i}`}
               className="addr-suggest"
-              onClick={onSetDestFromAddr}
-              title={`「${addrSuggest.title}」を目的地に設定`}
+              onClick={() => onSetDestFromPlace(p)}
+              title={`「${p.title}」を目的地に設定`}
             >
               <span className="addr-suggest__ic" aria-hidden="true">
                 📍
               </span>
               <span className="addr-suggest__txt">
-                <span className="addr-suggest__t">この住所へ案内</span>
-                <span className="addr-suggest__a">{addrSuggest.title}</span>
+                <span className="addr-suggest__t">{p.title}</span>
+                {p.subtitle && <span className="addr-suggest__a">{p.subtitle}</span>}
               </span>
               <span className="addr-suggest__go">設定 →</span>
             </button>
-          )}
+          ))}
           {view.map(({ s, km }) => (
             <div
               key={shopKey(s)}
