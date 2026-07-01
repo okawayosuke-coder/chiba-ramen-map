@@ -1197,6 +1197,48 @@ body {
   box-shadow: 0 2px 9px rgba(0, 0, 0, 0.4);
 }
 
+/* ルート選択（高速あり / 一般道のみ）＝所要時間で選ぶ。route-box/目的地名の下に横並び。 */
+.route-alt {
+  position: absolute;
+  left: 10px;
+  top: 256px;
+  z-index: 651;
+  display: flex;
+  gap: 6px;
+}
+.route-alt__opt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 11px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  background: rgba(20, 22, 26, 0.85);
+  color: #e8eaed;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.4);
+}
+.route-alt__opt .route-alt__lb {
+  font-size: 12px;
+  opacity: 0.9;
+}
+.route-alt__opt .route-alt__t {
+  font-size: 16px;
+  letter-spacing: 0.2px;
+}
+.route-alt__opt .route-alt__t small {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.route-alt__opt.is-active {
+  border-color: #4da3ff;
+  background: rgba(26, 115, 232, 0.95);
+  color: #fff;
+}
+
 /* ===== Mapbox ズーム(縮尺切替)ボタンを大きく＝走行中もタップしやすく ===== */
 /* 既定29px → 46px。2個積み≒93px+上余白10px=下端約103pxで route-box(top:112) と非重複。 */
 .mapboxgl-ctrl-top-left .mapboxgl-ctrl-group {

@@ -93,7 +93,7 @@ async function fetchORSGet(from: Pt, to: Pt): Promise<RouteResult | null> {
 }
 
 // ORS POST（経由地＋continue_straight で前方誘導）。
-async function fetchORSPost(pts: Pt[], forward: boolean): Promise<RouteResult | null> {
+async function fetchORSPost(pts: Pt[], forward: boolean, avoidHw?: boolean): Promise<RouteResult | null> {
   try {
     const r = await fetch(ORS, {
       method: "POST",
@@ -102,6 +102,7 @@ async function fetchORSPost(pts: Pt[], forward: boolean): Promise<RouteResult | 
         coordinates: pts.map((p) => [p.lng, p.lat]),
         extra_info: ["waycategory"], // 高速/有料区間の判定用（経路ベースの高速判定）
         ...(forward ? { continue_straight: true } : {}),
+        ...(avoidHw ? { options: { avoid_features: ["highways", "tollways"] } } : {}), // 一般道のみルート
       }),
     });
     if (!r.ok) return null;
@@ -149,7 +150,8 @@ function parseORS(j: unknown): RouteResult | null {
 async function fetchMapbox(
   from: Pt,
   to: Pt,
-  heading: Heading
+  heading: Heading,
+  avoidHw?: boolean
 ): Promise<RouteResult | null> {
   const token = mapboxToken();
   if (!token) return null;
@@ -161,6 +163,8 @@ async function fetchMapbox(
     steps: "false",
     access_token: token,
   });
+  // 一般道のみルート: 高速・有料を除外（下道ルート）。
+  if (avoidHw) params.set("exclude", "motorway,toll");
   // bearings は座標数と同数（;区切り）。出発のみ方位±45°で拘束、目的地は空（無拘束）。
   if (validHeading(heading)) {
     const deg = Math.round(((heading % 360) + 360) % 360);
@@ -191,10 +195,11 @@ async function fetchMapbox(
 export async function fetchRoute(
   from: Pt,
   to: Pt,
-  heading?: Heading
+  heading?: Heading,
+  avoidHw?: boolean
 ): Promise<RouteResult | null> {
-  // ① Mapbox driving-traffic（地図トークンがあれば最優先）
-  const mb = await fetchMapbox(from, to, heading);
+  // ① Mapbox driving-traffic（地図トークンがあれば最優先）。avoidHw=一般道のみ(exclude=motorway,toll)
+  const mb = await fetchMapbox(from, to, heading, avoidHw);
   if (mb) return mb;
 
   // ② フォールバック: ORS / OSRM（従来）
@@ -202,11 +207,13 @@ export async function fetchRoute(
   const pts = waypoints(from, to, heading);
   if (ORS_KEY) {
     if (useFwd) {
-      const r = await fetchORSPost(pts, true);
+      const r = await fetchORSPost(pts, true, avoidHw);
       if (r) return r;
     }
-    const g = await fetchORSGet(from, to); // 前方誘導なしの速いGET
-    if (g) return g;
+    const g = await fetchORSGet(from, to); // 前方誘導なしの速いGET（avoid_features非対応）
+    if (g && !avoidHw) return g;
+    const p = await fetchORSPost(pts, false, avoidHw); // avoidHw時はPOSTで再取得
+    if (p) return p;
     return fetchOSRM([from, to], false);
   }
   if (useFwd) {

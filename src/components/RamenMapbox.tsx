@@ -3,7 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
-import { fetchRoute, projectOnRoute } from "../route";
+import { fetchRoute, projectOnRoute, type RouteResult } from "../route";
 import { loadHighway, type HwFacility, type HwKind } from "../highwayData";
 import { loadHighwayGeom, nearestHighway, type HighwayGeom } from "../highwayGeom";
 import { loadSurfaceGeom, nearestSurface, type SurfaceGeom } from "../surfaceGeom";
@@ -1863,6 +1863,17 @@ function RamenMapbox(props: Props) {
     hwNotice.style.display = "none";
     map.getContainer().appendChild(hwNotice);
 
+    // ルート選択（高速あり / 一般道のみ）。高速を使う経路の時だけ表示し所要時間で選べる。
+    const altPanel = document.createElement("div");
+    altPanel.className = "route-alt";
+    altPanel.style.display = "none";
+    altPanel.innerHTML =
+      '<button class="route-alt__opt" data-opt="fast" type="button"></button>' +
+      '<button class="route-alt__opt" data-opt="local" type="button"></button>';
+    map.getContainer().appendChild(altPanel);
+    const altFastBtn = altPanel.querySelector('[data-opt="fast"]') as HTMLButtonElement;
+    const altLocalBtn = altPanel.querySelector('[data-opt="local"]') as HTMLButtonElement;
+
     // ルート解除ボタン
     const clearBtn = document.createElement("button");
     clearBtn.type = "button";
@@ -2156,50 +2167,104 @@ function RamenMapbox(props: Props) {
       return pr;
     };
 
+    // ===== ルート選択（高速あり fast / 一般道のみ local）＝所要時間で選べる =====
+    let avoidHw = false; // 現在の選択。既定は高速あり(速い方)
+    let fastRoute: RouteResult | null = null; // 高速あり案
+    let localRoute: RouteResult | null = null; // 一般道のみ案
+    let fastHasHw = false; // 高速あり案が実際に高速/有料を使うか（使う時だけ選択UIを出す）
+
+    // 高速あり/一般道の選択UIの表示更新（＋高速案内バッジ hwNotice の排他制御）。
+    const updateSelector = () => {
+      const showSel = !propsRef.current.follow && fastHasHw && !!fastRoute && !!localRoute;
+      if (showSel) {
+        altFastBtn.innerHTML =
+          `<span class="route-alt__lb">🛣 高速あり</span><span class="route-alt__t">${fastRoute!.min}<small>分</small>・${Math.round(fastRoute!.km)}<small>km</small></span>`;
+        altLocalBtn.innerHTML =
+          `<span class="route-alt__lb">🚗 一般道のみ</span><span class="route-alt__t">${localRoute!.min}<small>分</small>・${Math.round(localRoute!.km)}<small>km</small></span>`;
+        altFastBtn.classList.toggle("is-active", !avoidHw);
+        altLocalBtn.classList.toggle("is-active", avoidHw);
+        altPanel.style.display = "";
+        hwNotice.style.display = "none"; // 選択UIが高速利用を表すのでバッジは隠す
+      } else {
+        altPanel.style.display = "none";
+        hwNotice.style.display = hwRanges.length ? "" : "none";
+      }
+    };
+
+    // 1本のRouteResultを地図・ETA・トリム・色分け・施設に反映（doFit時はルート全体へ引き）。
+    const applyRoute = (r: RouteResult, here: Pt | null, doFit: boolean) => {
+      setLine(r.coords);
+      resetTrim(); // 新ルートは全線を描き直しトリムを0へ
+      rCoords = r.coords;
+      rKm = r.km;
+      rMin = r.min;
+      rSuffix = new Array(r.coords.length).fill(0);
+      for (let i = r.coords.length - 2; i >= 0; i--) {
+        rSuffix[i] =
+          rSuffix[i + 1] +
+          haversineKm(
+            { lat: r.coords[i][0], lng: r.coords[i][1] },
+            { lat: r.coords[i + 1][0], lng: r.coords[i + 1][1] }
+          );
+      }
+      // 高速/有料区間: ORS waycategory優先。無ければ同梱高速形状で判定。ただし一般道のみ案(avoidHw)は
+      // 構造上高速を使わないので緑判定しない（下道が高架高速の真下を通る=357型の誤検出を避ける）。
+      hwRanges = r.hwRanges ?? (avoidHw ? [] : geomHwRanges(r.coords));
+      applyRouteColor(); // 高速/有料区間をルート線に緑で色分け
+      gradeMarks = buildMarks(r.coords, GRADE_SPACING_KM);
+      eleAtMark = [];
+      computeRouteFacilities();
+      // ルート設定/切替時は「引き」で現在地〜目的地(ルート全体)を表示（走行追従中はカメラを奪わない・北上）。
+      if (doFit && !propsRef.current.follow && r.coords.length >= 2) {
+        let s = 90, w = 180, n = -90, e = -180;
+        for (const [la, ln] of r.coords) {
+          if (la < s) s = la; if (la > n) n = la; if (ln < w) w = ln; if (ln > e) e = ln;
+        }
+        map.fitBounds([[w, s], [e, n]], {
+          padding: { top: 80, bottom: 90, left: 80, right: 80 },
+          maxZoom: 15,
+          bearing: 0,
+          duration: 800,
+        });
+      }
+      if (here) refresh(here);
+      updateSelector();
+    };
+
+    // 選択ボタン: タップで avoidHw を切替え、取得済みルートを即適用（全体へ引き直す）。
+    altFastBtn.onclick = () => {
+      if (avoidHw && fastRoute) { avoidHw = false; applyRoute(fastRoute, lastHereHw, true); }
+    };
+    altLocalBtn.onclick = () => {
+      if (!avoidHw && localRoute) { avoidHw = true; applyRoute(localRoute, lastHereHw, true); }
+    };
+
+    // 初回に「高速あり」「一般道のみ」の両案を確保し、高速あり案が高速を使う時だけ選択UIを出す。
+    const fetchAlternatives = (from: Pt) => {
+      const jobs: Promise<void>[] = [];
+      if (!fastRoute) jobs.push(fetchRoute(from, to, lastHeading, false).then((r) => { if (r) fastRoute = r; }));
+      if (!localRoute) jobs.push(fetchRoute(from, to, lastHeading, true).then((r) => { if (r) localRoute = r; }));
+      Promise.all(jobs).then(() => {
+        if (aborted) return;
+        fastHasHw = !!fastRoute && (fastRoute.hwRanges ?? geomHwRanges(fastRoute.coords)).length > 0;
+        // 一般道案が高速案とほぼ同じ(=下道が無い/同一)なら選択の意味が薄いので出さない
+        if (fastRoute && localRoute && Math.abs(fastRoute.km - localRoute.km) < 0.3 && Math.abs(fastRoute.min - localRoute.min) < 1) fastHasHw = false;
+        updateSelector();
+      });
+    };
+
     const route = (from: Pt) => {
       lastRouteAt = Date.now();
-      if (!rCoords) box.textContent = "🛣 経路を計算中…";
-      fetchRoute(from, to, lastHeading).then((r) => {
-        if (aborted) return;
-        if (!r) {
-          if (!rCoords) box.textContent = "🛣 経路を取得できませんでした";
+      const isFirst = !rCoords;
+      if (isFirst) box.textContent = "🛣 経路を計算中…";
+      fetchRoute(from, to, lastHeading, avoidHw).then((r) => {
+        if (aborted || !r) {
+          if (!rCoords && !aborted) box.textContent = "🛣 経路を取得できませんでした";
           return;
         }
-        const wasFirst = !rCoords; // このdestで最初のルート計算か（初回だけ引きで全体表示する）
-        setLine(r.coords);
-        resetTrim(); // 新ルート(初回/再ルート)は全線を描き直しトリムを0へ戻す
-        rCoords = r.coords;
-        rKm = r.km;
-        rMin = r.min;
-        rSuffix = new Array(r.coords.length).fill(0);
-        for (let i = r.coords.length - 2; i >= 0; i--) {
-          rSuffix[i] =
-            rSuffix[i + 1] +
-            haversineKm(
-              { lat: r.coords[i][0], lng: r.coords[i][1] },
-              { lat: r.coords[i + 1][0], lng: r.coords[i + 1][1] }
-            );
-        }
-        hwRanges = r.hwRanges ?? geomHwRanges(r.coords); // ORS waycategory、無ければ同梱高速形状で判定
-        applyRouteColor(); // 高速/有料区間をルート線に緑で色分け＋案内バッジ
-        // ルート初回設定時は「引き」で現在地〜目的地(ルート全体)を表示し、走行前にルートを確認できるようにする。
-        // 走行追従中(follow)はカメラを奪わない。ノースアップ(bearing:0)で土地の向きも掴みやすく。
-        if (wasFirst && !propsRef.current.follow && r.coords.length >= 2) {
-          let s = 90, w = 180, n = -90, e = -180;
-          for (const [la, ln] of r.coords) {
-            if (la < s) s = la; if (la > n) n = la; if (ln < w) w = ln; if (ln > e) e = ln;
-          }
-          map.fitBounds([[w, s], [e, n]], {
-            padding: { top: 80, bottom: 90, left: 80, right: 80 },
-            maxZoom: 15,
-            bearing: 0,
-            duration: 800,
-          });
-        }
-        gradeMarks = buildMarks(r.coords, GRADE_SPACING_KM); // この先急勾配の予告用マーク（再ルートで作り直し）
-        eleAtMark = []; // 経路が変わったので標高キャッシュをリセット
-        computeRouteFacilities(); // 経路沿いの高速施設を再計算
-        refresh(from);
+        if (avoidHw) localRoute = r; else fastRoute = r;
+        applyRoute(r, from, isFirst);
+        if (isFirst) fetchAlternatives(from); // 初回は両案の所要時間を揃えて選べるように
       });
     };
 
@@ -2245,6 +2310,7 @@ function RamenMapbox(props: Props) {
       destMarker.remove();
       box.remove();
       hwNotice.remove();
+      altPanel.remove();
       clearBtn.remove();
       hwStrip.remove();
       routeSnapRef.current = null;
