@@ -705,6 +705,10 @@ function RamenMapbox(props: Props) {
   // 経路スナップ（無料のリアルタイムmap matching）: 経路effectが投影点＋道路方位を書き、
   // followeffectが自車位置/向きに使う。経路案内中だけ新鮮（at が近い）。
   const routeSnapRef = useRef<{ proj: Pt; bearing: number; at: number } | null>(null);
+  // 追従カメラの一時停止API（followeffectが実体を書く）。目的地プレビュー/ルート全体表示のとき、
+  // 走行モードを抜けずにカメラ追従だけ止めて全体を見せるために candidate/route effect から呼ぶ。
+  // 復帰は「現在地」ボタン（followeffect内・setFollowing(true)）で手動。
+  const followApiRef = useRef<{ suspend: () => void } | null>(null);
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
   const lastTrafficAtRef = useRef<number>(0); // 渋滞タイルを最後に取得した時刻(ms)。天気バーに「渋滞 HH:MM時点」表示
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
@@ -1242,7 +1246,9 @@ function RamenMapbox(props: Props) {
     if (!map || !mapReady || !cand) return;
     // カメラを候補「目的地そのもの」へ寄せて「まず地図に出す」（現在地と両方を収めるのではなく目的地中心）。
     // bearing:0＝ノースアップ固定で表示（ヘディングアップで地図が回転していると土地の方向感が掴みにくいため）。
-    // App 側で候補プレビュー時に追従(follow)を解除しているため、この flyTo は追従ループに上書きされない。
+    // 走行モード中でもプレビューできるよう、カメラ追従だけ一時停止（走行モード自体は維持＝HUD/「現在地」ボタンは残る）。
+    // 非走行モードでは followApiRef は null＝no-op（追従ループが無いので flyTo はそのまま効く）。復帰は「現在地」ボタン。
+    followApiRef.current?.suspend();
     map.flyTo({ center: [cand.lng, cand.lat], zoom: 15, bearing: 0, duration: 800 });
     const pinEl = document.createElement("div");
     pinEl.className = "cand-pin";
@@ -2225,8 +2231,11 @@ function RamenMapbox(props: Props) {
       gradeMarks = buildMarks(r.coords, GRADE_SPACING_KM);
       eleAtMark = [];
       computeRouteFacilities();
-      // ルート設定/切替時は「引き」で現在地〜目的地(ルート全体)を表示（走行追従中はカメラを奪わない・北上）。
-      if (doFit && !propsRef.current.follow && r.coords.length >= 2) {
+      // ルート設定時は「引き」で現在地〜目的地(ルート全体)を北上表示。走行モードでも同じ挙動にする（要望）＝
+      // 走行モードを抜けずにカメラ追従だけ一時停止して全体を見せ、「現在地」ボタンで自車追従へ復帰。
+      // doFit は初回ルートのみ true（再ルート＝走行中の逸脱時は全体表示せず追従を維持）。
+      if (doFit && r.coords.length >= 2) {
+        followApiRef.current?.suspend(); // 非走行モードでは null＝no-op
         let s = 90, w = 180, n = -90, e = -180;
         for (const [la, ln] of r.coords) {
           if (la < s) s = la; if (la > n) n = la; if (ln < w) w = ln; if (ln > e) e = ln;
@@ -2708,6 +2717,14 @@ function RamenMapbox(props: Props) {
       }
     };
     map.getContainer().appendChild(recBtn);
+    // 目的地プレビュー/ルート全体表示のために、走行モードを抜けずにカメラ追従だけ一時停止するAPIを公開。
+    // 進行中の30fps補間(camRaf)も止めて、直後の flyTo/fitBounds が上書きされないようにする。復帰は「現在地」ボタン。
+    followApiRef.current = {
+      suspend: () => {
+        setFollowing(false);
+        if (camRaf) { cancelAnimationFrame(camRaf); camRaf = 0; }
+      },
+    };
     // ユーザーの手動パンのみで追従解除（easeTo等の自動移動は originalEvent が無いので除外）
     const onUserPan = (e: { originalEvent?: unknown }) => {
       if (!following || !e.originalEvent) return;
@@ -3161,6 +3178,7 @@ function RamenMapbox(props: Props) {
       }
       map.off("dragstart", onUserPan);
       map.off("pitch", updateCarTilt);
+      followApiRef.current = null; // 走行モード終了でカメラ一時停止APIを無効化
       carEl.remove();
       geoMarker.remove();
       recBtn.remove();
