@@ -1232,8 +1232,9 @@ function RamenMapbox(props: Props) {
     const cand = props.candidate;
     if (!map || !mapReady || !cand) return;
     // カメラを候補「目的地そのもの」へ寄せて「まず地図に出す」（現在地と両方を収めるのではなく目的地中心）。
+    // bearing:0＝ノースアップ固定で表示（ヘディングアップで地図が回転していると土地の方向感が掴みにくいため）。
     // App 側で候補プレビュー時に追従(follow)を解除しているため、この flyTo は追従ループに上書きされない。
-    map.flyTo({ center: [cand.lng, cand.lat], zoom: 15, duration: 800 });
+    map.flyTo({ center: [cand.lng, cand.lat], zoom: 15, bearing: 0, duration: 800 });
     const pinEl = document.createElement("div");
     pinEl.className = "cand-pin";
     pinEl.textContent = "📍";

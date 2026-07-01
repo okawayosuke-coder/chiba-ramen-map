@@ -295,6 +295,20 @@ export default function App() {
   }, [filters, favOnly, favs, geo.pos]);
 
   const shops = useMemo(() => view.map((v) => v.s), [view]);
+  // 地図のラーメンピンは「検索テキストでは絞り込まない」＝目的地キーワード検索(佐倉駅 等)や店名検索の入力で
+  // 地図からピンが消えないように、必ず表示する。評価/レビュー/エリア/ジャンル/お気に入りの絞り込みは反映。
+  const mapShops = useMemo(
+    () =>
+      ALL_SHOPS.filter((s) => {
+        if (s.rating < filters.minRating) return false;
+        if (s.reviews < filters.minReviews) return false;
+        if (filters.region !== "all" && s.region !== filters.region) return false;
+        if (filters.genres.length && !filters.genres.some((g) => SHOP_GENRES.get(s)!.includes(g))) return false;
+        if (favOnly && !favs.has(shopKey(s))) return false;
+        return true;
+      }),
+    [filters.minRating, filters.minReviews, filters.region, filters.genres, favOnly, favs]
+  );
 
   // ジャンル別の件数（ジャンル以外の絞り込みを反映＝チップに今の該当数を表示）
   const genreCounts = useMemo(() => {
@@ -952,7 +966,7 @@ export default function App() {
           {(() => {
             // 地図 props は1箇所で定義し、Leaflet版/Mapbox版どちらにも同じものを渡す。
             const mapProps = {
-              shops,
+              shops: mapShops, // 地図のピンは検索テキストで消さない（常時表示）。リスト/はしごは絞り込み後の shops を使用
               focus,
               follow,
               paneHidden,
