@@ -1016,9 +1016,27 @@ body {
   font-size: 26px;
   line-height: 1;
 }
+/* 現在温度＋予報地点を縦に積む（温度の下に地名） */
+.wx-temp-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
 .wx-temp {
   font-size: 26px;
   font-weight: 800;
+}
+/* 予報地点（Open-Meteo格子点の市区町村名）。温度の下に小さく muted 表示 */
+.wx-place {
+  font-size: 10px;
+  font-weight: 600;
+  color: #aeb6c0;
+  margin-top: 2px;
+  max-width: 104px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .wx-cur-sub {
   font-size: 11px;

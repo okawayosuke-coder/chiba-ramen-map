@@ -661,10 +661,14 @@ function fmtHM(ts: number): string {
 function weatherBarHTML(wx: Weather): string {
   const c = wmo(wx.current.code);
   const WD = ["日", "月", "火", "水", "木", "金", "土"];
+  // 現在温度の下に「予報地点」の市区町村名（Open-Meteo格子点の逆ジオ）。取得できた時だけ表示。
+  const place = wx.place
+    ? `<span class="wx-place" title="Open-Meteo予報地点（数値予報モデルの格子点）">📍${wx.place}</span>`
+    : "";
   const cur =
     `<div class="wx-cur">` +
     `<span class="wx-emoji">${c.emoji}</span>` +
-    `<span class="wx-temp">${Math.round(wx.current.temp)}°</span>` +
+    `<span class="wx-temp-col"><span class="wx-temp">${Math.round(wx.current.temp)}°</span>${place}</span>` +
     `<span class="wx-cur-sub">${c.label}<br>${
       wx.current.precip > 0 ? `☔${wx.current.precip}mm ・ ` : ""
     }💨${Math.round(wx.current.wind)}</span>` +

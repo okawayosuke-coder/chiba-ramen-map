@@ -1,5 +1,9 @@
 // 現在地の天気予報（Open-Meteo・無料/APIキー不要）。画面下部の横長バーで使う。
 // 既に標高取得で open-meteo を使用済み。ここでは current(現在)＋daily(今日〜7日)を取得する。
+// Open-Meteoは数値予報モデル(格子点)で物理的な観測所は無い。表示用の「予報地点」は、レスポンスが返す
+// 実際の格子点座標(latitude/longitude)を逆ジオコーディングした市区町村名(place)で示す。
+
+import { reverseCityName } from "./geocode";
 
 export interface DailyWx {
   date: string; // "YYYY-MM-DD"(JST)
@@ -12,6 +16,7 @@ export interface Weather {
   current: { temp: number; code: number; precip: number; wind: number };
   daily: DailyWx[];
   fetchedAt: number;
+  place?: string; // 予報地点(Open-Meteoが実際に使った格子点)の市区町村名。逆ジオで解決・失敗時は未設定
 }
 
 // WMO天気コード→絵文字＋日本語ラベル
@@ -89,6 +94,10 @@ export async function fetchWeather(
       })),
       fetchedAt: Date.now(),
     };
+    // 予報地点(実際に使われた格子点)を逆ジオして市区町村名を付与。無ければ要求座標で代替。失敗時は未設定。
+    const glat = typeof d.latitude === "number" ? d.latitude : lat;
+    const glng = typeof d.longitude === "number" ? d.longitude : lng;
+    wx.place = (await reverseCityName(glat, glng)) ?? undefined;
     cache.set(key, wx);
     return wx;
   } catch {
