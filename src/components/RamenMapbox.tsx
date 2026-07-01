@@ -2700,6 +2700,7 @@ function RamenMapbox(props: Props) {
       following = on;
       carEl.style.display = on ? "" : "none"; // 追従中だけ画面固定の自車
       geoEl.style.display = on ? "none" : ""; // パン中だけ地理マーカー（実位置）
+      updateCarTilt?.(); // 表示を切り替えた自車マークに現在のpitch変換(2Dはscale込み)を確実に適用
     };
     recBtn.onclick = () => {
       setFollowing(true);
@@ -2855,6 +2856,10 @@ function RamenMapbox(props: Props) {
     // これで走行していなくても3D切替時に即マップ連動で傾く（従来は追従ループ内でしか更新されず、
     // 走らないと切り替わらなかった）。
     map.on("pitch", updateCarTilt);
+    // 生成直後に現在のpitchに応じた変換(2Dはscale込み)を即適用。これが無いと、走行モード開始/ヘディングアップ
+    // 切替で自車マークを作り直した直後、停車中(camTick非稼働)かつpitch変化なしだと初期の素の64pxのまま残る
+    // （＝「2Dなのに時々大きい」の原因）。
+    updateCarTilt();
 
     // 追従カメラの補間を「自前30fpsループ」で行う（Mapbox easeTo は描画FPS上限を指定できず60fpsで回るため、
     // 省電力・発熱低減目的で半分に間引く）。各フレームは easeTo(duration:0)＝offset維持の即時移動。時間ベースなので
