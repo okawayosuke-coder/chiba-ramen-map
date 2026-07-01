@@ -2165,6 +2165,7 @@ function RamenMapbox(props: Props) {
           if (!rCoords) box.textContent = "🛣 経路を取得できませんでした";
           return;
         }
+        const wasFirst = !rCoords; // このdestで最初のルート計算か（初回だけ引きで全体表示する）
         setLine(r.coords);
         resetTrim(); // 新ルート(初回/再ルート)は全線を描き直しトリムを0へ戻す
         rCoords = r.coords;
@@ -2181,6 +2182,20 @@ function RamenMapbox(props: Props) {
         }
         hwRanges = r.hwRanges ?? geomHwRanges(r.coords); // ORS waycategory、無ければ同梱高速形状で判定
         applyRouteColor(); // 高速/有料区間をルート線に緑で色分け＋案内バッジ
+        // ルート初回設定時は「引き」で現在地〜目的地(ルート全体)を表示し、走行前にルートを確認できるようにする。
+        // 走行追従中(follow)はカメラを奪わない。ノースアップ(bearing:0)で土地の向きも掴みやすく。
+        if (wasFirst && !propsRef.current.follow && r.coords.length >= 2) {
+          let s = 90, w = 180, n = -90, e = -180;
+          for (const [la, ln] of r.coords) {
+            if (la < s) s = la; if (la > n) n = la; if (ln < w) w = ln; if (ln > e) e = ln;
+          }
+          map.fitBounds([[w, s], [e, n]], {
+            padding: { top: 80, bottom: 90, left: 80, right: 80 },
+            maxZoom: 15,
+            bearing: 0,
+            duration: 800,
+          });
+        }
         gradeMarks = buildMarks(r.coords, GRADE_SPACING_KM); // この先急勾配の予告用マーク（再ルートで作り直し）
         eleAtMark = []; // 経路が変わったので標高キャッシュをリセット
         computeRouteFacilities(); // 経路沿いの高速施設を再計算
