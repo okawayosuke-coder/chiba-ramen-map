@@ -2786,11 +2786,12 @@ function RamenMapbox(props: Props) {
     // 「寝すぎ」て見づらいので、実ピッチの CAR_TILT_FACTOR 倍だけ傾ける（＝少し起こす）。pitchは map.getPitch()
     // を都度参照するので、停車中に3Dトグルしても(走行していなくても)地図のpitch変化に連動して即傾く/起きる。
     const CAR_TILT_FACTOR = 0.65;
+    const CAR_SCALE_2D = 0.85; // 2D(平面)時だけ自車マークを少し小さく。3Dは傾きで小さく見えるため等倍(64px)のまま。
     const carArrowTransform = (rot: number) => {
       const p = map.getPitch();
       return p > 0.5
         ? `perspective(640px) rotateX(${(p * CAR_TILT_FACTOR).toFixed(1)}deg) rotate(${rot.toFixed(1)}deg)`
-        : `rotate(${rot.toFixed(1)}deg)`; // 平面時は従来どおり(perspective無し)
+        : `rotate(${rot.toFixed(1)}deg) scale(${CAR_SCALE_2D})`; // 平面時は傾き無し＋少し縮小
     };
     const updateCarTilt = () => {
       const rot = headingUp ? 0 : carRot;
