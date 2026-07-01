@@ -43,6 +43,8 @@ interface Props {
   dest: Dest | null;
   onSetDest: (s: Dest) => void;
   onClearDest: () => void;
+  candidate?: { lat: number; lng: number; name: string; subtitle?: string } | null; // 検索候補の目的地プレビュー（決定前・地図にピン＋確認ポップアップ）
+  onCandidateClose?: () => void; // プレビューを閉じる（決定でルート化 or 取消）
   recenterDest?: number; // 増えるたびに地図を目的地（＋現在地）へ寄せる信号（目的地カードの「地図で見る」）
   home?: Dest | null; // 自宅（登録済みなら地図に🏠帰宅ボタンを表示）
   onGoHome?: () => void; // 🏠帰宅ボタン: 自宅を目的地に設定
@@ -1222,6 +1224,53 @@ function RamenMapbox(props: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady]);
+
+  // 検索候補の目的地プレビュー: candidate が設定されたら、地図にピン＋カメラ移動＋確認ポップアップを出す。
+  // ここで即ルート化せず、「🧭 ここへ案内」を押して初めて onSetDest（＝ルート化）。取消/✕はプレビューだけ消す。
+  useEffect(() => {
+    const map = mapRef.current;
+    const cand = props.candidate;
+    if (!map || !mapReady || !cand) return;
+    // カメラを候補地点（＋現在地）へ寄せて「まず地図に出す」。走行追従中はカメラを奪わない。
+    if (!propsRef.current.follow) fitCameraToDest(map, { lat: cand.lat, lng: cand.lng }, propsRef.current.userPos);
+    const pinEl = document.createElement("div");
+    pinEl.className = "cand-pin";
+    pinEl.textContent = "📍";
+    const marker = new mapboxgl.Marker({ element: pinEl, anchor: "bottom" })
+      .setLngLat([cand.lng, cand.lat])
+      .addTo(map);
+    const el = document.createElement("div");
+    el.className = "popup popup--cand";
+    el.innerHTML =
+      '<div class="name"></div><div class="cand-addr"></div>' +
+      '<div class="popup__actions"><button class="act act--route" type="button">🧭 ここへ案内</button>' +
+      '<button class="act act--cancel" type="button">取消</button></div>';
+    (el.querySelector(".name") as HTMLElement).textContent = cand.name;
+    const addrEl = el.querySelector(".cand-addr") as HTMLElement;
+    if (cand.subtitle) addrEl.textContent = cand.subtitle;
+    else addrEl.style.display = "none";
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      propsRef.current.onCandidateClose?.();
+    };
+    (el.querySelector(".act--route") as HTMLButtonElement).onclick = () => {
+      propsRef.current.onSetDest({ lat: cand.lat, lng: cand.lng, name: cand.name }); // ここで初めてルート化
+      close();
+    };
+    (el.querySelector(".act--cancel") as HTMLButtonElement).onclick = () => close();
+    const popup = new mapboxgl.Popup({ offset: 28, maxWidth: "260px", closeOnClick: false })
+      .setLngLat([cand.lng, cand.lat])
+      .setDOMContent(el)
+      .addTo(map);
+    popup.on("close", () => close()); // ✕ で閉じても取消扱い
+    return () => {
+      marker.remove();
+      popup.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, props.candidate]);
 
   // 目的地カードの「🧭 地図で見る」: recenterDest が増えたら目的地（＋現在地）へカメラを寄せる。
   useEffect(() => {

@@ -163,6 +163,8 @@ export default function App() {
   // 検索ボックスの入力を地名/駅/施設/住所として解決した候補（ラーメン店に限らず任意地点を目的地化）
   const [placeHits, setPlaceHits] = useState<PlaceHit[]>([]);
   const addrReqRef = useRef(0); // ジオコーディングの競合（古い応答）を捨てるための連番
+  // 検索候補タップ後の「決定前プレビュー」地点（地図にピン＋確認ポップアップを出す→決定でルート化）
+  const [candidate, setCandidate] = useState<{ lat: number; lng: number; name: string; subtitle?: string } | null>(null);
   const [recenterTick, setRecenterTick] = useState(0); // 「地図で見る」で地図を目的地へ寄せる信号
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -391,11 +393,13 @@ export default function App() {
     return () => clearTimeout(t);
   }, [filters.query, geo.pos]);
 
-  // 候補行をタップ → その地点を目的地に設定
-  const onSetDestFromPlace = useCallback(
-    (p: PlaceHit) => onSetDest({ lat: p.lat, lng: p.lng, name: p.title }),
-    [onSetDest]
-  );
+  // 候補行をタップ → 即ルート化せず、まず地図にプレビュー（ピン＋確認ポップアップ）。
+  // 地図上で「🧭 ここへ案内」を押して初めて目的地確定＝ルート化（RamenMapbox の candidate effect が担当）。
+  const onSetDestFromPlace = useCallback((p: PlaceHit) => {
+    setCandidate({ lat: p.lat, lng: p.lng, name: p.title, subtitle: p.subtitle });
+    setPlaceHits([]); // 候補リストを閉じる
+    setSheetOpen(false); // 狭い画面ではサイドシートを閉じて地図を見せる
+  }, []);
 
   // この店が現在の目的地か（座標一致で判定）。最近の目的地チップ等で dest が
   // 店オブジェクトと別参照になっても「🧭 ルート」ボタンを正しく点灯させる。
@@ -965,6 +969,8 @@ export default function App() {
               dest,
               onSetDest,
               onClearDest,
+              candidate, // 検索候補の決定前プレビュー（地図にピン＋確認ポップアップ）
+              onCandidateClose: () => setCandidate(null), // 決定/取消でプレビューを閉じる
               recenterDest: recenterTick, // 「地図で見る」で目的地へカメラを寄せる信号
               home, // 自宅（地図の🏠帰宅ボタン表示判定）
               onGoHome, // 🏠帰宅ボタン: 自宅を目的地に設定
