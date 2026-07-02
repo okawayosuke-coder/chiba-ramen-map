@@ -688,9 +688,7 @@ function triangleImageData(color: string, scale: number): ImageData {
   ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = "#fff";
-  ctx.stroke();
+  // 白い輪郭は廃止（要望）。小型化(icon-size 0.65)で輪郭が矢印を覆い速度色が分かりづらくなるため、色塗りのみに。
   return ctx.getImageData(0, 0, s, s);
 }
 
