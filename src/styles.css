@@ -506,6 +506,38 @@ body {
   color: var(--text);
 }
 
+/* Mapboxポップアップ（目的地/店舗/POIクリック時の吹き出し）をテーマに追従。
+   既定は白背景固定でダーク時に「白地×灰文字」で読めなかった（ライトは--panel=#fffで従来どおり）。
+   ★Mapbox既定CSS(.mapboxgl-popup-content{background:#fff}等)と同詳細度だと遅延読込のmapbox-gl.cssに
+     後勝ちされるため、先頭に .mapboxgl-popup を足して詳細度を上げ確実に上書きする。 */
+.mapboxgl-popup .mapboxgl-popup-content {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+.mapboxgl-popup .mapboxgl-popup-close-button {
+  color: var(--text);
+}
+/* 吹き出しの三角(tip)も背景色に合わせる。アンカー位置ごとに色が付く辺が異なるので個別指定。
+   Mapbox既定(.mapboxgl-popup-anchor-*  .tip)より高詳細度にするため2クラス連結で指定。 */
+.mapboxgl-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
+.mapboxgl-popup.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
+.mapboxgl-popup.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {
+  border-bottom-color: var(--panel);
+}
+.mapboxgl-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+.mapboxgl-popup.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,
+.mapboxgl-popup.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip {
+  border-top-color: var(--panel);
+}
+.mapboxgl-popup.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  border-right-color: var(--panel);
+}
+.mapboxgl-popup.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  border-left-color: var(--panel);
+}
+
 /* ===== ツールバー（ラベル付き） ===== */
 .toolbar {
   display: flex;
