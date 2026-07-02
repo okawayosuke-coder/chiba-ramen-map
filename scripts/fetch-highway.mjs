@@ -3,6 +3,17 @@
 // データ元 OpenStreetMap (ODbL)。商用可・帰属表示「© OpenStreetMap contributors」必須。
 import { writeFileSync } from "node:fs";
 
+// 2点間の距離(m)。同一施設の重複ノード集約（上り/下りの別地点分岐は残す）に使う。
+function havM(aLat, aLng, bLat, bLng) {
+  const R = 6371000;
+  const dLat = ((bLat - aLat) * Math.PI) / 180;
+  const dLng = ((bLng - aLng) * Math.PI) / 180;
+  const la1 = (aLat * Math.PI) / 180;
+  const la2 = (bLat * Math.PI) / 180;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
 // 関東全域＋接続する高速をカバー。(south,west,north,east)。広いのでタイル分割で収集（highways-geom.jsonと同範囲）。
 const BBOX = [34.85, 138.4, 37.25, 141.0];
 const TILE = 0.5;
@@ -90,7 +101,6 @@ function kindOf(el) {
 const els = await overpass();
 console.log("elements:", els.length);
 
-const seen = new Set();
 const out = [];
 for (const el of els) {
   const t = el.tags || {};
@@ -103,11 +113,13 @@ for (const el of els) {
   if (lat == null || lng == null) continue;
   const kind = kindOf(el);
   if (!kind) continue;
-  // 同一IC/JCTの複数ランプノードを集約: 種別＋名称＋座標2桁(約1km)で重複除去
-  const key = `${kind}:${name}:${lat.toFixed(2)},${lng.toFixed(2)}`;
-  if (seen.has(key)) continue;
-  seen.add(key);
-  out.push({ lat: +lat.toFixed(6), lng: +lng.toFixed(6), kind, name });
+  // 同一施設の重複ノード集約: 同種別・同名で150m以内は1件に（複数ランプノード等の真の重複のみ）。
+  // ★上り/下りの出口分岐は同名でも数百m離れた別地点なので両方残す＝表示側が進行方向側の分岐を選ぶ
+  //   （旧: 座標2桁≒1kmグリッドで集約し、上下分岐の片方を落として距離が最大~1kmズレていた）。
+  const cand = { lat: +lat.toFixed(6), lng: +lng.toFixed(6), kind, name };
+  if (out.some((o) => o.kind === cand.kind && o.name === cand.name && havM(o.lat, o.lng, cand.lat, cand.lng) < 150))
+    continue;
+  out.push(cand);
 }
 
 out.sort((a, b) => (a.kind < b.kind ? -1 : 1));

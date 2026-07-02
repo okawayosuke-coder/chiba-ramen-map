@@ -105,7 +105,9 @@ console.log(`誤登録SA除去: ${before} -> ${data.facilities.length}`);
 
 // 全角「ＰＡ/ＳＡ/ＩＣ」と半角「PA/SA/IC」の名称ゆれで同じ施設が二重登録される問題を統合。
 // 向き（上り/下り/内回り/外回り）は別物として保持し、全角→半角・空白除去した名称が一致し
-// 2km以内のものだけを1件にまとめる（別道路の同名PA＝例「幕張PA」と「湾岸幕張PA」は名称が違うので残る）。
+// 150m以内のものだけを1件にまとめる（名称ゆれの真の重複はほぼ同座標）。
+// ★上り/下りの出口分岐やSA/PAは同名でも数百m離れた別地点なので両方残す＝表示側が進行方向側を選ぶ
+//   （旧: 2km以内で統合し、四街道IC等の上下分岐の片方を落として距離が最大~1kmズレていた）。
 const normKey = (f) =>
   `${f.kind}:` +
   f.name
@@ -127,9 +129,9 @@ for (const list of groups.values()) {
   for (let i = 0; i < list.length; i++) {
     if (used[i]) continue;
     used[i] = true;
-    // 同名2km以内をクラスタ化し1件に（先頭を代表に）
+    // 同名150m以内をクラスタ化し1件に（先頭を代表に）＝真の重複のみ。上下分岐(数百m)は残す。
     for (let j = i + 1; j < list.length; j++) {
-      if (!used[j] && havKm(list[i].lat, list[i].lng, list[j].lat, list[j].lng) < 2) used[j] = true;
+      if (!used[j] && havKm(list[i].lat, list[i].lng, list[j].lat, list[j].lng) < 0.15) used[j] = true;
     }
     deduped.push(list[i]);
   }
