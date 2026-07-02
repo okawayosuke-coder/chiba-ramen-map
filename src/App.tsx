@@ -980,6 +980,7 @@ export default function App() {
               traffic, // リアルタイム渋滞表示（Mapbox Traffic v1）
               threeD, // 3D表示（地形＋3D建物＋俯瞰ピッチ）
               onToggle3D: () => setThreeD(!threeD), // 地図上の「3D」ボタン用（縮尺ボタンの下）
+              onToggleHeadingUp: () => setHeadingUp(!headingUp), // 地図上の方位コンパスボタン用（3Dボタンの下・設定チップと同一state）
               hwOverride,
               onCycleHwOverride: cycleHwOverride,
               dest,

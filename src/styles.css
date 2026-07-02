@@ -1186,7 +1186,7 @@ body {
 .route-box {
   position: absolute;
   left: 10px;
-  top: 168px; /* ズーム(+/-)10〜102px と「3D」ボタン112〜158px の下に出す（案内中に3Dボタンを隠さない） */
+  top: 224px; /* 左上スタック[ズーム10〜102・3D 112〜158・方位コンパス168〜214]の下に出す（案内中もボタンを隠さない） */
   z-index: 650;
   pointer-events: none;
   background: rgba(26, 115, 232, 0.92);
@@ -1258,7 +1258,7 @@ body {
 }
 
 /* ===== Mapbox ズーム(縮尺切替)ボタンを大きく＝走行中もタップしやすく ===== */
-/* 既定29px → 46px。2個積み≒93px+上余白10px=下端約103pxで route-box(top:112) と非重複。 */
+/* 既定29px → 46px。左上スタックは ズーム(2個)→3D→方位コンパス の順で縦積み（下端≒214px）。route-box(top:224)と非重複。 */
 .mapboxgl-ctrl-top-left .mapboxgl-ctrl-group {
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
@@ -1285,6 +1285,23 @@ body {
 .mapboxgl-ctrl-group button.crm-3d-btn--on {
   background: #1a73e8;
   color: #fff;
+}
+/* 「3D」ボタンの下の方位コンパスボタン（ノースアップ/ヘディングアップ切替）。46px=縮尺/3Dと同寸。
+   コンパスSVGを中央に。ヘディングアップ時は3Dボタンと同じ青点灯（既定=ノースアップは非点灯=標準状態）。 */
+.mapboxgl-ctrl-group button.crm-heading-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: #fff;
+  border: none;
+  cursor: pointer;
+}
+.mapboxgl-ctrl-group button.crm-heading-btn svg {
+  display: block;
+}
+.mapboxgl-ctrl-group button.crm-heading-btn--on {
+  background: #1a73e8;
 }
 
 /* ===== 縮尺バー（ScaleControl・右下）。実距離が一目で分かるよう大きめ・高コントラスト ===== */
@@ -1772,7 +1789,7 @@ body {
 .dest-box {
   position: absolute;
   left: 10px;
-  top: 212px; /* route-box(top:168・下端≒206px)のすぐ下。3Dボタン(〜158px)とも非重複 */
+  top: 268px; /* route-box(top:224・下端≒262px)のすぐ下。方位コンパスボタン(〜214px)とも非重複 */
   z-index: 600;
   pointer-events: none;
   display: flex;

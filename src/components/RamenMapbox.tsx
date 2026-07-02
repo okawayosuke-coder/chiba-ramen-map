@@ -38,6 +38,7 @@ interface Props {
   traffic?: boolean; // リアルタイム渋滞表示（Mapbox Traffic v1）
   threeD?: boolean; // 3D表示（地形＋3D建物＋俯瞰ピッチ）。任意・既定OFF
   onToggle3D?: () => void; // 地図上「3D」ボタン（縮尺ボタンの下）から2D/3D切替
+  onToggleHeadingUp?: () => void; // 地図上「方位」コンパスボタン（3Dボタンの下）からノースアップ/ヘディングアップ切替
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -322,6 +323,56 @@ class ThreeDToggleControl implements mapboxgl.IControl {
     this._c?.remove();
     this._c = undefined;
     this._btn = undefined;
+  }
+}
+
+/** 「3D」ボタンの下に置く方位コンパスボタン＝ノースアップ/ヘディングアップ切替。
+ *  一般的カーナビ(Google/Appleマップ)に倣い、丸いコンパス意匠＋赤い北針＋N文字。
+ *  針は地図の回転(bearing)に追従して常に真北を指す(setBearing)。ヘディングアップ時は青く点灯(setActive)。 */
+class HeadingUpControl implements mapboxgl.IControl {
+  private _c?: HTMLDivElement;
+  private _btn?: HTMLButtonElement;
+  private _rose?: SVGGElement;
+  constructor(private opts: { isOn: () => boolean; onToggle: () => void }) {}
+  onAdd(): HTMLElement {
+    const c = document.createElement("div");
+    c.className = "mapboxgl-ctrl mapboxgl-ctrl-group";
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "crm-heading-btn";
+    b.setAttribute("aria-label", "地図の向き切替（ノースアップ/ヘディングアップ）");
+    // コンパス: 円盤＋回転する針(赤い北＋N・灰色の南尾)。針だけ .crm-compass-rose を bearing で回す。
+    b.innerHTML =
+      '<svg viewBox="0 0 36 36" width="30" height="30" aria-hidden="true">' +
+      '<circle cx="18" cy="18" r="15" fill="#f0f2f5" stroke="#c7ccd4" stroke-width="1"/>' +
+      '<g class="crm-compass-rose">' +
+      '<text x="18" y="9" text-anchor="middle" font-size="8" font-weight="800" fill="#e8483a">N</text>' +
+      '<path d="M18 10.5 L21.5 26 L18 22.5 L14.5 26 Z" fill="#e8483a"/>' + // 北針(赤・上向き)
+      '<path d="M18 30 L20.5 24 L18 25.5 L15.5 24 Z" fill="#9aa0a6"/>' + // 南尾(灰・下向き)
+      "</g></svg>";
+    b.addEventListener("click", () => this.opts.onToggle());
+    c.appendChild(b);
+    this._c = c;
+    this._btn = b;
+    this._rose = b.querySelector(".crm-compass-rose") as SVGGElement;
+    this.setActive(this.opts.isOn());
+    return c;
+  }
+  /** ヘディングアップ時に青点灯。ノースアップ(既定)は非点灯（＝標準状態）。 */
+  setActive(on: boolean): void {
+    if (!this._btn) return;
+    this._btn.classList.toggle("crm-heading-btn--on", on);
+    this._btn.setAttribute("aria-pressed", String(on));
+  }
+  /** 地図の bearing に合わせてコンパス針を回し、常に真北を指す（bearing=90(東が上)なら針は左向き）。 */
+  setBearing(bearing: number): void {
+    this._rose?.setAttribute("transform", `rotate(${-bearing} 18 18)`);
+  }
+  onRemove(): void {
+    this._c?.remove();
+    this._c = undefined;
+    this._btn = undefined;
+    this._rose = undefined;
   }
 }
 
@@ -719,6 +770,7 @@ function RamenMapbox(props: Props) {
   const hwToggleLabelRef = useRef<(() => void) | null>(null); // 高速トグルのラベル更新（follow基準effectが設定）
   const styleRef = useRef<string>(""); // 現在適用中の地図スタイルURL（テーマ切替の重複setStyle防止）
   const threeDCtrlRef = useRef<ThreeDToggleControl | null>(null); // 地図上「3D」ボタン（点灯状態の同期用）
+  const headingCtrlRef = useRef<HeadingUpControl | null>(null); // 地図上「方位」コンパスボタン（点灯＋針回転の同期用）
   const hwActiveRef = useRef(false); // 現在「高速道路扱い」か（経路effectが書き、勾配effectが勾配抑制に読む）
   // この先の急勾配予告: 経路effectが前方GRADE_LOOKマークの標高から最急(≥GRADE_STEEP%)を書き、勾配effectが表示に読む
   const aheadGradeRef = useRef<{ grade: number; distM: number } | null>(null);
@@ -782,6 +834,18 @@ function RamenMapbox(props: Props) {
     });
     map.addControl(threeDCtrl, "top-left");
     threeDCtrlRef.current = threeDCtrl;
+    // 「3D」ボタンの直下に方位コンパスボタン（ノースアップ/ヘディングアップ切替）。同じ top-left で下へ積まれる。
+    const headingCtrl = new HeadingUpControl({
+      isOn: () => !!propsRef.current.headingUp,
+      onToggle: () => propsRef.current.onToggleHeadingUp?.(),
+    });
+    map.addControl(headingCtrl, "top-left");
+    headingCtrlRef.current = headingCtrl;
+    // コンパス針を常に真北へ向ける＝地図の回転(gesture/easeTo/追従ループ)に追従。move/rotate 両方で更新（軽量）。
+    const syncCompass = () => headingCtrlRef.current?.setBearing(map.getBearing());
+    map.on("rotate", syncCompass);
+    map.on("move", syncCompass);
+    syncCompass();
     // 縮尺バー（実距離m/km）。右下＝著作権表示の上。150mを出せる自作版（Leaflet ScaleWith150 移植）。
     map.addControl(new Scale150Control(), "bottom-right");
     map.touchZoomRotate.enableRotation(); // 2本指回転（ヘディングアップの素地）
@@ -951,6 +1015,19 @@ function RamenMapbox(props: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, props.threeD]);
+
+  // 方位コンパスボタン: 点灯状態を props.headingUp に同期＋ノースアップ切替時の即時「北へスナップ」。
+  // 走行追従中(follow)の bearing は follow effect が制御するのでここでは触らない（非走行=ブラウズ時のみスナップ）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    headingCtrlRef.current?.setActive(!!props.headingUp); // 地図上コンパスボタンの点灯を同期（設定チップ操作にも追従）
+    // ノースアップに切替えた瞬間、非走行なら地図を即座に北向きへ回す（Google/Appleマップ流。指で回した地図を北に戻す）。
+    if (!props.headingUp && !props.follow && Math.abs(map.getBearing()) > 0.5) {
+      map.easeTo({ bearing: 0, duration: 300 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, props.headingUp]);
 
   // 🏠帰宅ボタン（地図右・中央下＝ルート解除/HW切替の下）。自宅登録済みのときだけ常時表示し、
   // タップで自宅を目的地に設定（onGoHome→App）。走行中も駐車中も押せるよう地図オーバーレイに置く。
