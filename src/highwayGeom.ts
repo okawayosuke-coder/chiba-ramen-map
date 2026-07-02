@@ -23,6 +23,8 @@ export interface HwSnap {
   distM: number; // 最寄り高速（無名link含む）までの距離(m)＝高速ON/OFF判定用
   name: string; // 最寄り「名前付き」路線名（施設フィルタ用。name||ref。無ければ""）
   namedDistM: number; // その名前付き路線までの距離(m)
+  segE: number; // 最寄りセグメントの向き（東方向成分・m）。進行方向との整合判定（沿走 vs 横切り）用
+  segN: number; // 最寄りセグメントの向き（北方向成分・m）
 }
 
 let cache: Promise<HighwayGeom> | null = null;
@@ -75,6 +77,8 @@ export function nearestHighway(g: HighwayGeom, lat: number, lng: number): HwSnap
   let bestAll = Infinity; // 無名link含む最寄り（ON/OFF用）
   let bestNamed = Infinity; // 名前付き路線の最寄り（路線名用）
   let bestName = "";
+  let bestE = 0; // 最寄りセグメントの向き（東成分m）
+  let bestN = 0; // 最寄りセグメントの向き（北成分m）
   for (const road of g.roads) {
     if (
       lat < road.s - PAD ||
@@ -99,7 +103,11 @@ export function nearestHighway(g: HighwayGeom, lat: number, lng: number): HwSnap
       const cx = ax + t * dx;
       const cy = ay + t * dy;
       const d = Math.hypot(cx, cy);
-      if (d < bestAll) bestAll = d;
+      if (d < bestAll) {
+        bestAll = d;
+        bestE = dx; // このセグメントの向き（東成分m）
+        bestN = dy; // このセグメントの向き（北成分m）
+      }
       if (named && d < bestNamed) {
         bestNamed = d;
         bestName = road.name || "";
@@ -107,5 +115,5 @@ export function nearestHighway(g: HighwayGeom, lat: number, lng: number): HwSnap
     }
   }
   if (!isFinite(bestAll)) return null;
-  return { distM: bestAll, name: bestName, namedDistM: bestNamed };
+  return { distM: bestAll, name: bestName, namedDistM: bestNamed, segE: bestE, segN: bestN };
 }

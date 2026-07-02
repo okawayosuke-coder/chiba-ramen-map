@@ -2019,17 +2019,55 @@ function RamenMapbox(props: Props) {
     const geomHwRanges = (coords: [number, number][]): [number, number][] => {
       const g = routeHwGeom;
       if (!g) return [];
-      const HW_M = 45; // 経路座標がこの距離以内に高速センターラインがあれば高速/有料区間とみなす
-      const out: [number, number][] = [];
-      let start = -1;
+      const HW_M = 45; // 経路座標がこの距離以内に高速センターラインがあれば高速の候補
+      const ALIGN_COS = 0.82; // 進行方向と高速セグメント方向が約35°以内で「沿って走行」＝高速。直交(跨ぎ)は除外
+      const GAP_M = 200; // 連続高速の一時的な非整合(簡略化された形状の折れ点等)はこの距離まで橋渡しして繋ぐ
+      const MIN_HW_M = 120; // これ未満の高速区間は跨ぎ/掠りとみなし無視（誤検出の安全網）
+      // ① 近接 かつ 方向整合（平行/反平行）な頂点だけを高速候補にフラグ。
+      //    高速を「跨ぐだけ」の交差点では進行方向が高速とほぼ直交するので除外される。
+      const flags: boolean[] = new Array(coords.length).fill(false);
       for (let i = 0; i < coords.length; i++) {
         const snap = nearestHighway(g, coords[i][0], coords[i][1]);
-        const onHw = !!snap && snap.distM < HW_M;
-        if (onHw && start < 0) start = i;
-        else if (!onHw && start >= 0) { out.push([start, i]); start = -1; }
+        if (!snap || snap.distM >= HW_M) continue;
+        const a = coords[Math.max(0, i - 1)];
+        const b = coords[Math.min(coords.length - 1, i + 1)];
+        const mLat = 110540;
+        const mLng = 111320 * Math.cos((coords[i][0] * Math.PI) / 180);
+        const rE = (b[1] - a[1]) * mLng; // 進行方向 東成分
+        const rN = (b[0] - a[0]) * mLat; // 進行方向 北成分
+        const rMag = Math.hypot(rE, rN);
+        const sMag = Math.hypot(snap.segE, snap.segN);
+        // 方向が取れない(停止点/端点/データ欠損)時は距離のみで従来どおり採用（安全側）
+        const aligned =
+          rMag < 1 || sMag < 1
+            ? true
+            : Math.abs(rE * snap.segE + rN * snap.segN) / (rMag * sMag) >= ALIGN_COS;
+        flags[i] = aligned;
       }
-      if (start >= 0) out.push([start, coords.length - 1]);
-      return out;
+      // 経路上の index 区間 [a,b) の道なり距離(m)
+      const pathM = (a: number, b: number) => {
+        let m = 0;
+        for (let k = a; k < b; k++)
+          m += haversineKm({ lat: coords[k][0], lng: coords[k][1] }, { lat: coords[k + 1][0], lng: coords[k + 1][1] }) * 1000;
+        return m;
+      };
+      // ② 連続フラグを生の範囲に。
+      const raw: [number, number][] = [];
+      let start = -1;
+      for (let i = 0; i < coords.length; i++) {
+        if (flags[i] && start < 0) start = i;
+        else if (!flags[i] && start >= 0) { raw.push([start, i]); start = -1; }
+      }
+      if (start >= 0) raw.push([start, coords.length - 1]);
+      // ③ 近接ギャップ(<GAP_M)を橋渡し（連続高速の一時的な非整合を吸収。跨ぎは整合頂点が無く橋渡し対象が無い）。
+      const merged: [number, number][] = [];
+      for (const r of raw) {
+        const last = merged[merged.length - 1];
+        if (last && pathM(last[1], r[0]) < GAP_M) last[1] = r[1];
+        else merged.push([r[0], r[1]]);
+      }
+      // ④ 短区間（跨ぎ/掠り）を距離で足切り。
+      return merged.filter(([a, b]) => pathM(a, b) >= MIN_HW_M);
     };
     // hwRanges(高速/有料の頂点index範囲)からルート線を色分け(緑=高速/有料・青=一般)＋案内バッジを出す。
     // 走行済みトリム(line-trim-offset)と両立させるため単一線の line-gradient(step) で塗る。rSuffix=各点→終点の残距離。
