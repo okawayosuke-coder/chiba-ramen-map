@@ -3437,6 +3437,10 @@ function RamenMapbox(props: Props) {
         prevHdg = lastHeading;
       }
       render(lastGrade);
+      // 高速道路では勾配メーターを非表示（render 冒頭で display:none）にしているので、
+      // GSI標高サンプリング（±100m/25m間隔=9点/50m移動ごと）自体もスキップして通信を節約する。
+      // 高架/トンネルでDEMが道路とズレて誤るため表示しない区間＝そもそも計算不要。復帰は高速判定OFFで自動再開。
+      if (hwActiveRef.current || propsRef.current.hwOverride === "on") return;
       if (lastHeading == null) return; // 方位不明(未発進)は「—」表示のみ
       if (lastUpdatePos && haversineKm(here, lastUpdatePos) < MIN_MOVE_KM) return;
       lastUpdatePos = here;
