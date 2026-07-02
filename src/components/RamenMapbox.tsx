@@ -1873,7 +1873,7 @@ function RamenMapbox(props: Props) {
           source: "route",
           layout: { "line-cap": "round", "line-join": "round" },
           // line-emissive-strength:1 ＝ Standardのナイトライティングで暗転させず本来の色で発光表示（夜に黒くならない）
-          paint: { "line-color": "#ffffff", "line-width": 12, "line-opacity": 0.9, "line-emissive-strength": 1, "line-trim-offset": [0, 0] },
+          paint: { "line-color": "#ffffff", "line-width": 10, "line-opacity": 0.9, "line-emissive-strength": 1, "line-trim-offset": [0, 0] },
         },
         before
       );
