@@ -771,6 +771,9 @@ function RamenMapbox(props: Props) {
   const styleRef = useRef<string>(""); // 現在適用中の地図スタイルURL（テーマ切替の重複setStyle防止）
   const threeDCtrlRef = useRef<ThreeDToggleControl | null>(null); // 地図上「3D」ボタン（点灯状態の同期用）
   const headingCtrlRef = useRef<HeadingUpControl | null>(null); // 地図上「方位」コンパスボタン（点灯＋針回転の同期用）
+  // 追従中(true)か手動パンで閲覧中(false)か。follow effect の再構築（headingUp/テーマ変更）を跨いで保持し、
+  // 閲覧中に方位を切替えても追従が勝手に再開（＝自車へ再センター＋ズーム）しないようにする。
+  const followingRef = useRef(true);
   const hwActiveRef = useRef(false); // 現在「高速道路扱い」か（経路effectが書き、勾配effectが勾配抑制に読む）
   // この先の急勾配予告: 経路effectが前方GRADE_LOOKマークの標高から最急(≥GRADE_STEEP%)を書き、勾配effectが表示に読む
   const aheadGradeRef = useRef<{ grade: number; distM: number } | null>(null);
@@ -1016,14 +1019,23 @@ function RamenMapbox(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, props.threeD]);
 
+  // 走行モード終了時は追従状態を初期化＝次回の走行モード開始は必ず「追従」から始める
+  // （前回セッションで手動パンして閲覧中(false)のまま終わっても持ち越さない）。
+  useEffect(() => {
+    if (!props.follow) followingRef.current = true;
+  }, [props.follow]);
+
   // 方位コンパスボタン: 点灯状態を props.headingUp に同期＋ノースアップ切替時の即時「北へスナップ」。
-  // 走行追従中(follow)の bearing は follow effect が制御するのでここでは触らない（非走行=ブラウズ時のみスナップ）。
+  // スナップは「中心・ズームを維持したまま bearing だけ北へ」＝閲覧中のスクロール位置と縮尺を尊重する。
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
     headingCtrlRef.current?.setActive(!!props.headingUp); // 地図上コンパスボタンの点灯を同期（設定チップ操作にも追従）
-    // ノースアップに切替えた瞬間、非走行なら地図を即座に北向きへ回す（Google/Appleマップ流。指で回した地図を北に戻す）。
-    if (!props.headingUp && !props.follow && Math.abs(map.getBearing()) > 0.5) {
+    // 「自車ロック追従中」だけは follow effect が向きを制御するのでここでは触らない。
+    // 非走行(ブラウズ) or 走行モードでも手動パンで閲覧中(followingRef=false)なら、ノースアップ化で向きだけ北へ回す
+    // （中心・ズームは変えない＝手動でスクロールした位置と縮尺のまま北上にする。要望対応）。
+    const carLocked = props.follow && followingRef.current;
+    if (!props.headingUp && !carLocked && Math.abs(map.getBearing()) > 0.5) {
       map.easeTo({ bearing: 0, duration: 300 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2728,7 +2740,9 @@ function RamenMapbox(props: Props) {
     let lastBearing = headingUp ? map.getBearing() : 0;
     let lastHere: [number, number] | null = null;
     let prevCam: [number, number] | null = null; // 直近のカメラ追従先（>150mジャンプ検出・停車時パン抑制に使用）
-    let following = true;
+    // 追従状態は followingRef から復元＝再構築(headingUp/テーマ変更)を跨いで「閲覧中(false)」を維持し、
+    // 方位切替だけで追従が再開して自車へ再センター＋ズームするのを防ぐ（新規の走行モード開始時は true）。
+    let following = followingRef.current;
     // 進行方位（真北基準・ノース/ヘディング非依存）。停車時コンパス較正とトンネルDRの前進方向に使う。
     let lastTravelHeading: number | null = null;
     // 端末コンパス（ジャイロ＋地磁気）。許可はApp.tsxがタップ内で取得済み（requestOrientationPermission）。
@@ -2759,6 +2773,9 @@ function RamenMapbox(props: Props) {
       `position:absolute;left:50%;top:${headingUp ? "72%" : "50%"};transform:translate(-50%,-50%);z-index:600;pointer-events:none;`
     );
     carEl.innerHTML = CAR_HTML;
+    // 再構築時に閲覧中(following=false)を復元した場合は画面固定の自車を初期から隠す
+    // （既定は可視。手動パンで離れて閲覧中に方位切替しても自車マークが画面中央に湧かないように）。
+    if (!following) carEl.style.display = "none";
     map.getContainer().appendChild(carEl);
     // 追従解除中の自車＝地理マーカー（実位置）。手動スクロール時は消し、目的地プレビュー/ルート全体表示(suspend)時のみ
     // 開始地点の目印として残す（setFollowing の showGeoWhenOff で制御）。追従中は非表示。
@@ -2783,6 +2800,7 @@ function RamenMapbox(props: Props) {
     //   目的地プレビュー/ルート全体表示(suspend)時は true＝開始地点の目印として実位置を残す。
     const setFollowing = (on: boolean, showGeoWhenOff = false) => {
       following = on;
+      followingRef.current = on; // 再構築を跨いで追従状態を保持（閲覧中の方位切替で追従が再開しないように）
       carEl.style.display = on ? "" : "none"; // 追従中だけ画面固定の自車
       geoEl.style.display = on || !showGeoWhenOff ? "none" : ""; // 手動パン中は消す／プレビュー等は実位置に残す
       updateCarTilt?.(); // 表示を切り替えた自車マークに現在のpitch変換(2Dはscale込み)を確実に適用
