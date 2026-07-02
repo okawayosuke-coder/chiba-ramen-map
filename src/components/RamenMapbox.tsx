@@ -2683,7 +2683,8 @@ function RamenMapbox(props: Props) {
     );
     carEl.innerHTML = CAR_HTML;
     map.getContainer().appendChild(carEl);
-    // 手動パンで追従を外した時の自車＝地理マーカー（実位置に残す）。追従中は非表示。
+    // 追従解除中の自車＝地理マーカー（実位置）。手動スクロール時は消し、目的地プレビュー/ルート全体表示(suspend)時のみ
+    // 開始地点の目印として残す（setFollowing の showGeoWhenOff で制御）。追従中は非表示。
     const geoEl = document.createElement("div");
     geoEl.style.position = "relative"; // 標高ラベル(absolute)の位置基準
     geoEl.innerHTML = CAR_HTML;
@@ -2700,10 +2701,13 @@ function RamenMapbox(props: Props) {
     recBtn.type = "button";
     recBtn.className = "recenter-btn"; // 右・中央（Leaflet版と同じ位置）。常時表示。
     recBtn.textContent = "📍 現在地";
-    const setFollowing = (on: boolean) => {
+    // showGeoWhenOff: 追従解除中に地理マーカー(実位置)を出すか。
+    //   手動スクロール時は false＝自車マークを消す（見ている場所と無関係な位置に自車が残る混乱を防ぐ。復帰は「現在地」ボタン）。
+    //   目的地プレビュー/ルート全体表示(suspend)時は true＝開始地点の目印として実位置を残す。
+    const setFollowing = (on: boolean, showGeoWhenOff = false) => {
       following = on;
       carEl.style.display = on ? "" : "none"; // 追従中だけ画面固定の自車
-      geoEl.style.display = on ? "none" : ""; // パン中だけ地理マーカー（実位置）
+      geoEl.style.display = on || !showGeoWhenOff ? "none" : ""; // 手動パン中は消す／プレビュー等は実位置に残す
       updateCarTilt?.(); // 表示を切り替えた自車マークに現在のpitch変換(2Dはscale込み)を確実に適用
     };
     recBtn.onclick = () => {
@@ -2726,7 +2730,7 @@ function RamenMapbox(props: Props) {
     // 進行中の30fps補間(camRaf)も止めて、直後の flyTo/fitBounds が上書きされないようにする。復帰は「現在地」ボタン。
     followApiRef.current = {
       suspend: () => {
-        setFollowing(false);
+        setFollowing(false, true); // プレビュー/ルート全体表示中は開始地点の目印として実位置マーカーを残す
         if (camRaf) { cancelAnimationFrame(camRaf); camRaf = 0; }
       },
     };
