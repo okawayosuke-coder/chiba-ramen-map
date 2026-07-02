@@ -1547,7 +1547,7 @@ function RamenMapbox(props: Props) {
             // 走行軌跡は累積の履歴。重なりで間引かず全点を表示する（既走行の道を再走行しても矢印が残る・増える）。
             "icon-allow-overlap": true,
             "icon-ignore-placement": true,
-            "icon-size": 0.75, // 走行軌跡の矢印を少し小さく（要望・従来1.0→0.85→0.75）
+            "icon-size": 0.65, // 走行軌跡の矢印を少し小さく（要望・従来1.0→0.85→0.75→0.65）
           },
         },
         before
