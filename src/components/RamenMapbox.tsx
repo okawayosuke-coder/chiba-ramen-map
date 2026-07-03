@@ -3,7 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { Shop } from "../types";
 import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
-import { fetchRoute, projectOnRoute, type RouteResult } from "../route";
+import { fetchRoute, projectOnRoute, type RouteResult, type RouteManeuver } from "../route";
 import { loadHighway, type HwFacility, type HwKind } from "../highwayData";
 import { loadHighwayGeom, nearestHighway, type HighwayGeom } from "../highwayGeom";
 import { loadSurfaceGeom, nearestSurface, type SurfaceGeom } from "../surfaceGeom";
@@ -1097,7 +1097,7 @@ function RamenMapbox(props: Props) {
     // ボタン/情報ボックスの上＋周囲16pxは発火させない（UIタップが地図に貫通して誤標高を出さない）
     const DEAD = 16;
     const UI_SEL =
-      ".mapboxgl-ctrl,.recenter-btn,.clear-dest-btn,.hw-toggle,.home-btn,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.weather-bar,.poi-hint,.lp-hint";
+      ".mapboxgl-ctrl,.recenter-btn,.clear-dest-btn,.hw-toggle,.home-btn,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.weather-bar,.poi-hint,.lp-hint,.nav-sign";
     const overUI = (cx: number, cy: number): boolean => {
       const cont = map.getContainer();
       const cr = cont.getBoundingClientRect();
@@ -1970,6 +1970,12 @@ function RamenMapbox(props: Props) {
     hwNotice.style.display = "none";
     map.getContainer().appendChild(hwNotice);
 
+    // 分岐/方面/レーンの案内標識カード（画面上部中央・この先の分岐が近い時だけ表示。Mapbox banner由来）
+    const signCard = document.createElement("div");
+    signCard.className = "nav-sign";
+    signCard.style.display = "none";
+    map.getContainer().appendChild(signCard);
+
     // ルート選択（高速あり / 一般道のみ）。高速を使う経路の時だけ表示し所要時間で選べる。
     const altPanel = document.createElement("div");
     altPanel.className = "route-alt";
@@ -2010,6 +2016,8 @@ function RamenMapbox(props: Props) {
     // ここ(route effect)は propsRef.current.hwOverride を読むだけ。
 
     let hwRanges: [number, number][] = [];
+    let congestion: (number | null)[] = []; // セグメント毎の渋滞度(Mapbox congestion_numeric)。ルート線の渋滞色分け用
+    let maneuvers: RouteManeuver[] = []; // 分岐/方面/レーンの案内標識列(Mapbox banner由来)。案内カード用
     const isHwSeg = (segIdx: number) => hwRanges.some(([a, b]) => segIdx >= a && segIdx < b);
 
     // 経路の高速/有料区間: ORS waycategory があればそれ、無ければ(Mapbox等)同梱の高速形状で経路座標を判定。
@@ -2068,47 +2076,38 @@ function RamenMapbox(props: Props) {
       // ④ 短区間（跨ぎ/掠り）を距離で足切り。
       return merged.filter(([a, b]) => pathM(a, b) >= MIN_HW_M);
     };
-    // hwRanges(高速/有料の頂点index範囲)からルート線を色分け(緑=高速/有料・青=一般)＋案内バッジを出す。
+    // ルート線を渋滞度(congestion_numeric)で色分け＝緑(空)/黄(やや混)/橙(混)/赤(激混)・不明は青。
+    // 高速/有料の有無はここでは扱わず「🛣含む」バッジ(hwNotice)で別途示す(色の意味を渋滞1つに統一)。
     // 走行済みトリム(line-trim-offset)と両立させるため単一線の line-gradient(step) で塗る。rSuffix=各点→終点の残距離。
     const applyRouteColor = () => {
       if (!map.getLayer("route-line")) return;
+      // 「🛣 高速・有料道路を含む」バッジは高速区間の有無で(色分けとは独立。selectorが別途上書き制御)。
+      hwNotice.style.display = hwRanges.length ? "" : "none";
       const total = rSuffix[0] || 0;
-      const BLUE = "#0b57d0", GREEN = "#1aa64b";
-      // index範囲→line-progress分数[f0,f1]（昇順・近接マージ）
-      const merged: [number, number][] = [];
-      if (hwRanges.length && total > 0) {
-        const segs: [number, number][] = [];
-        for (const [a, b] of hwRanges) {
-          const ia = Math.max(0, Math.min(rSuffix.length - 1, a));
-          const ib = Math.max(0, Math.min(rSuffix.length - 1, b));
-          let f0 = (total - rSuffix[ia]) / total, f1 = (total - rSuffix[ib]) / total;
-          if (f1 < f0) { const t = f0; f0 = f1; f1 = t; }
-          f0 = Math.max(0, Math.min(1, f0)); f1 = Math.max(0, Math.min(1, f1));
-          if (f1 - f0 > 0.001) segs.push([f0, f1]);
-        }
-        segs.sort((x, y) => x[0] - y[0]);
-        for (const s of segs) {
-          const last = merged[merged.length - 1];
-          if (last && s[0] <= last[1] + 0.002) last[1] = Math.max(last[1], s[1]);
-          else merged.push([s[0], s[1]]);
-        }
-      }
-      if (!merged.length) {
-        map.setPaintProperty("route-line", "line-gradient", undefined); // 高速なし→青(line-color)へ戻す
-        hwNotice.style.display = "none";
+      const n = Math.min(congestion.length, rSuffix.length - 1);
+      if (n < 1 || total <= 0) {
+        map.setPaintProperty("route-line", "line-gradient", undefined); // 渋滞データ無し→青(line-color)へ
         return;
       }
-      // step式: 既定BLUE、各[f0,f1]でGREEN、区間後BLUE。入力(stop)は厳密増加が必須。
-      const expr: unknown[] = ["step", ["line-progress"], BLUE];
-      let prev = 0;
-      for (const [f0, f1] of merged) {
-        const a = Math.max(f0, prev + 1e-4);
-        const b = Math.min(Math.max(f1, a + 1e-4), 0.9999);
-        expr.push(a, GREEN, b, BLUE);
-        prev = b;
+      const BLUE = "#0b57d0", GREEN = "#1aa64b", AMBER = "#f5b800", ORANGE = "#e8590c", RED = "#e03131";
+      // congestion_numeric 0-100 を Mapbox の low/moderate/heavy/severe 相当の帯に割当。null=不明は青。
+      const band = (v: number | null) => (v == null ? BLUE : v < 40 ? GREEN : v < 60 ? AMBER : v < 80 ? ORANGE : RED);
+      const frac = (i: number) => {
+        const ii = Math.max(0, Math.min(rSuffix.length - 1, i));
+        return Math.max(0, Math.min(1, (total - rSuffix[ii]) / total));
+      };
+      // セグメントi(coords[i]→[i+1])の色=band(congestion[i])。同色連続をまとめ step式に(stopは厳密増加必須)。
+      const expr: unknown[] = ["step", ["line-progress"], band(congestion[0])];
+      let prevColor = band(congestion[0]);
+      let prevStop = 0;
+      for (let i = 1; i < n; i++) {
+        const c = band(congestion[i]);
+        if (c !== prevColor) {
+          const stop = Math.max(frac(i), prevStop + 1e-4);
+          if (stop < 0.9999) { expr.push(stop, c); prevStop = stop; prevColor = c; }
+        }
       }
       map.setPaintProperty("route-line", "line-gradient", expr as never);
-      hwNotice.style.display = "";
     };
     let onHighway = false;
     let fastCount = 0;
@@ -2283,6 +2282,36 @@ function RamenMapbox(props: Props) {
       });
     };
 
+    // 分岐の向き(modifier)→矢印の回転角(度・0=直進/正=右)。
+    const modAngle = (m?: string): number =>
+      (({ straight: 0, "slight right": 45, right: 90, "sharp right": 135, uturn: 180, "sharp left": -135, left: -90, "slight left": -45 } as Record<string, number>)[m || "straight"]) ?? 0;
+    const arrowSpan = (deg: number, cls: string) =>
+      `<span class="nav-arrow ${cls}" style="transform:rotate(${deg}deg)">⬆</span>`;
+    const SIGN_SHOW_KM = 3; // この先この距離以内に分岐がある時だけカード表示（高速標識は約2km手前から）
+    const SKIP_MAN = new Set(["continue", "new name", "notification", "depart"]); // 案内不要な種別
+    // 案内標識カード更新: 前方の直近の意味ある分岐(方面/出口/レーン/距離)を表示。無ければ隠す。
+    const updateSignCard = (carDistKm: number) => {
+      if (!maneuvers.length) { signCard.style.display = "none"; return; }
+      const next = maneuvers.find((m) => m.atKm > carDistKm + 0.02 && !SKIP_MAN.has(m.type));
+      if (!next) { signCard.style.display = "none"; return; }
+      const distM = Math.max(0, (next.atKm - carDistKm) * 1000);
+      if (distM > SIGN_SHOW_KM * 1000) { signCard.style.display = "none"; return; }
+      const distTxt = distM >= 1000 ? (distM / 1000).toFixed(1) + "km" : Math.round(distM / 10) * 10 + "m";
+      const toward = next.toward ? next.toward.split(";").slice(0, 3).join("・") : (next.ref || "");
+      const exitBadge = next.exit ? `<span class="nav-exit">出口 ${escHtml(next.exit)}</span>` : "";
+      const laneRow =
+        next.lanes && next.lanes.length
+          ? `<div class="nav-lanes">${next.lanes
+              .map((l) => arrowSpan(modAngle(l.activeDir || l.dirs[0]), l.active ? "lane-on" : "lane-off"))
+              .join("")}</div>`
+          : "";
+      signCard.style.display = "";
+      signCard.innerHTML =
+        `<div class="nav-top">${arrowSpan(modAngle(next.modifier), "nav-dir")}` +
+        `<div class="nav-info"><div class="nav-toward">${exitBadge}${escHtml(toward) || "この先分岐"}</div>` +
+        `<div class="nav-dist">${distTxt}</div></div></div>${laneRow}`;
+    };
+
     const refresh = (here: Pt) => {
       if (!rCoords || rKm <= 0) return null;
       const pr = projectOnRoute(rCoords, rSuffix, here);
@@ -2308,6 +2337,7 @@ function RamenMapbox(props: Props) {
       effHighway = computeEffHighway(pr.segIdx);
       hwActiveRef.current = effHighway; // 勾配effectが高速時の勾配抑制に使う
       updateHwStrip(rKm - pr.remKm);
+      updateSignCard(rKm - pr.remKm); // 前方の分岐/方面/レーン案内カードを更新
       updateAheadGrade(rKm - pr.remKm); // この先の急勾配を先読みして aheadGradeRef に反映
       return pr;
     };
@@ -2357,7 +2387,9 @@ function RamenMapbox(props: Props) {
       // 高速/有料区間: ORS waycategory優先。無ければ同梱高速形状で判定。ただし一般道のみ案(avoidHw)は
       // 構造上高速を使わないので緑判定しない（下道が高架高速の真下を通る=357型の誤検出を避ける）。
       hwRanges = r.hwRanges ?? (avoidHw ? [] : geomHwRanges(r.coords));
-      applyRouteColor(); // 高速/有料区間をルート線に緑で色分け
+      congestion = r.congestion ?? []; // 渋滞色分け用(Mapbox取得時のみ・無ければ青単色)
+      maneuvers = r.maneuvers ?? []; // 分岐/方面/レーンの案内標識列(Mapbox取得時のみ)
+      applyRouteColor(); // ルート線を渋滞度で色分け
       gradeMarks = buildMarks(r.coords, GRADE_SPACING_KM);
       eleAtMark = [];
       computeRouteFacilities();
@@ -2467,6 +2499,7 @@ function RamenMapbox(props: Props) {
       destMarker.remove();
       box.remove();
       hwNotice.remove();
+      signCard.remove();
       altPanel.remove();
       clearBtn.remove();
       hwStrip.remove();

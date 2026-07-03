@@ -1247,6 +1247,84 @@ body {
   box-shadow: 0 2px 9px rgba(0, 0, 0, 0.4);
 }
 
+/* 分岐/方面/レーン 案内標識カード（画面上部中央・日本の高速の緑方面標識調。この先の分岐が近い時だけ表示） */
+.nav-sign {
+  position: absolute;
+  top: 52px; /* addr-box(top:10px)の下に重ならず配置 */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 650;
+  pointer-events: none;
+  max-width: min(90%, 460px);
+  background: rgba(23, 122, 61, 0.96); /* 高速の方面案内標識の緑 */
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.45);
+}
+.nav-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.nav-arrow {
+  display: inline-block;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 900;
+}
+.nav-dir {
+  font-size: 40px; /* 分岐方向の大矢印 */
+  flex: none;
+}
+.nav-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.nav-toward {
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-exit {
+  flex: none;
+  font-size: 14px;
+  font-weight: 800;
+  background: #fff;
+  color: #177a3d;
+  border-radius: 6px;
+  padding: 1px 8px;
+}
+.nav-dist {
+  font-size: 16px;
+  font-weight: 700;
+  opacity: 0.95;
+  margin-top: 2px;
+}
+.nav-lanes {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+.nav-lanes .nav-arrow {
+  font-size: 24px;
+}
+.lane-on {
+  color: #fff; /* 使う車線＝白で強調 */
+}
+.lane-off {
+  color: rgba(255, 255, 255, 0.35); /* 使わない車線＝薄く */
+}
+
 /* ルート選択（高速あり / 一般道のみ）＝所要時間で選ぶ。route-box/目的地名の下に横並び。 */
 .route-alt {
   position: absolute;

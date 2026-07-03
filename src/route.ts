@@ -2,6 +2,21 @@
 // 既定は OpenRouteService（要無料APIキー・安定）。キー未設定なら OSRM 公開デモにフォールバック（試作用）。
 import { haversineKm, type Pt } from "./nav";
 
+/** 分岐/方面/レーンの案内標識1つ分（Mapbox Directions の step/banner 由来）。Mapbox取得時のみ付く。 */
+export interface RouteManeuver {
+  lat: number; // 分岐地点
+  lng: number;
+  atKm: number; // 経路始点からこの分岐までの道なり距離(km)
+  type: string; // maneuver.type: off ramp / on ramp / fork / turn / merge / roundabout / arrive 等
+  modifier?: string; // left / right / slight left / straight ... (分岐の向き)
+  instruction?: string; // 日本語の指示文（language=ja）
+  toward?: string; // 方面名（step.destinations。例「空港中央」「宮野木JCT」。セミコロン区切りあり）
+  exit?: string; // 出口番号（step.exits。例「B16」「7-1」）
+  ref?: string; // 進入先の路線名/番号（step.ref）
+  // レーン案内（この分岐に向けて使うべき車線。Mapbox banner sub の type=lane 由来）。
+  lanes?: { dirs: string[]; active: boolean; activeDir?: string }[];
+}
+
 export interface RouteResult {
   coords: [number, number][]; // [lat, lng] の点列（道路にスナップされた道なり経路）
   km: number; // 道路距離
@@ -9,6 +24,10 @@ export interface RouteResult {
   // 高速/有料区間の頂点インデックス範囲 [from,to]（ORS waycategory由来）。
   // 高速判定を速度でなく経路ベースで行うために使う（渋滞・低速でも確実）。GET/OSRM時は undefined。
   hwRanges?: [number, number][];
+  // 分岐/方面/レーンの案内標識列（Mapbox取得時のみ）。案内カード表示に使う。
+  maneuvers?: RouteManeuver[];
+  // 経路セグメント毎(coords.length-1個)の渋滞度 0=空〜100=激混、不明は null（Mapbox congestion_numeric）。ルート線の渋滞色分けに使う。
+  congestion?: (number | null)[];
 }
 
 // Vite の環境変数（VITE_ 接頭辞のみクライアントへ露出）。.env.local / CIシークレットで設定。
@@ -144,9 +163,57 @@ function parseORS(j: unknown): RouteResult | null {
   };
 }
 
+// Mapbox の legs[].steps から 分岐/方面/レーンの案内標識列を組み立てる。
+// - maneuver(type/modifier/location/instruction)と step.destinations(方面)/exits(出口)/ref を対応付け。
+// - レーン案内は「その分岐に向かう区間」= 直前stepの bannerInstructions.sub(type=lane) 由来（Mapboxの設計）。
+// - atKm は経路始点からその分岐までの累積道なり距離。
+function parseMapboxManeuvers(legs: unknown[]): RouteManeuver[] {
+  const out: RouteManeuver[] = [];
+  let cum = 0; // 累積距離(m)
+  const steps: Record<string, unknown>[] = [];
+  for (const lg of legs) steps.push(...(((lg as { steps?: unknown[] })?.steps || []) as Record<string, unknown>[]));
+  const laneOf = (step: Record<string, unknown> | undefined) => {
+    const banners = (step?.bannerInstructions || []) as Record<string, unknown>[];
+    for (const b of banners) {
+      const sub = b.sub as { components?: Record<string, unknown>[] } | undefined;
+      const comps = (sub?.components || []).filter((c) => c.type === "lane");
+      if (comps.length)
+        return comps.map((c) => ({
+          dirs: (c.directions as string[]) || [],
+          active: !!c.active,
+          activeDir: (c.active_direction as string) || undefined,
+        }));
+    }
+    return undefined;
+  };
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    const man = (s.maneuver || {}) as Record<string, unknown>;
+    const loc = (man.location as number[]) || null;
+    const type = (man.type as string) || "";
+    // depart(出発)は案内不要。arrive(到着)と実分岐だけ残す。
+    if (loc && type && type !== "depart") {
+      out.push({
+        lat: loc[1],
+        lng: loc[0],
+        atKm: cum / 1000,
+        type,
+        modifier: (man.modifier as string) || undefined,
+        instruction: (man.instruction as string) || undefined,
+        toward: (s.destinations as string) || undefined,
+        exit: (s.exits as string) || undefined,
+        ref: (s.ref as string) || undefined,
+        lanes: laneOf(steps[i - 1]) || laneOf(s), // 分岐手前の区間のレーン案内（無ければ当該step）
+      });
+    }
+    cum += ((s.distance as number) || 0);
+  }
+  return out;
+}
+
 // Mapbox Directions（driving-traffic）。渋滞・通行規制を考慮した経路と所要を返す。
 // bearings で出発の進行方位を拘束し、リルート時のUターン(引き返し)を抑止する（ORS driving-carと違い driving系で有効）。
-// 高速/有料区間の範囲(hwRanges)は basic Directions では取得不可 → undefined を返し、速度ベースの高速判定にフォールバックする。
+// steps/banner_instructions で分岐・方面・レーン案内、annotations=congestion_numeric でルート線の渋滞色分け、language=ja で日本語案内を取得。
 async function fetchMapbox(
   from: Pt,
   to: Pt,
@@ -160,7 +227,10 @@ async function fetchMapbox(
     alternatives: "false",
     geometries: "geojson",
     overview: "full",
-    steps: "false",
+    steps: "true", // 分岐/方面/レーン案内(banner)取得の前提
+    banner_instructions: "true", // 案内標識(primary/secondary/sub=レーン)
+    annotations: "congestion_numeric", // セグメント毎の渋滞度0-100(ルート線の渋滞色分け)
+    language: "ja", // 案内文言を日本語で
     access_token: token,
   });
   // 一般道のみルート: 高速・有料を除外（下道ルート）。
@@ -177,11 +247,17 @@ async function fetchMapbox(
     const rt = j?.routes?.[0];
     const co = rt?.geometry?.coordinates;
     if (!Array.isArray(co) || co.length < 2) return null;
+    const legs = (rt.legs || []) as { annotation?: { congestion_numeric?: (number | null)[] } }[];
+    // 渋滞度はleg毎のannotationを連結（leg境界は座標共有＝概ね coords.length-1 個）。
+    const congestion = legs.flatMap((l) => l.annotation?.congestion_numeric || []);
+    const maneuvers = parseMapboxManeuvers(legs);
     return {
       coords: co.map((c: number[]) => [c[1], c[0]] as [number, number]),
       km: (rt.distance ?? 0) / 1000,
       min: Math.round((rt.duration ?? 0) / 60),
-      // hwRanges は付けない（速度ベース判定へ委譲）
+      maneuvers: maneuvers.length ? maneuvers : undefined,
+      congestion: congestion.length ? congestion : undefined,
+      // hwRanges は付けない（速度ベース判定へ委譲。高速/有料バッジは geomHwRanges で別途）
     };
   } catch {
     return null;
