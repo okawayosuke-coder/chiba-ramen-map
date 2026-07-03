@@ -1482,12 +1482,12 @@ body {
 .hw-strip {
   position: absolute;
   right: 12px;
-  bottom: calc(50% - 40px); /* 下アンカー: 自車に近い施設を下端に・上へ積む。「現在地」ボタン(50%+48px)の8px上まで＝表示施設数を稼ぐ */
+  bottom: calc(50% - 92px); /* 下アンカー: 自車に近い施設を下端に・上へ積む。「現在地」ボタン(50%+100px)の8px上まで＝表示施設数を稼ぐ(最大5件) */
   z-index: 645;
   pointer-events: none;
   width: 248px; /* 「高速道路切り替え」ボタンと同じ幅 */
-  /* 上端がビューポート上端を超えない高さに（bottom:50%-40px なので 50%+28px で上端は12pxに収まる） */
-  max-height: calc(50% + 28px);
+  /* 上端がビューポート上端を超えない高さに（bottom:50%-92px なので 50%+80px で上端は12pxに収まる）。設備付きの背高行を含む5件でも収まる */
+  max-height: calc(50% + 80px);
   display: flex;
   flex-direction: column-reverse; /* 近い順を下から上へ（自車に近い施設が一番下＝実車ナビと同じ） */
   gap: 5px;
@@ -1618,7 +1618,7 @@ body {
 .hw-toggle {
   position: absolute;
   right: 12px;
-  top: calc(50% + 100px);
+  top: calc(50% + 152px);
   z-index: 700;
   display: flex;
   align-items: center;
@@ -1660,7 +1660,7 @@ body {
 .clear-dest-btn {
   position: absolute;
   right: 12px;
-  top: calc(50% + 204px); /* 右スタック最下段(🏠+152pxの下)。誤タップしにくい位置＝現在地(+48)/HW切替(+100)/🏠(+152)の並びの外 */
+  top: calc(50% + 256px); /* 右スタック最下段(🏠+204pxの下)。誤タップしにくい位置＝現在地(+100)/HW切替(+152)/🏠(+204)の並びの外 */
   z-index: 700;
   display: flex;
   align-items: center;
@@ -1682,7 +1682,7 @@ body {
 .recenter-btn {
   position: absolute;
   right: 12px;
-  top: calc(50% + 48px); /* HW切替(+100px)の直ぐ上。中央〜ここまでを施設ストリップに明け渡す */
+  top: calc(50% + 100px); /* HW切替(+152px)の直ぐ上。ここより上を施設ストリップ(最大5件)に明け渡す */
   z-index: 700;
   display: flex;
   align-items: center;
@@ -1705,7 +1705,7 @@ body {
 .home-btn {
   position: absolute;
   right: 12px;
-  top: calc(50% + 152px); /* recenter(+48)/hw-toggle(+100)の下・clear-dest(+204)の上。hw-stripは+48より上で非干渉 */
+  top: calc(50% + 204px); /* recenter(+100)/hw-toggle(+152)の下・clear-dest(+256)の上。hw-stripは+100より上で非干渉 */
   z-index: 700;
   display: flex;
   align-items: center;

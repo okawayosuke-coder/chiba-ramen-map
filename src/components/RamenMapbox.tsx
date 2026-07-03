@@ -2137,7 +2137,7 @@ function RamenMapbox(props: Props) {
     };
 
     const HW_SNAP_KM = 0.3;
-    const HW_LOOK = 4; // 表示する前方施設数（多いとストリップが画面上端で見切れるため抑制）
+    const HW_LOOK = 5; // 表示する前方施設数（上端余白に収まる範囲。入り切らない遠い施設はrender側で自動間引き）
     const HW_BADGE: Record<HwKind, string> = { sa: "SA", pa: "PA", ic: "IC", jct: "JCT" };
     const AMEN_EMOJI: Record<string, string> = { conv: "🏪", fuel: "⛽", food: "🍴", cafe: "☕", shop: "🛍️", toilet: "🚻", ev: "⚡" };
     const HW_ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
@@ -2587,7 +2587,7 @@ function RamenMapbox(props: Props) {
     let watchId: number | null = null;
     let facilities: HwFacility[] | null = null;
     let roadSet: Set<string> = new Set(); // 施設が実在する路線名の集合（curRoadの信頼性判定用）
-    const LOOK = 4;
+    const LOOK = 5; // フリー走行の表示施設数（route側HW_LOOKと揃える。入り切らない分はrender側で自動間引き）
     const MAXKM = 25;
     const FP_MIN_KM = 3; // 前方経路がこの長さ以上構築できた時だけ経路投影を採用（短ければ従来ロジックへ）
     const FP_LATERAL_M = 250; // 施設が前方経路からこの横距離以内なら「その経路上の施設」とみなす
