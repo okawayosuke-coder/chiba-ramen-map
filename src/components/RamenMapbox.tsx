@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { Shop } from "../types";
-import { bearingDeg, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
+import { bearingDeg, bearingToArrowAngle, fmtDistance, haversineKm, roughMinutes, type Pt, type Dest } from "../nav";
 import { fetchRoute, projectOnRoute, type RouteResult, type RouteManeuver } from "../route";
 import { loadHighway, type HwFacility, type HwKind } from "../highwayData";
 import { loadHighwayGeom, nearestHighway, type HighwayGeom } from "../highwayGeom";
@@ -2191,7 +2191,21 @@ function RamenMapbox(props: Props) {
       }
       routeFacilities = Array.from(best.values()).sort((a, b) => a.distKm - b.distKm);
     };
-    const updateHwStrip = (carDistKm: number) => {
+    // 方面行(矢印+地名)。IC/JCTのtoward(highway.jsonの静的データ・絶対方位)を自車の進行方位(heading)
+    // との相対角度に変換して矢印を描く。ルート案内中はheadingに現在の道なり方位(segBearing)を使う。
+    const towardRowHtml = (f: HwFacility, heading: number): string => {
+      if ((f.kind !== "ic" && f.kind !== "jct") || !f.toward?.length) return "";
+      const exitBadge = f.exit ? `<span class="hw-exit">${escHtml(f.exit)}</span>` : "";
+      const items = f.toward
+        .slice(0, 3)
+        .map((t) => {
+          const deg = bearingToArrowAngle(t.bearing, heading);
+          return `<span class="hw-dir" style="transform:rotate(${deg}deg)">⬆</span>${escHtml(t.name)}`;
+        })
+        .join("");
+      return `<div class="hw-toward">${exitBadge}${items}</div>`;
+    };
+    const updateHwStrip = (carDistKm: number, heading: number) => {
       if (!effHighway || routeFacilities.length === 0) {
         hwStrip.style.display = "none";
         return;
@@ -2214,7 +2228,7 @@ function RamenMapbox(props: Props) {
               : "";
           return (
             `<div class="hw-row hw-${rf.f.kind}"><div class="hw-top"><span class="hw-badge">${HW_BADGE[rf.f.kind]}</span>` +
-            `<span class="hw-name">${escHtml(rf.f.name)}</span></div>${amenRow}` +
+            `<span class="hw-name">${escHtml(rf.f.name)}</span></div>${amenRow}${towardRowHtml(rf.f, heading)}` +
             `<div class="hw-dist">${dist}<small>km</small> ・ ${remMin}<small>分</small></div></div>`
           );
         })
@@ -2375,7 +2389,7 @@ function RamenMapbox(props: Props) {
       // 高速判定（手動＞経路waycategory＞速度）＋この先の高速施設ストリップ更新
       effHighway = computeEffHighway(pr.segIdx);
       hwActiveRef.current = effHighway; // 勾配effectが高速時の勾配抑制に使う
-      updateHwStrip(rKm - pr.remKm);
+      updateHwStrip(rKm - pr.remKm, segBearing);
       updateSignCard(rKm - pr.remKm); // 前方の分岐/方面/レーン案内カードを更新
       updateAheadGrade(rKm - pr.remKm); // この先の急勾配を先読みして aheadGradeRef に反映
       return pr;
@@ -2713,10 +2727,17 @@ function RamenMapbox(props: Props) {
             (f.kind === "sa" || f.kind === "pa") && am && am.length
               ? `<div class="hw-amen">${am.map((a) => amen(a, f)).join("")}</div>`
               : "";
+          const towardRow =
+            (f.kind === "ic" || f.kind === "jct") && f.toward?.length
+              ? `<div class="hw-toward">${f.exit ? `<span class="hw-exit">${esc(f.exit)}</span>` : ""}${f.toward
+                  .slice(0, 3)
+                  .map((t) => `<span class="hw-dir" style="transform:rotate(${bearingToArrowAngle(t.bearing, hd)}deg)">⬆</span>${esc(t.name)}`)
+                  .join("")}</div>`
+              : "";
           const minTxt = min != null ? ` ・ ${min}<small>分</small>` : "";
           return (
             `<div class="hw-row hw-${f.kind}"><div class="hw-top"><span class="hw-badge">${BADGE[f.kind]}</span>` +
-            `<span class="hw-name">${esc(f.name)}</span></div>${amenRow}` +
+            `<span class="hw-name">${esc(f.name)}</span></div>${amenRow}${towardRow}` +
             `<div class="hw-dist">${dist}<small>km</small>${minTxt}</div></div>`
           );
         })

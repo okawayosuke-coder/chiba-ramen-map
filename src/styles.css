@@ -1539,6 +1539,32 @@ body {
   font-weight: 600;
   opacity: 0.8;
 }
+.hw-toward {
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  color: #a8d8ff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.hw-exit {
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  background: #fff;
+  color: #14161a;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.hw-dir {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 900;
+  margin-right: 1px;
+}
 /* SA/PA内の設備（コンビニ/GS＝ブランド画像／飲食・カフェ・売店・トイレ・EV＝絵文字）。
    地図POIと同じ見た目で見分けられるよう、コンビニ＝白縁の円・GS＝白角丸バッジ。 */
 .hw-amen {

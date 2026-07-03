@@ -211,7 +211,7 @@ git push                            # push で Pages デプロイが走る
 
 ```bash
 cd ~/code/chiba-ramen-map
-node scripts/fetch-highway.mjs            # ① OSMから施設収集 → highway.json を {lat,lng,kind,name} で新規上書き
+node scripts/fetch-highway.mjs            # ① OSMから施設収集 → highway.json を {lat,lng,kind,name,exit?,toward?} で新規上書き
 node scripts/assign-facility-roads.mjs    # ② highways-geom へスナップし各施設に road(路線名) を付与（in-place）
 node scripts/enrich-highway-amenities.mjs # ③ SA/PA内の設備(コンビニ/GS/飲食等)を付与 amenities/convBrand/fuelBrand（in-place）
 ```
@@ -219,12 +219,16 @@ node scripts/enrich-highway-amenities.mjs # ③ SA/PA内の設備(コンビニ/G
 - **② を飛ばすと `road` が全欠落 → 路線名フィルタが全無効化 → 並走他路線の施設が混入**（2026-07-02に実際に発生。build/型は通るので実走まで気付けない）。
 - **③ を飛ばすと SA/PA の設備アイコンが出ない**。
 - ①②③はいずれも `public/highway.json` を **in-place 上書き**（①は road/amenities を持たない状態にリセットするので②③まで必ず走らせる）。
+- ①は方面看板データも収集する: IC/JCTノードから30m以内に端点を持つ `motorway_link` の `destination` タグを
+  `toward:[{name,bearing}]`（bearing=ランプの絶対方位）として付与し、ノード自身の `ref` を `exit`（出口番号）に入れる。
+  Overpassのクエリは施設用（out center）とリンク用（out geom）の**2本に分かれている**——
+  `out geom center tags` と1本にまとめると一部ミラーで geometry が欠落し、SA/PA が全滅する（2026-07-03に実測）。
 - 検証（再生成後に必ず）:
   ```bash
-  node -e 'const j=require("./public/highway.json");const f=j.facilities;console.log("計",f.length,"road付",f.filter(x=>x.road).length,"設備付",f.filter(x=>x.amenities).length)'
-  # road付が0や極端に少なければ②抜け。設備付が0なら③抜け。
+  node -e 'const j=require("./public/highway.json");const f=j.facilities;const ij=f.filter(x=>x.kind==="ic"||x.kind==="jct");console.log("計",f.length,"road付",f.filter(x=>x.road).length,"設備付",f.filter(x=>x.amenities).length,"toward付",ij.filter(x=>x.toward).length)'
+  # road付が0や極端に少なければ②抜け。設備付が0なら③抜け。toward付が0なら①のリンク取得が壊れている。
   ```
-- road付の目安は全体の約9割（geom未収録の別道路は付かない）。設備付は SA/PA のうち数百件。
+- road付の目安は全体の約9割（geom未収録の別道路は付かない）。設備付は SA/PA のうち数百件。toward付は IC/JCT の3割弱（OSMのdestinationタグ網羅率に依存）。
 
 ## B. 高速センターライン `public/highways-geom.json`
 

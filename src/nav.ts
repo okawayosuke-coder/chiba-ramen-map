@@ -168,6 +168,16 @@ export function roughMinutes(km: number): number {
   return Math.max(1, Math.round((km / 30) * 60));
 }
 
+// 絶対方位(bearing)と自車の進行方位(heading)から相対角度を求め、案内標識の矢印8方向
+// (0=直進/45=やや右/90=右/135=急右/180=Uターン/-135=急左/-90=左/-45=やや左)に丸める。
+// フリー走行の方面データ(highway.json の toward.bearing)は絶対方位で保存されており、
+// 経路案内(Mapbox maneuver.modifier)と違い基準となる進行方向を持たないため、表示時に都度これで変換する。
+export function bearingToArrowAngle(bearing: number, heading: number): number {
+  const diff = ((bearing - heading + 540) % 360) - 180; // -180〜180
+  const snapped = Math.round(diff / 45) * 45;
+  return snapped === -180 ? 180 : snapped;
+}
+
 export function fmtDistance(km: number): string {
   return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`;
 }

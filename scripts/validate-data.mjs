@@ -35,6 +35,13 @@ safe("highway.json", () => {
   const amen = f.filter((x) => Array.isArray(x.amenities) && x.amenities.length).length;
   // ★enrich-highway-amenities.mjs を飛ばすと amenities=0（SA/PA設備アイコンが消える）
   check(amen >= 100, "highway.json 設備付与施設≥100（enrich-highway-amenities実行の証跡）", `= ${amen}`);
+  const icjct = f.filter((x) => x.kind === "ic" || x.kind === "jct");
+  const toward = icjct.filter((x) => Array.isArray(x.toward) && x.toward.length).length;
+  // ★fetch-highway.mjs の motorway_link(destination)取得/紐付けが壊れると toward が全欠落する。
+  //   OSMのdestinationタグ網羅率はroad(60%)ほど高くないため床値は低め（実測約28%の半分程度）。
+  check(pct(toward, icjct.length) >= 12, "highway.json IC/JCTのtoward付与率≥12%（方面データ取得の証跡）", `${toward}/${icjct.length} = ${pct(toward, icjct.length)}%`);
+  const badToward = f.filter((x) => Array.isArray(x.toward) && x.kind !== "ic" && x.kind !== "jct").length;
+  check(badToward === 0, "highway.json toward はIC/JCT以外に付与されていない", `= ${badToward}`);
 });
 
 // ===== shops.json（refine.py → add-readings.mjs。reading はかな検索に必須）=====

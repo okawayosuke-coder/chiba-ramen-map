@@ -27,17 +27,8 @@ const MIRRORS = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// 1タイル分の高速施設（IC/JCT=motorway_junction / SA/PA=services/rest_area）を取得。
-async function fetchTile(s, w, n, e) {
-  const ql = `[out:json][timeout:120];
-(
-  node["highway"="motorway_junction"](${s},${w},${n},${e});
-  way["highway"="services"](${s},${w},${n},${e});
-  way["highway"="rest_area"](${s},${w},${n},${e});
-  relation["highway"="services"](${s},${w},${n},${e});
-  relation["highway"="rest_area"](${s},${w},${n},${e});
-);
-out center tags;`;
+// Overpass QLを実行しelementsを返す（ミラー巡回＋リトライ共通処理）。
+async function runQuery(ql, label) {
   for (let round = 0; round < 3; round++) {
     for (const url of MIRRORS) {
       try {
@@ -55,7 +46,33 @@ out center tags;`;
     }
     await sleep(5000 * (round + 1));
   }
-  throw new Error(`tile ${s},${w} all mirrors failed`);
+  throw new Error(`${label} all mirrors failed`);
+}
+
+// 1タイル分の高速施設（IC/JCT=motorway_junction / SA/PA=services/rest_area）を取得。
+async function fetchTile(s, w, n, e) {
+  const ql = `[out:json][timeout:120];
+(
+  node["highway"="motorway_junction"](${s},${w},${n},${e});
+  way["highway"="services"](${s},${w},${n},${e});
+  way["highway"="rest_area"](${s},${w},${n},${e});
+  relation["highway"="services"](${s},${w},${n},${e});
+  relation["highway"="rest_area"](${s},${w},${n},${e});
+);
+out center tags;`;
+  return runQuery(ql, `tile ${s},${w}`);
+}
+
+// 同じタイルの方面看板データ(destination付きmotorway_link)。端点座標が要るためgeomで別途取得する。
+// ★out geom center tags は一部ミラーでgeometryが欠落する（実測確認済）ため、center専用クエリとgeom専用
+//   クエリに分けて2回叩く。1回のクエリでcenter/geomを両立しようとしない。
+async function fetchLinkTile(s, w, n, e) {
+  const ql = `[out:json][timeout:120];
+(
+  way["highway"="motorway_link"]["destination"](${s},${w},${n},${e});
+);
+out geom tags;`;
+  return runQuery(ql, `link-tile ${s},${w}`);
 }
 
 // タイルを巡回し element を id（type+id）で重複除去して集める。
@@ -69,8 +86,10 @@ async function overpass() {
       tiles++;
       process.stdout.write(`tile ${tiles} (${s.toFixed(1)},${w.toFixed(1)}) ... `);
       const els = await fetchTile(s, w, n, e);
+      await sleep(1200);
+      const linkEls = await fetchLinkTile(s, w, n, e);
       let added = 0;
-      for (const el of els) {
+      for (const el of [...els, ...linkEls]) {
         const k = `${el.type}/${el.id}`;
         if (byId.has(k)) continue;
         byId.set(k, el);
@@ -117,10 +136,63 @@ for (const el of els) {
   // ★上り/下りの出口分岐は同名でも数百m離れた別地点なので両方残す＝表示側が進行方向側の分岐を選ぶ
   //   （旧: 座標2桁≒1kmグリッドで集約し、上下分岐の片方を落として距離が最大~1kmズレていた）。
   const cand = { lat: +lat.toFixed(6), lng: +lng.toFixed(6), kind, name };
+  // 出口番号: motorway_junctionノード自身のref（例"7"）。nameが別途あるnodeのみ（ref自体がnameに化けているケースを除外）。
+  // ★destination:ref（後述の方面紐付け）は実データ確認の結果、路線番号(例"E51")であって出口番号ではないため使わない。
+  if ((kind === "ic" || kind === "jct") && t.name && t.ref) cand.exit = String(t.ref).trim();
   if (out.some((o) => o.kind === cand.kind && o.name === cand.name && havM(o.lat, o.lng, cand.lat, cand.lng) < 150))
     continue;
   out.push(cand);
 }
+
+// --- 方面(destination)の紐付け: motorway_linkのdestinationタグをIC/JCTに紐付け、矢印の絶対方位(bearing)を算出 ---
+// 対向車線の別ノードは既に150m以内のみ統合済み(上記)なので、紐付けは統合後のoutに対して行う。
+// 単純な最近傍ノード紐付けは対向車線/隣接JCTへの誤帰属を招く(実データで204m/541m離れの誤候補を確認済み)ため、
+// 閾値30m以内(真の直結は0m一致)でのみ紐付ける。bearingは絶対方位(0-360°、真北基準)で保持し、
+// 「左右どちら」への変換は実行時に自車の進行方位と比較して行う（自車方位が無いと相対方向を決められないため）。
+const mPerLat = 110540;
+const mPerLngAt = (lat) => 111320 * Math.cos((lat * Math.PI) / 180);
+function bearingDeg(aLat, aLng, bLat, bLng) {
+  const x = (bLng - aLng) * mPerLngAt((aLat + bLat) / 2);
+  const y = (bLat - aLat) * mPerLat;
+  return (((Math.atan2(x, y) * 180) / Math.PI) + 360) % 360;
+}
+const LINK_MATCH_M = 30;
+const linkWays = els.filter(
+  (el) =>
+    el.type === "way" &&
+    el.tags?.highway === "motorway_link" &&
+    el.tags?.destination &&
+    Array.isArray(el.geometry) &&
+    el.geometry.length >= 2
+);
+console.log(`motorway_link(destination付き): ${linkWays.length}件`);
+let towardCount = 0;
+for (const f of out) {
+  if (f.kind !== "ic" && f.kind !== "jct") continue;
+  const dests = new Map(); // 地名 -> 方位（同名重複は先勝ち）
+  for (const link of linkWays) {
+    const g = link.geometry;
+    const startM = havM(f.lat, f.lng, g[0].lat, g[0].lon);
+    const endM = havM(f.lat, f.lng, g[g.length - 1].lat, g[g.length - 1].lon);
+    const atStart = startM <= endM;
+    if (Math.min(startM, endM) > LINK_MATCH_M) continue;
+    // ジャンクション側の端点から、ランプがその先どちらへ物理的に向かうか（=矢印の向き）を算出。
+    const bearing = atStart
+      ? bearingDeg(g[0].lat, g[0].lon, g[1].lat, g[1].lon)
+      : bearingDeg(g[g.length - 1].lat, g[g.length - 1].lon, g[g.length - 2].lat, g[g.length - 2].lon);
+    for (const dn of link.tags.destination.split(";").map((x) => x.trim()).filter(Boolean)) {
+      if (!dests.has(dn)) dests.set(dn, Math.round(bearing));
+    }
+  }
+  if (dests.size) {
+    f.toward = [...dests.entries()].slice(0, 4).map(([name, bearing]) => ({ name, bearing }));
+    towardCount++;
+  }
+}
+const icJctTotal = out.filter((f) => f.kind === "ic" || f.kind === "jct").length;
+console.log(
+  `toward付与: ${towardCount}/${icJctTotal}件 (${icJctTotal ? Math.round((towardCount / icJctTotal) * 100) : 0}%)`
+);
 
 out.sort((a, b) => (a.kind < b.kind ? -1 : 1));
 const counts = out.reduce((m, f) => ((m[f.kind] = (m[f.kind] || 0) + 1), m), {});

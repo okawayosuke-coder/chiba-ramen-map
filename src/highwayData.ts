@@ -16,6 +16,10 @@ export interface HwFacility {
   convBrand?: string; // SA/PA内コンビニのブランド名（見た目判別用・poiIconFileに渡す）
   fuelBrand?: string; // SA/PA内GSのブランド名（同上）
   road?: string; // 所属する高速の路線名（scripts/assign-facility-roads.mjs が付与）。走行中の現在路線と突合して並走道路を除外。
+  toward?: { name: string; bearing: number }[]; // 方面（IC/JCTのみ）。motorway_linkのdestination由来。
+  // bearingは絶対方位(0-360°、真北基準)。自車の進行方位との相対角度への変換は表示側で行う（Mapboxのroute
+  // maneuverと違いフリー走行には基準となる進行方向が無いため、固定の左右を持たせず実行時に自車方位と比較する）。
+  exit?: string; // 出口番号（IC/JCTのみ）。motorway_junctionノード自身のref由来（例"7"）。
 }
 export interface HighwayData {
   generated: string;
