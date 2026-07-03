@@ -199,3 +199,51 @@ git push                            # push で Pages デプロイが走る
 `scripts/fetch-pois.mjs` 冒頭の `REGION`（外接bbox）と `CELL`（タイル粒度）を編集。
 範囲を広げるとファイルが大きくなるが、PWAのプリキャッシュ上限は `vite.config.ts` の
 `maximumFileSizeToCacheInBytes` で調整可能。
+
+---
+
+# 高速道路データ（施設 highway.json / センターライン highways-geom.json / 一般道 surface-geom.json）の更新手順
+
+ハイウェイモードの施設ストリップ・高速判定・並走除外・IC距離に使う。データ元 OpenStreetMap（ODbL）。
+更新は稀（IC/SA/PA・路線の増減時）。**順番厳守。途中の1本を飛ばすと「ビルドは通るが機能が静かに壊れる」**ので注意。
+
+## A. 施設 `public/highway.json`（IC/JCT/SA/PA）— ★3本を必ず順に
+
+```bash
+cd ~/code/chiba-ramen-map
+node scripts/fetch-highway.mjs            # ① OSMから施設収集 → highway.json を {lat,lng,kind,name} で新規上書き
+node scripts/assign-facility-roads.mjs    # ② highways-geom へスナップし各施設に road(路線名) を付与（in-place）
+node scripts/enrich-highway-amenities.mjs # ③ SA/PA内の設備(コンビニ/GS/飲食等)を付与 amenities/convBrand/fuelBrand（in-place）
+```
+
+- **② を飛ばすと `road` が全欠落 → 路線名フィルタが全無効化 → 並走他路線の施設が混入**（2026-07-02に実際に発生。build/型は通るので実走まで気付けない）。
+- **③ を飛ばすと SA/PA の設備アイコンが出ない**。
+- ①②③はいずれも `public/highway.json` を **in-place 上書き**（①は road/amenities を持たない状態にリセットするので②③まで必ず走らせる）。
+- 検証（再生成後に必ず）:
+  ```bash
+  node -e 'const j=require("./public/highway.json");const f=j.facilities;console.log("計",f.length,"road付",f.filter(x=>x.road).length,"設備付",f.filter(x=>x.amenities).length)'
+  # road付が0や極端に少なければ②抜け。設備付が0なら③抜け。
+  ```
+- road付の目安は全体の約9割（geom未収録の別道路は付かない）。設備付は SA/PA のうち数百件。
+
+## B. 高速センターライン `public/highways-geom.json`
+
+```bash
+node scripts/fetch-highway-geom.mjs   # OSMの高速way形状を収集（highways-geom.json）
+```
+- **surface-geom は highways-geom に依存**するので、highways-geom を作り直したら surface-geom も再生成する（下記C）。
+- highway.json の `assign-facility-roads` も highways-geom を参照するので、geom更新後は A も回すと road が最新化される。
+
+## C. 一般道形状 `public/surface-geom.json`（357型の高速誤認抑制用）
+
+```bash
+node scripts/fetch-surface-geom.mjs   # highways-geom の近傍120m以内の trunk/primary を収集（highways-geom.json を読む）
+```
+
+## ファイル依存の早見
+
+| 出力 | 生成 | 依存/順番 | 飛ばすと静かに壊れる点 |
+|---|---|---|---|
+| `highway.json` | fetch-highway → **assign-facility-roads** → enrich-highway-amenities | 3本を順に | ②抜け=road欠落で路線フィルタ死 / ③抜け=設備アイコン欠落 |
+| `highways-geom.json` | fetch-highway-geom | — | — |
+| `surface-geom.json` | fetch-surface-geom | highways-geom の後 | 古いgeom基準になる |
