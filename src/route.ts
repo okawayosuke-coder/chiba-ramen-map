@@ -13,6 +13,7 @@ export interface RouteManeuver {
   toward?: string; // 方面名（step.destinations。例「空港中央」「宮野木JCT」。セミコロン区切りあり）
   exit?: string; // 出口番号（step.exits。例「B16」「7-1」）
   ref?: string; // 進入先の路線名/番号（step.ref）
+  name?: string; // 進入先の道路名（step.name。一般道でtoward/exitが無い時のフォールバック用。例「大網街道」）
   // レーン案内（この分岐に向けて使うべき車線。Mapbox banner sub の type=lane 由来）。
   lanes?: { dirs: string[]; active: boolean; activeDir?: string }[];
 }
@@ -203,6 +204,7 @@ function parseMapboxManeuvers(legs: unknown[]): RouteManeuver[] {
         toward: (s.destinations as string) || undefined,
         exit: (s.exits as string) || undefined,
         ref: (s.ref as string) || undefined,
+        name: (s.name as string) || undefined,
         lanes: laneOf(steps[i - 1]) || laneOf(s), // 分岐手前の区間のレーン案内（無ければ当該step）
       });
     }

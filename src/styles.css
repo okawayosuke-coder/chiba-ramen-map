@@ -1256,12 +1256,17 @@ body {
   z-index: 650;
   pointer-events: none;
   max-width: min(90%, 460px);
-  background: rgba(23, 122, 61, 0.96); /* 高速の方面案内標識の緑 */
+  --nav-accent: #177a3d; /* 高速の方面案内標識の緑 */
+  background: rgba(23, 122, 61, 0.96);
   color: #fff;
   border: 2px solid rgba(255, 255, 255, 0.85);
   border-radius: 12px;
   padding: 8px 12px;
   box-shadow: 0 3px 14px rgba(0, 0, 0, 0.45);
+}
+.nav-sign--road {
+  --nav-accent: #0b57a8; /* 一般道の案内標識の青 */
+  background: rgba(11, 87, 168, 0.96);
 }
 .nav-top {
   display: flex;
@@ -1298,7 +1303,7 @@ body {
   font-size: 14px;
   font-weight: 800;
   background: #fff;
-  color: #177a3d;
+  color: var(--nav-accent);
   border-radius: 6px;
   padding: 1px 8px;
 }
@@ -1308,10 +1313,19 @@ body {
   opacity: 0.95;
   margin-top: 2px;
 }
+.nav-lanes-label {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.85;
+  margin-top: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .nav-lanes {
   display: flex;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 4px;
   padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.3);
 }

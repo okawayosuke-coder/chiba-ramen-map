@@ -2287,28 +2287,67 @@ function RamenMapbox(props: Props) {
       (({ straight: 0, "slight right": 45, right: 90, "sharp right": 135, uturn: 180, "sharp left": -135, left: -90, "slight left": -45 } as Record<string, number>)[m || "straight"]) ?? 0;
     const arrowSpan = (deg: number, cls: string) =>
       `<span class="nav-arrow ${cls}" style="transform:rotate(${deg}deg)">⬆</span>`;
-    const SIGN_SHOW_KM = 3; // この先この距離以内に分岐がある時だけカード表示（高速標識は約2km手前から）
-    const SKIP_MAN = new Set(["continue", "new name", "notification", "depart"]); // 案内不要な種別
+    const SIGN_SHOW_KM_HW = 3; // 高速の分岐標識はこの距離以内だけ表示（約2km手前から見える想定）
+    const SIGN_SHOW_KM_ROAD = 0.7; // 一般道は交差点間隔が短いため700m手前から表示
+    const SKIP_MAN = new Set(["continue", "new name", "notification", "depart"]); // 全道路共通の案内不要種別
+    const SKIP_MAN_ROAD_ONLY = new Set(["merge"]); // 一般道限定の追加除外（高速のランプ合流=isHwは除外しない）
+    const DIR_TEXT: Record<string, string> = {
+      straight: "直進", "slight right": "やや右方向", right: "右方向", "sharp right": "右方向",
+      uturn: "Uターン", "sharp left": "左方向", left: "左方向", "slight left": "やや左方向",
+    };
+    // atKm(経路始点からの累積km)に最も近い頂点のセグメントindexを求める（rSuffixは終点までの残距離km・降順）。
+    const segIdxAtKm = (atKm: number): number => {
+      for (let i = 0; i < rSuffix.length; i++) if (rKm - rSuffix[i] >= atKm) return i;
+      return Math.max(0, rSuffix.length - 1);
+    };
+    // 分岐が高速上のものか判定（type/出口番号を優先、判定材料が無ければ一般道扱い=安全側）。
+    const isHwManeuver = (m: RouteManeuver): boolean => {
+      if (m.type === "off ramp" || m.type === "on ramp") return true;
+      if (m.exit) return true;
+      if (hwRanges.length) return isHwSeg(segIdxAtKm(m.atKm));
+      return false;
+    };
+    // 方面テキストの解決: 方面名→路線番号→道路名→指示文から地名抽出→方向語、の優先順位。
+    const resolveTowardText = (next: RouteManeuver): string => {
+      if (next.toward) return next.toward.split(";").slice(0, 3).join("・");
+      if (next.ref) return next.ref;
+      if (next.name) return next.name;
+      // 「◯◯を右方向です。」のような指示文から「を」の直前(地名/道路名)を抽出。方向語のみの文（例:「左方向です。」）はここで空になり方向語フォールバックへ。
+      const afterLead = (next.instruction || "").replace(/^[^、]*、/, "");
+      const placeMatch = afterLead.match(/^(.+?)を/);
+      if (placeMatch && placeMatch[1]) return placeMatch[1];
+      return DIR_TEXT[next.modifier || "straight"] || "";
+    };
     // 案内標識カード更新: 前方の直近の意味ある分岐(方面/出口/レーン/距離)を表示。無ければ隠す。
     const updateSignCard = (carDistKm: number) => {
       if (!maneuvers.length) { signCard.style.display = "none"; return; }
-      const next = maneuvers.find((m) => m.atKm > carDistKm + 0.02 && !SKIP_MAN.has(m.type));
+      const next = maneuvers.find((m) => {
+        if (SKIP_MAN.has(m.type) || m.atKm <= carDistKm + 0.02) return false;
+        if (!isHwManeuver(m)) {
+          if (SKIP_MAN_ROAD_ONLY.has(m.type)) return false;
+          if (m.type === "turn" && m.modifier === "straight") return false;
+        }
+        return true;
+      });
       if (!next) { signCard.style.display = "none"; return; }
+      const isHw = isHwManeuver(next);
       const distM = Math.max(0, (next.atKm - carDistKm) * 1000);
-      if (distM > SIGN_SHOW_KM * 1000) { signCard.style.display = "none"; return; }
+      const showKm = isHw ? SIGN_SHOW_KM_HW : SIGN_SHOW_KM_ROAD;
+      if (distM > showKm * 1000) { signCard.style.display = "none"; return; }
       const distTxt = distM >= 1000 ? (distM / 1000).toFixed(1) + "km" : Math.round(distM / 10) * 10 + "m";
-      const toward = next.toward ? next.toward.split(";").slice(0, 3).join("・") : (next.ref || "");
+      const toward = resolveTowardText(next) || "この先分岐";
       const exitBadge = next.exit ? `<span class="nav-exit">出口 ${escHtml(next.exit)}</span>` : "";
       const laneRow =
         next.lanes && next.lanes.length
-          ? `<div class="nav-lanes">${next.lanes
+          ? `<div class="nav-lanes-label">${escHtml(toward)}</div><div class="nav-lanes">${next.lanes
               .map((l) => arrowSpan(modAngle(l.activeDir || l.dirs[0]), l.active ? "lane-on" : "lane-off"))
               .join("")}</div>`
           : "";
+      signCard.classList.toggle("nav-sign--road", !isHw);
       signCard.style.display = "";
       signCard.innerHTML =
         `<div class="nav-top">${arrowSpan(modAngle(next.modifier), "nav-dir")}` +
-        `<div class="nav-info"><div class="nav-toward">${exitBadge}${escHtml(toward) || "この先分岐"}</div>` +
+        `<div class="nav-info"><div class="nav-toward">${exitBadge}${escHtml(toward)}</div>` +
         `<div class="nav-dist">${distTxt}</div></div></div>${laneRow}`;
     };
 
