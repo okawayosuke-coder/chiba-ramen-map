@@ -2597,13 +2597,20 @@ function RamenMapbox(props: Props) {
         if (!hwGeom || !hwPathIdx) return null;
         const path = buildForwardPath(hwGeom, hwPathIdx, here.lat, here.lng, hd, MAXKM, curRoad);
         if (!path || path.length < 2 || path[path.length - 1].dist < FP_MIN_KM) return null;
-        const out: { f: HwFacility; fwd: number }[] = [];
+        // onRoad=施設の路線が「投影地点での経路の路線」と一致(＋判定不能)。all=横距離のみ(従来)。
+        // 経路は複数路線を跨ぐ(東関東道→湾岸線)ため単一curRoadでは絞れない→投影点ごとの経路路線と突合し
+        // 並走他路線(京葉道路等)の施設を除外する。経路路線が施設集合に実在する(roadSet)時だけ厳密に絞る。
+        const onRoad: { f: HwFacility; fwd: number }[] = [];
+        const all: { f: HwFacility; fwd: number }[] = [];
         for (const f of facilities!) {
           const pr = projectToPath(path, f.lat, f.lng);
           if (!pr || pr.lateralM > FP_LATERAL_M || pr.alongKm <= 0.05 || pr.alongKm > MAXKM) continue;
-          out.push({ f, fwd: pr.alongKm });
+          all.push({ f, fwd: pr.alongKm });
+          const knownRoad = !!pr.road && roadSet.has(pr.road);
+          if (!knownRoad || !f.road || f.road === pr.road) onRoad.push({ f, fwd: pr.alongKm });
         }
-        return out;
+        // 路線一致で絞れた結果があればそれを優先、空なら従来の横距離のみ(黙って空にしない安全網)。
+        return onRoad.length ? onRoad : all;
       };
       let cands = collectPath();
       if (!cands || !cands.length) {

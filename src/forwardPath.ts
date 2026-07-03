@@ -8,6 +8,7 @@ export interface PathPt {
   lat: number;
   lng: number;
   dist: number; // 起点からの沿道距離(km)
+  road: string; // この点が属する路線名(highwayGeomのcanonical名)。並走他路線の施設除外に使う
 }
 export interface ForwardPathIndex {
   /** 端点キー(4桁≒11m)→ そのキーに端点を持つ {road配列index, end} 一覧 */
@@ -115,7 +116,7 @@ export function buildForwardPath(
   const path: PathPt[] = [];
   let acc = 0;
   const c0 = roads[snap.id].c[snap.i], c1 = roads[snap.id].c[snap.i + 1];
-  path.push({ lat: c0[0] + (c1[0] - c0[0]) * snap.t, lng: c0[1] + (c1[1] - c0[1]) * snap.t, dist: 0 });
+  path.push({ lat: c0[0] + (c1[0] - c0[0]) * snap.t, lng: c0[1] + (c1[1] - c0[1]) * snap.t, dist: 0, road: roads[snap.id].name || "" });
   const visited = new Set<number>();
   let curId = snap.id, i = snap.i, fwd = snap.forward, lastDir = headingDeg;
   let guard = 0;
@@ -126,9 +127,10 @@ export function buildForwardPath(
     if (fwd) for (let j = i + 1; j < c.length; j++) seq.push(c[j]);
     else for (let j = i; j >= 0; j--) seq.push(c[j]);
     let prev = path[path.length - 1];
+    const curRoadName = roads[curId].name || "";
     for (const v of seq) {
       acc += hkm([prev.lat, prev.lng], v);
-      path.push({ lat: v[0], lng: v[1], dist: acc });
+      path.push({ lat: v[0], lng: v[1], dist: acc, road: curRoadName });
       prev = path[path.length - 1];
       if (acc >= maxKm) break;
     }
@@ -156,9 +158,13 @@ export function buildForwardPath(
   return path;
 }
 
-/** 施設を前方経路へ投影。最寄り点の沿道距離(km)と横距離(m)。経路が空なら null。 */
-export function projectToPath(path: PathPt[], flat: number, flng: number): { alongKm: number; lateralM: number } | null {
-  let best: { alongKm: number; lateralM: number } | null = null;
+/** 施設を前方経路へ投影。最寄り点の沿道距離(km)・横距離(m)・その区間の路線名。経路が空なら null。 */
+export function projectToPath(
+  path: PathPt[],
+  flat: number,
+  flng: number
+): { alongKm: number; lateralM: number; road: string } | null {
+  let best: { alongKm: number; lateralM: number; road: string } | null = null;
   const mLng = mPerLng(flat);
   for (let i = 0; i < path.length - 1; i++) {
     const a = path[i], b = path[i + 1];
@@ -168,7 +174,9 @@ export function projectToPath(path: PathPt[], flat: number, flng: number): { alo
     let t = len2 ? -(ax * dx + ay * dy) / len2 : 0;
     t = t < 0 ? 0 : t > 1 ? 1 : t;
     const latM = Math.hypot(ax + t * dx, ay + t * dy);
-    if (!best || latM < best.lateralM) best = { lateralM: latM, alongKm: a.dist + (b.dist - a.dist) * t };
+    // 区間の路線名は始点側(t<=0.5)/終点側(t>0.5)の点のものを採用（路線境界での取り違え低減）
+    if (!best || latM < best.lateralM)
+      best = { lateralM: latM, alongKm: a.dist + (b.dist - a.dist) * t, road: (t > 0.5 ? b.road : a.road) || a.road || b.road };
   }
   return best;
 }
