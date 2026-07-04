@@ -1128,13 +1128,18 @@ function DemoFit() {
 function weatherBarHTML(wx: Weather): string {
   const c = wmo(wx.current.code);
   const WD = ["日", "月", "火", "水", "木", "金", "土"];
+  // 気象庁フォールバック時は現在の風速・降水量が無いため天気ラベルのみ（Open-Meteo時は従来どおり風・降水も出す）。
+  const isJma = wx.source === "jma";
+  const curSub = isJma
+    ? c.label
+    : `${c.label}<br>${wx.current.precip > 0 ? `☔${wx.current.precip}mm ・ ` : ""}💨${Math.round(
+        wx.current.wind
+      )}`;
   const cur =
     `<div class="wx-cur">` +
     `<span class="wx-emoji">${c.emoji}</span>` +
     `<span class="wx-temp">${Math.round(wx.current.temp)}°</span>` +
-    `<span class="wx-cur-sub">${c.label}<br>${
-      wx.current.precip > 0 ? `☔${wx.current.precip}mm ・ ` : ""
-    }💨${Math.round(wx.current.wind)}</span>` +
+    `<span class="wx-cur-sub">${curSub}</span>` +
     `</div>`;
   const days = wx.daily
     .map((d, i) => {
@@ -1163,7 +1168,7 @@ function weatherBarHTML(wx: Weather): string {
     : "";
   // 通常は wx-label + wx-cur + wx-today（当日のみ）。タップで .expanded → wx-days(5日間)を表示。
   return (
-    `<div class="wx-label">📍 天気</div>${cur}${today}` +
+    `<div class="wx-label">📍 天気${isJma ? " ・ 気象庁" : ""}</div>${cur}${today}` +
     `<div class="wx-days">${days}</div>` +
     `<span class="wx-toggle" aria-hidden="true">▾</span>`
   );

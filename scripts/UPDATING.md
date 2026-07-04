@@ -251,3 +251,30 @@ node scripts/fetch-surface-geom.mjs   # highways-geom の近傍120m以内の tru
 | `highway.json` | fetch-highway → **assign-facility-roads** → enrich-highway-amenities | 3本を順に | ②抜け=road欠落で路線フィルタ死 / ③抜け=設備アイコン欠落 |
 | `highways-geom.json` | fetch-highway-geom | — | — |
 | `surface-geom.json` | fetch-surface-geom | highways-geom の後 | 古いgeom基準になる |
+
+---
+
+# 天気予報の地域マッピング（jma-area.json）の更新手順
+
+天気バーは **主系 Open-Meteo（緯度経度直・現在値/風/降水完備）＋ フォールバック 気象庁予報JSON（政府ソース・高可用）** の二重化。
+Open-Meteo が無応答/障害の時だけ気象庁に切り替わる（`src/weather.ts`）。気象庁JSONは予報区(office)単位なので、
+現在地 → muniCd（GSI逆ジオ）→ office の変換表 `src/data/jma-area.json` を同梱する。
+
+気象庁の予報区は基本的に不変なので更新は稀（市町村合併・予報区再編時のみ。**目安は年1回で十分**）。
+
+```bash
+cd ~/code/chiba-ramen-map
+node scripts/build-jma-area.mjs   # 気象庁 area.json から {jis5→office/class10, office→予報区名} を生成 → src/data/jma-area.json
+```
+
+- 出力は office / area10 各 **1756件**・name 58件（60KB弱・PWA同梱でオフライン可）。データ元 気象庁 area.json（`https://www.jma.go.jp/bosai/common/const/area.json`）。
+- **政令市の行政区**（例: 千葉市中央区=12101）は気象庁が市本体（12100）単位で予報を持つため、`weather.ts` が実行時に
+  区コードを市本体へ丸めて引き直す。横浜等「北部/南部」に地理分割する政令市は県レベル office まで丸まる
+  （同一県内に丸まるので 7日予報＝県週間は正しい。当日補完のエリア(area10)だけ市内の別細分になりうる）。
+- 検証:
+  ```bash
+  node -e 'const j=require("./src/data/jma-area.json");console.log("佐倉",j.office["12212"],"江東",j.office["13108"],"千葉市本体",j.office["12100"])'
+  # → 佐倉 120000 江東 130000 千葉市本体 120000
+  ```
+- 気象庁天気コード(3桁)→WMOコードの変換は `weather.ts` の `jmaCodeToWmo`（既存の絵文字テーブル wmo() を再利用）。
+  現在の風速・降水量は気象庁の当日予報に無いため、フォールバック時は気温・天気・降水確率のみ表示し「気象庁」を出典表記する。

@@ -49,6 +49,30 @@ export async function reverseCityName(lat: number, lng: number): Promise<string 
   }
 }
 
+/** 逆ジオコーダで muniCd（JIS5・先頭ゼロ無し）と市区町村名を同時に返す。
+ *  天気の気象庁フォールバックで「現在地 → 予報区(office)」を引くのに使う（jma-area.json のキーが muniCd）。
+ *  4秒でタイムアウト（背景取得をハングさせない）。取得不可・タイムアウトは null。 */
+export async function reverseMuni(
+  lat: number,
+  lng: number
+): Promise<{ code: string; name: string } | null> {
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 4000);
+    const r = await fetch(
+      `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lng}`,
+      { signal: ctrl.signal }
+    );
+    clearTimeout(to);
+    const j = await r.json();
+    const code = j?.results?.muniCd ? String(parseInt(j.results.muniCd, 10)) : "";
+    if (!code) return null;
+    return { code, name: MUNI[code] || "" };
+  } catch {
+    return null;
+  }
+}
+
 /** 国土地理院 住所検索（順ジオコーディング）で「住所文字列 → 緯度経度」。
  *  最有力候補1件の座標と表記を返す。該当なし・失敗時は null。
  *  返却 geometry.coordinates は GeoJSON 順 [lng, lat]。自宅登録などで使用。 */

@@ -715,13 +715,18 @@ function weatherBarHTML(wx: Weather): string {
   const place = wx.place
     ? `<span class="wx-place" title="Open-Meteo予報地点（数値予報モデルの格子点）">📍${wx.place}</span>`
     : "";
+  // 気象庁フォールバック時は現在の風速・降水量が無いため天気ラベルのみ（Open-Meteo時は従来どおり風・降水も出す）。
+  const isJma = wx.source === "jma";
+  const curSub = isJma
+    ? c.label
+    : `${c.label}<br>${wx.current.precip > 0 ? `☔${wx.current.precip}mm ・ ` : ""}💨${Math.round(
+        wx.current.wind
+      )}`;
   const cur =
     `<div class="wx-cur">` +
     `<span class="wx-emoji">${c.emoji}</span>` +
     `<span class="wx-temp-col"><span class="wx-temp">${Math.round(wx.current.temp)}°</span>${place}</span>` +
-    `<span class="wx-cur-sub">${c.label}<br>${
-      wx.current.precip > 0 ? `☔${wx.current.precip}mm ・ ` : ""
-    }💨${Math.round(wx.current.wind)}</span>` +
+    `<span class="wx-cur-sub">${curSub}</span>` +
     `</div>`;
   const days = wx.daily
     .map((d, i) => {
@@ -743,7 +748,9 @@ function weatherBarHTML(wx: Weather): string {
       `<span class="wx-day-temp"><b>${Math.round(t.tmax)}</b>/<span class="wx-lo">${Math.round(t.tmin)}</span></span></div>`
     : "";
   return (
-    `<div class="wx-label"><span class="wx-head">📍 天気 <span class="wx-upd">${fmtHM(wx.fetchedAt)}時点</span></span><span class="wx-traffic"></span></div>${cur}${today}` +
+    `<div class="wx-label"><span class="wx-head">📍 天気 <span class="wx-upd">${fmtHM(
+      wx.fetchedAt
+    )}時点${isJma ? " ・ 気象庁" : ""}</span></span><span class="wx-traffic"></span></div>${cur}${today}` +
     `<div class="wx-days">${days}</div>` +
     `<span class="wx-toggle" aria-hidden="true">▾</span>`
   );
