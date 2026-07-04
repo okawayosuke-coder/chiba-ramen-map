@@ -2091,24 +2091,28 @@ function RamenMapbox(props: Props) {
       // 「🛣 高速・有料道路を含む」バッジは高速区間の有無で(色分けとは独立。selectorが別途上書き制御)。
       hwNotice.style.display = hwRanges.length ? "" : "none";
       const total = rSuffix[0] || 0;
-      const n = Math.min(congestion.length, rSuffix.length - 1);
-      if (n < 1 || total <= 0) {
-        map.setPaintProperty("route-line", "line-gradient", undefined); // 渋滞データ無し→青(line-color)へ
+      const segCount = rSuffix.length - 1;
+      const hasCong = congestion.length >= 1;
+      // 渋滞データも高速区間も無ければ青単色(line-color)へ戻す。
+      if (segCount < 1 || total <= 0 || (!hasCong && hwRanges.length === 0)) {
+        map.setPaintProperty("route-line", "line-gradient", undefined);
         return;
       }
       const BLUE = "#0b57d0", GREEN = "#1aa64b", AMBER = "#f5b800", ORANGE = "#e8590c", RED = "#e03131";
-      // congestion_numeric 0-100 を Mapbox の low/moderate/heavy/severe 相当の帯に割当。null=不明は青。
-      const band = (v: number | null) => (v == null ? BLUE : v < 40 ? GREEN : v < 60 ? AMBER : v < 80 ? ORANGE : RED);
+      // 混雑(>=40)は警告色を優先(黄→橙→赤)。空き(<40)・不明(null)は道路種別の色＝高速緑/一般道青(日本の標識準拠)。
+      const cong = (i: number): number | null => (hasCong && i < congestion.length ? congestion[i] : null);
+      const band = (v: number | null, hw: boolean) =>
+        v != null && v >= 40 ? (v < 60 ? AMBER : v < 80 ? ORANGE : RED) : hw ? GREEN : BLUE;
       const frac = (i: number) => {
         const ii = Math.max(0, Math.min(rSuffix.length - 1, i));
         return Math.max(0, Math.min(1, (total - rSuffix[ii]) / total));
       };
       // セグメントi(coords[i]→[i+1])の色=band(congestion[i])。同色連続をまとめ step式に(stopは厳密増加必須)。
-      const expr: unknown[] = ["step", ["line-progress"], band(congestion[0])];
-      let prevColor = band(congestion[0]);
+      const expr: unknown[] = ["step", ["line-progress"], band(cong(0), isHwSeg(0))];
+      let prevColor = band(cong(0), isHwSeg(0));
       let prevStop = 0;
-      for (let i = 1; i < n; i++) {
-        const c = band(congestion[i]);
+      for (let i = 1; i < segCount; i++) {
+        const c = band(cong(i), isHwSeg(i));
         if (c !== prevColor) {
           const stop = Math.max(frac(i), prevStop + 1e-4);
           if (stop < 0.9999) { expr.push(stop, c); prevStop = stop; prevColor = c; }
