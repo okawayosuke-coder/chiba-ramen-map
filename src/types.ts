@@ -19,7 +19,7 @@ export interface Shop {
 
 /** 抽出条件のしきい値（データ収集 scripts/refine.py と一致させること） */
 export const RATING_FLOOR = 3.5; // スライダー下限＆データ収録の最低評価
-export const DEFAULT_RATING = 3.9; // 既定の絞り込み値（既定は高評価のみ表示）
+export const DEFAULT_RATING = 3.8; // 既定の絞り込み値（既定は高評価のみ表示）
 export const MIN_REVIEWS = 50;
 
 export type SortKey = "rating" | "reviews" | "name" | "near";
