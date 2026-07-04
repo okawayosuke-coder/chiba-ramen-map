@@ -2073,11 +2073,23 @@ function RamenMapbox(props: Props) {
         else if (!flags[i] && start >= 0) { raw.push([start, i]); start = -1; }
       }
       if (start >= 0) raw.push([start, coords.length - 1]);
-      // ③ 近接ギャップ(<GAP_M)を橋渡し（連続高速の一時的な非整合を吸収。跨ぎは整合頂点が無く橋渡し対象が無い）。
+      // ③ 近接ギャップ(<GAP_M)を橋渡し（連続高速の一時的な非整合を吸収）。ただし橋渡しで埋める中間頂点が
+      //    高速近傍(BRIDGE_M以内)に留まる場合のみ繋ぐ。高速に近接並走する一般道(側道・県道)と、その先の
+      //    IC付近との間に高速から離れる区間があると、従来は道なり距離だけで橋渡しして離れた一般道まで
+      //    高速判定に巻き込んでいた（実走FB: E51本線から最大240m離れた並走一般道が高速扱い）。中間頂点が
+      //    離れる(>BRIDGE_M)ギャップは繋がず分断する。本線走行は全頂点が近接するので橋渡しが維持される。
+      const BRIDGE_M = HW_M * 2; // 90m。本線の簡略化形状に伴う一時的な離れは許容、別道(>90m)は分断
+      const bridgeable = (from: number, to: number): boolean => {
+        for (let k = from + 1; k < to; k++) {
+          const sn = nearestHighway(g, coords[k][0], coords[k][1]);
+          if (!sn || sn.distM >= BRIDGE_M) return false;
+        }
+        return true;
+      };
       const merged: [number, number][] = [];
       for (const r of raw) {
         const last = merged[merged.length - 1];
-        if (last && pathM(last[1], r[0]) < GAP_M) last[1] = r[1];
+        if (last && pathM(last[1], r[0]) < GAP_M && bridgeable(last[1], r[0])) last[1] = r[1];
         else merged.push([r[0], r[1]]);
       }
       // ④ 短区間（跨ぎ/掠り）を距離で足切り。
@@ -2453,7 +2465,22 @@ function RamenMapbox(props: Props) {
       hwRanges = r.hwRanges ?? (avoidHw ? [] : geomHwRanges(r.coords));
       congestion = r.congestion ?? []; // 渋滞色分け用(Mapbox取得時のみ・無ければ青単色)
       maneuvers = r.maneuvers ?? []; // 分岐/方面/レーンの案内標識列(Mapbox取得時のみ)
-      applyRouteColor(); // ルート線を渋滞度で色分け
+      applyRouteColor(); // ルート線を渋滞度＋道路種別（高速緑/一般道青）で色分け
+      // Mapboxルートは高速判定を同梱形状(geomHwRanges/routeHwGeom)に頼るが、その形状は非同期ロード。
+      // 初回は1.77MBのfetch＋パースがルート取得に間に合わず hwRanges=[] のまま applyRouteColor が1回きり
+      // 走り、高速緑が出ないことがある（バッジ/ストリップは走行中に再計算されるので効く＝非対称の実走FB）。
+      // routeHwGeom 未ロードでルートを引いた場合は、ロード完了後に高速区間を再判定して塗り直す。
+      if (!r.hwRanges && !avoidHw && !routeHwGeom) {
+        loadHighwayGeom()
+          .then((gg) => {
+            if (!gg || !map.getLayer("route-line")) return;
+            routeHwGeom = gg;
+            hwRanges = geomHwRanges(r.coords);
+            applyRouteColor();
+            computeRouteFacilities();
+          })
+          .catch(() => {});
+      }
       gradeMarks = buildMarks(r.coords, GRADE_SPACING_KM);
       eleAtMark = [];
       computeRouteFacilities();
