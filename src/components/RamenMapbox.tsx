@@ -2152,6 +2152,9 @@ function RamenMapbox(props: Props) {
           if (stop < 0.9999) { expr.push(stop, c); prevStop = stop; prevColor = c; }
         }
       }
+      // 全区間が同色(色変化なし=stopが1つも無い)だと step式が ["step",input,base] の不正形になり
+      // Mapboxが「line-gradient: 引数不足」で throw する。同色のダミーstopを1つ足して有効なstep式にする。
+      if (expr.length === 3) expr.push(0.5, prevColor);
       map.setPaintProperty("route-line", "line-gradient", expr as never);
     };
     let onHighway = false;
