@@ -2470,6 +2470,9 @@ function RamenMapbox(props: Props) {
       // 高速を使う経路で一般道の代替が取れている時は「常に」選択UIを表示（走行中も。要望）。
       // follow(走行モード)には依存させない＝同一店舗なら状態に関わらず一貫して選択UIが出る。
       const showSel = fastHasHw && !!fastRoute && !!localRoute;
+      // 選択UI(route-alt)は目的地名(dest-box)と同じ左上位置に重なるため、出す時だけコンテナに印を付け
+      // CSS側で dest-box を選択UIの下へ退避させる（別effectのdest-boxとはこのクラス経由で協調）。
+      map.getContainer().classList.toggle("crm-has-route-alt", showSel);
       if (showSel) {
         altFastBtn.innerHTML =
           `<span class="route-alt__lb">🛣 高速あり</span><span class="route-alt__t">${fastRoute!.min}<small>分</small>・${Math.round(fastRoute!.km)}<small>km</small></span>`;
@@ -2647,6 +2650,7 @@ function RamenMapbox(props: Props) {
       hwNotice.remove();
       signCard.remove();
       altPanel.remove();
+      map.getContainer().classList.remove("crm-has-route-alt"); // dest-box退避の印を解除
       clearBtn.remove();
       hwStrip.remove();
       routeSnapRef.current = null;

@@ -1953,6 +1953,11 @@ body {
   line-height: 1.3;
   box-shadow: 0 2px 9px rgba(0, 0, 0, 0.35);
 }
+/* 高速あり/一般道のみ の選択UI(route-alt top:256・下端≒315)が出ている時は、目的地名をその下へ退避
+   （被って目的地名が隠れるのを防ぐ）。印は RamenMapbox の updateSelector がコンテナへ付与。 */
+.crm-has-route-alt .dest-box {
+  top: 322px;
+}
 .dest-arrow {
   flex: 0 0 auto;
   transition: transform 0.3s ease;
