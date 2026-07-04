@@ -1339,10 +1339,11 @@ body {
   color: rgba(255, 255, 255, 0.35); /* 使わない車線＝薄く */
 }
 
-/* ルート選択（高速あり / 一般道のみ）＝所要時間で選ぶ。目的地名ウィンドウ(dest-box top:224・2行時下端≒285)の下に横並び。 */
+/* ルート選択（高速あり / 一般道のみ）＝所要時間で選ぶ。目的地名ウィンドウ(dest-box top:224・2行時下端≒285)の下に横並び。
+   dest-boxと同じく左端ハンバーガー(.pane-handle 幅40px・縦中央)を避けて left:48。 */
 .route-alt {
   position: absolute;
-  left: 10px;
+  left: 48px;
   top: 292px;
   z-index: 651;
   display: flex;
@@ -1938,7 +1939,7 @@ body {
    左上ボタンスタック(〜214)の下、旧route-box位置(top:224)に置く。route-alt(選択UI)はこの下(top:292)。 */
 .dest-box {
   position: absolute;
-  left: 10px;
+  left: 48px; /* 左端の店舗一覧ハンバーガー(.pane-handle 幅40px・縦中央)を避ける。縦中央は画面高で動くため横で回避 */
   top: 224px;
   z-index: 650;
   pointer-events: none;
