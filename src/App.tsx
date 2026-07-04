@@ -174,6 +174,12 @@ export default function App() {
   // 走行終了後のバックアップ案内 / 端末ストレージの永続化警告
   const [backupPrompt, setBackupPrompt] = useState<{ km: number } | null>(null);
   const [persistWarn, setPersistWarn] = useState(false);
+  // 起動時の走行開始プロンプト（＝iOSは方位センサー許可がユーザー操作(タップ)内でしか要求できないため、
+  // このタップで requestOrientationPermission を呼びコンパスを有効化する。以後は自動走行でもコンパスが効く）。
+  // 実機(セキュアコンテキスト＋GPSあり)の初回表示のみ。「店を探す」で閉じれば従来どおり非走行で使える。
+  const [startPrompt, setStartPrompt] = useState(
+    () => typeof window !== "undefined" && window.isSecureContext && "geolocation" in navigator
+  );
   const prevFollowRef = useRef(false);
   const followStartCountRef = useRef(0);
   const pendingAppRef = useRef<NavApp | null>(null); // 安全ゲート通過後に起動するナビアプリ
@@ -1086,6 +1092,34 @@ export default function App() {
         </div>
       )}
 
+      {startPrompt && (
+        <div className="update-bar" role="status">
+          <span className="update-bar__msg">
+            🧭 走行モードで開始しますか？
+            <br />
+            向きの補正に方位センサーを使います（この後の自動走行でも有効になります）
+          </span>
+          <div className="update-bar__btns">
+            <button
+              className="update-bar__go"
+              onClick={() => {
+                requestOrientationPermission(); // iOS: このタップ内で方位許可を取得
+                setFollow(true);
+                setStartPrompt(false);
+              }}
+            >
+              🧭 走行開始
+            </button>
+            <button
+              className="update-bar__later"
+              onClick={() => setStartPrompt(false)}
+            >
+              店を探す
+            </button>
+          </div>
+        </div>
+      )}
+
       {backupPrompt && (
         <div className="update-bar" role="status">
           <span className="update-bar__msg">
@@ -1113,7 +1147,7 @@ export default function App() {
         </div>
       )}
 
-      {!backupPrompt && persistWarn && (
+      {!startPrompt && !backupPrompt && persistWarn && (
         <div className="update-bar" role="status">
           <span className="update-bar__msg">
             ⚠️ この端末では保存データが自動削除されることがあります。大事な走行軌跡は設定からGPXで書き出しを。
