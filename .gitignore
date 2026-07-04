@@ -1,6 +1,11 @@
 node_modules
 dist
 *.local
+# 環境変数(Mapboxトークン等の秘匿値)。*.local は .env.local 等を既にカバー。
+# 素の .env / .env.production 等も公開リポ誤コミット防止で除外し、テンプレは例外許可。
+.env
+.env.*
+!.env.example
 .DS_Store
 .vite
 
