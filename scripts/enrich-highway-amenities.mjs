@@ -6,8 +6,14 @@
 //   Overpass で SA/PA ポリゴン内の amenity/shop を1クエリ取得 → 最寄りSA/PAへ割当 → 設備種別を付与。
 //   ついでに高速施設でない誤登録SA（"渚の駅"等の○○の駅）を除去。
 import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const FILE = new URL("../public/highway.json", import.meta.url);
+// 全国化(地方ブロック生成)用に env で上書き可: HW_FAC_FILE。未指定なら従来どおり public/highway.json。
+// BBOXは対象ファイル自身の bbox から取るので地域別でもそのまま動く。
+const FILE = process.env.HW_FAC_FILE
+  ? pathToFileURL(resolve(process.env.HW_FAC_FILE))
+  : new URL("../public/highway.json", import.meta.url);
 const data = JSON.parse(readFileSync(FILE, "utf8"));
 const BBOX = data.bbox || [34.95, 139.65, 36.1, 140.95];
 
@@ -225,4 +231,4 @@ console.log(`設備付与: ${withAmen}/${saPa.length} 施設（割当要素 ${as
 
 data.generated = new Date().toISOString().slice(0, 10);
 writeFileSync(FILE, JSON.stringify(data));
-console.log("saved public/highway.json");
+console.log(`saved ${FILE.pathname}`);

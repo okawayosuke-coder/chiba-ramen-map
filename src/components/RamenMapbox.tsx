@@ -7,6 +7,7 @@ import { fetchRoute, projectOnRoute, type RouteResult, type RouteManeuver } from
 import { loadHighway, type HwFacility, type HwKind } from "../highwayData";
 import { loadHighwayGeom, nearestHighway, type HighwayGeom } from "../highwayGeom";
 import { loadSurfaceGeom, nearestSurface, type SurfaceGeom } from "../surfaceGeom";
+import { ensureRegions, regionOf, regionsForCoords } from "../hwRegions";
 import { buildPathIndex, buildForwardPath, projectToPath, type ForwardPathIndex } from "../forwardPath";
 import { fetchPois, poiBrandStyle, poiIconFile, type Poi, type PoiKind, type BBox } from "../poi";
 import {
@@ -2025,6 +2026,7 @@ function RamenMapbox(props: Props) {
     let hwRanges: [number, number][] = [];
     let congestion: (number | null)[] = []; // セグメント毎の渋滞度(Mapbox congestion_numeric)。ルート線の渋滞色分け用
     let maneuvers: RouteManeuver[] = []; // 分岐/方面/レーンの案内標識列(Mapbox banner由来)。案内カード用
+    let curRouteCoords: [number, number][] | null = null; // 現在有効なルートの座標列（非同期再判定の鮮度ガード）
     const isHwSeg = (segIdx: number) => hwRanges.some(([a, b]) => segIdx >= a && segIdx < b);
 
     // 経路の高速/有料区間: ORS waycategory があればそれ、無ければ(Mapbox等)同梱の高速形状で経路座標を判定。
@@ -2480,6 +2482,7 @@ function RamenMapbox(props: Props) {
       // 高速/有料区間: ORS waycategory優先。無ければ同梱高速形状で判定。ただし一般道のみ案(avoidHw)は
       // 構造上高速を使わないので緑判定しない（下道が高架高速の真下を通る=357型の誤検出を避ける）。
       hwRanges = r.hwRanges ?? (avoidHw ? [] : geomHwRanges(r.coords));
+      curRouteCoords = r.coords; // 非同期の再判定(形状ロード/地方ブロック到着)が古いルートを上書きしないための鮮度ガード
       congestion = r.congestion ?? []; // 渋滞色分け用(Mapbox取得時のみ・無ければ青単色)
       maneuvers = r.maneuvers ?? []; // 分岐/方面/レーンの案内標識列(Mapbox取得時のみ)
       applyRouteColor(); // ルート線を渋滞度＋道路種別（高速緑/一般道青）で色分け
@@ -2490,13 +2493,26 @@ function RamenMapbox(props: Props) {
       if (!r.hwRanges && !avoidHw && !routeHwGeom) {
         loadHighwayGeom()
           .then((gg) => {
-            if (!gg || !map.getLayer("route-line")) return;
+            if (!gg || !map.getLayer("route-line") || curRouteCoords !== r.coords) return;
             routeHwGeom = gg;
             hwRanges = geomHwRanges(r.coords);
             applyRouteColor();
             computeRouteFacilities();
           })
           .catch(() => {});
+      }
+      // 全国化: ルートが関東(同梱データ範囲)の外へ跨ぐ場合、該当する地方ブロックをオンデマンド取得し、
+      // 届いたら高速区間を再判定して塗り直す（未着の間はその区間の高速判定が出ないため後追いで補完）。
+      if (!r.hwRanges && !avoidHw) {
+        const need = regionsForCoords(r.coords);
+        if (need.length) {
+          void ensureRegions(need).then((changed) => {
+            if (!changed || !map.getLayer("route-line") || curRouteCoords !== r.coords) return;
+            hwRanges = geomHwRanges(r.coords);
+            applyRouteColor();
+            computeRouteFacilities();
+          });
+        }
       }
       gradeMarks = buildMarks(r.coords, GRADE_SPACING_KM);
       eleAtMark = [];
@@ -2828,6 +2844,17 @@ function RamenMapbox(props: Props) {
       const h = p.coords.heading;
       if (h != null && isFinite(h) && h >= 0) lastHd = h;
       else if (prevPt && haversineKm(prevPt, here) >= 0.015) lastHd = bearingDeg(prevPt, here);
+      // 全国化: 関東(同梱データ範囲)の外を走行中は該当地方ブロックをオンデマンド取得。
+      // 取得済み/取得中/直近失敗は ensureRegions 側が弾くので毎フィックス呼んでも実質ノーオペ。
+      // 届いたら前方経路インデックスと路線集合を作り直してストリップ/路線フィルタに反映する。
+      const rgKey = regionOf(here.lat, here.lng);
+      if (rgKey) {
+        void ensureRegions([rgKey]).then((changed) => {
+          if (aborted || !changed) return;
+          if (hwGeom) hwPathIdx = buildPathIndex(hwGeom);
+          if (facilities) roadSet = new Set(facilities.map((f) => f.road).filter(Boolean) as string[]);
+        });
+      }
       // 速度: coords.speed があれば優先。無い端末は前回位置との差分から算出して自動判定に使う。
       const sp = p.coords.speed;
       let kmh: number | null = null;

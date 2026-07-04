@@ -28,6 +28,29 @@ export interface HighwayData {
 
 let cache: Promise<HighwayData> | null = null;
 
+// ---- 全国化: 地方ブロック(public/regions/<key>/highway.json)の施設マージ ----
+// ブロック境界の重複施設は「種別＋名称＋座標(約10m丸め)」キーで除去。上り/下りの同名別地点(数百m差)は
+// キーが異なるので両方残る＝関東版と同じ設計（表示側が進行方向側を選ぶ）。
+// 既存参照(facilities配列)へ push で足すので、呼び出し側が持つ参照はそのまま新データが見える。
+let facKeys: Set<string> | null = null;
+const facKey = (f: HwFacility) => `${f.kind}|${f.name}|${f.lat.toFixed(4)},${f.lng.toFixed(4)}`;
+
+/** 地方ブロックの高速施設をマージ。新規追加があれば true。 */
+export async function mergeHighway(j: { facilities?: HwFacility[] }): Promise<boolean> {
+  const d = await loadHighway();
+  if (!facKeys) facKeys = new Set(d.facilities.map(facKey));
+  let added = 0;
+  for (const f of Array.isArray(j.facilities) ? j.facilities : []) {
+    if (!f || typeof f.lat !== "number" || typeof f.lng !== "number" || !f.kind || !f.name) continue;
+    const k = facKey(f);
+    if (facKeys.has(k)) continue;
+    facKeys.add(k);
+    d.facilities.push(f);
+    added++;
+  }
+  return added > 0;
+}
+
 /** 同梱の高速施設データを一度だけ読み込む（PWA precache・オフライン可）。失敗時は次回再試行。 */
 export function loadHighway(): Promise<HighwayData> {
   if (!cache) {

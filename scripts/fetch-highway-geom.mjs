@@ -4,11 +4,20 @@
 // 容量対策: Douglas-Peucker 簡略化（ε≈13m）＋座標5桁丸め。データ元 OpenStreetMap (ODbL)。
 import { writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 // 関東全域＋接続する高速（東名・中央道は神奈川西/山梨手前まで、東北/常磐/関越は北関東まで）。
 // (south, west, north, east)
-const BBOX = [34.85, 138.4, 37.25, 141.0];
-const TILE = 0.5; // タイル一辺(度)。小さいほどOverpassに優しいがクエリ数増
+// 全国化(地方ブロック生成)用に env で上書き可: HW_BBOX="s,w,n,e" / HW_TILE / HW_GEOM_FILE(出力先)。
+// 未指定なら従来どおり関東bbox＋public/highways-geom.json（build-region.mjs から地域別に呼ばれる）。
+const BBOX = process.env.HW_BBOX
+  ? process.env.HW_BBOX.split(",").map(Number)
+  : [34.85, 138.4, 37.25, 141.0];
+const TILE = Number(process.env.HW_TILE || 0.5); // タイル一辺(度)。小さいほどOverpassに優しいがクエリ数増
+const OUT_URL = process.env.HW_GEOM_FILE
+  ? pathToFileURL(resolve(process.env.HW_GEOM_FILE))
+  : new URL("../public/highways-geom.json", import.meta.url);
 const MIRRORS = [
   "https://overpass.osm.jp/api/interpreter",
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
@@ -119,8 +128,8 @@ const payload = {
   roads,
 };
 const json = JSON.stringify(payload);
-writeFileSync(new URL("../public/highways-geom.json", import.meta.url), json);
+writeFileSync(OUT_URL, json);
 const gz = gzipSync(Buffer.from(json));
 console.log(
-  `saved public/highways-geom.json  raw=${(json.length / 1024).toFixed(0)}KB gzip=${(gz.length / 1024).toFixed(0)}KB`
+  `saved ${OUT_URL.pathname}  raw=${(json.length / 1024).toFixed(0)}KB gzip=${(gz.length / 1024).toFixed(0)}KB`
 );

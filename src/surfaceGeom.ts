@@ -49,6 +49,38 @@ export function loadSurfaceGeom(): Promise<SurfaceGeom> {
   return cache;
 }
 
+// ---- 全国化: 地方ブロック(public/regions/<key>/surface-geom.json)の追記マージ ----
+// 名前を持たないため「始点/終点座標＋点数」キーで境界重複を除去（RDPは決定的＝同一wayは同一座標列）。
+let mergeKeys: Set<string> | null = null;
+const sKey = (c: [number, number][]) =>
+  `${c[0][0]},${c[0][1]}|${c[c.length - 1][0]},${c[c.length - 1][1]}|${c.length}`;
+
+/** 地方ブロックの一般道形状をマージ。新規追加があれば true。 */
+export async function mergeSurfaceGeom(j: { roads?: SRoadRaw[] }): Promise<boolean> {
+  const g = await loadSurfaceGeom();
+  if (!mergeKeys) mergeKeys = new Set(g.roads.map((r) => sKey(r.c)));
+  let added = 0;
+  for (const r of Array.isArray(j.roads) ? j.roads : []) {
+    if (!Array.isArray(r.c) || r.c.length < 2) continue;
+    const k = sKey(r.c);
+    if (mergeKeys.has(k)) continue;
+    mergeKeys.add(k);
+    let s = 90,
+      w = 180,
+      n = -90,
+      e = -180;
+    for (const p of r.c) {
+      if (p[0] < s) s = p[0];
+      if (p[0] > n) n = p[0];
+      if (p[1] < w) w = p[1];
+      if (p[1] > e) e = p[1];
+    }
+    g.roads.push({ c: r.c, s, w, n, e });
+    added++;
+  }
+  return added > 0;
+}
+
 const PAD = 0.0016; // 約180m。bbox プレフィルタ余白
 
 /** 現在地から最寄りの一般道センターラインまでの距離(m)。近傍に無ければ null。点-線分距離は等距円筒近似。 */

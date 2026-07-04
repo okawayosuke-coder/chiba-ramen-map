@@ -47,11 +47,23 @@ export default defineConfig(({ command }) => ({
         // アプリシェル＋データをプリキャッシュ。pois.json(同梱POI)も含めオフライン表示可。
         // 地図タイルは外部のためオフライン不可。
         globPatterns: ["**/*.{js,css,html,png,svg,woff2,json}"],
-        // mapbox-gl は試験機能・大容量・要ネットワークのためプリキャッシュしない（既定Leafletの負荷を増やさない）
-        globIgnores: ["**/mapbox-gl-*.js"],
+        // mapbox-gl は試験機能・大容量・要ネットワークのためプリキャッシュしない（既定Leafletの負荷を増やさない）。
+        // regions/(全国の地方ブロック高速データ)は関東外に出た時だけ使うオンデマンド設計＝プリキャッシュせず
+        // 下の runtimeCaching(CacheFirst) で「一度取れた地方はオフライン再訪可」にする。
+        globIgnores: ["**/mapbox-gl-*.js", "**/regions/**"],
         // pois.json は大きめ(~1MB)なのでプリキャッシュ上限を引き上げる
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: null,
+        runtimeCaching: [
+          {
+            urlPattern: /\/regions\/[^/]+\/[^/]+\.json$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "hw-regions",
+              expiration: { maxEntries: 32, maxAgeSeconds: 45 * 24 * 60 * 60 },
+            },
+          },
+        ],
       },
     }),
   ],

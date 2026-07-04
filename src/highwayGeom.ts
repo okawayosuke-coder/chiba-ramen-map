@@ -65,6 +65,41 @@ export function loadHighwayGeom(): Promise<HighwayGeom> {
   return cache;
 }
 
+// ---- 全国化: 地方ブロック(public/regions/<key>/highways-geom.json)の追記マージ ----
+// 同梱(関東)データに他地域の道路を足す。ブロック境界やブロック間で同じwayが重複して届くため、
+// 「正規化路線名＋始点/終点座標＋点数」のキーで除去する（RDP簡略化は決定的なので同一wayは同一座標列になる）。
+// 既存参照(HighwayGeomオブジェクト)へ push で足すので、呼び出し側が持つ参照はそのまま新データが見える。
+let mergeKeys: Set<string> | null = null;
+const roadKey = (name: string, c: [number, number][]) =>
+  `${name}|${c[0][0]},${c[0][1]}|${c[c.length - 1][0]},${c[c.length - 1][1]}|${c.length}`;
+
+/** 地方ブロックの高速形状をマージ。新規追加があれば true。 */
+export async function mergeHighwayGeom(j: { roads?: RoadRaw[] }): Promise<boolean> {
+  const g = await loadHighwayGeom();
+  if (!mergeKeys) mergeKeys = new Set(g.roads.map((r) => roadKey(r.name || "", r.c)));
+  let added = 0;
+  for (const r of Array.isArray(j.roads) ? j.roads : []) {
+    if (!Array.isArray(r.c) || r.c.length < 2) continue;
+    const name = canonicalRoad(r.name || r.ref);
+    const k = roadKey(name, r.c);
+    if (mergeKeys.has(k)) continue;
+    mergeKeys.add(k);
+    let s = 90,
+      w = 180,
+      n = -90,
+      e = -180;
+    for (const p of r.c) {
+      if (p[0] < s) s = p[0];
+      if (p[0] > n) n = p[0];
+      if (p[1] < w) w = p[1];
+      if (p[1] > e) e = p[1];
+    }
+    g.roads.push({ name, c: r.c, s, w, n, e });
+    added++;
+  }
+  return added > 0;
+}
+
 const PAD = 0.002; // bbox プレフィルタの余白（約220m）。スナップ閾値(<90m)より広く取り取りこぼし防止
 
 /** 現在地から最寄りの高速道路までの距離(m)＝高速ON/OFF判定 と、最寄り「名前付き路線」の名前＝施設フィルタ用を返す。

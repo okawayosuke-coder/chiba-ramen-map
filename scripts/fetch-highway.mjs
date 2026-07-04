@@ -2,6 +2,8 @@
 // 提案書⑧ハイウェイモードのMVPデータ。種別＋名称＋座標のみ（設備アイコンはフェーズ4で別途）。
 // データ元 OpenStreetMap (ODbL)。商用可・帰属表示「© OpenStreetMap contributors」必須。
 import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 // 2点間の距離(m)。同一施設の重複ノード集約（上り/下りの別地点分岐は残す）に使う。
 function havM(aLat, aLng, bLat, bLng) {
@@ -15,8 +17,11 @@ function havM(aLat, aLng, bLat, bLng) {
 }
 
 // 関東全域＋接続する高速をカバー。(south,west,north,east)。広いのでタイル分割で収集（highways-geom.jsonと同範囲）。
-const BBOX = [34.85, 138.4, 37.25, 141.0];
-const TILE = 0.5;
+// 全国化(地方ブロック生成)用に env で上書き可: HW_BBOX / HW_TILE / HW_FAC_FILE(出力先)。
+const BBOX = process.env.HW_BBOX
+  ? process.env.HW_BBOX.split(",").map(Number)
+  : [34.85, 138.4, 37.25, 141.0];
+const TILE = Number(process.env.HW_TILE || 0.5);
 const MIRRORS = [
   "https://overpass.osm.jp/api/interpreter", // 日本インスタンス（国内データに好適・別レート枠）
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
@@ -204,8 +209,8 @@ const payload = {
   source: "© OpenStreetMap contributors (ODbL)",
   facilities: out,
 };
-writeFileSync(
-  new URL("../public/highway.json", import.meta.url),
-  JSON.stringify(payload)
-);
-console.log("saved public/highway.json");
+const OUT_URL = process.env.HW_FAC_FILE
+  ? pathToFileURL(resolve(process.env.HW_FAC_FILE))
+  : new URL("../public/highway.json", import.meta.url);
+writeFileSync(OUT_URL, JSON.stringify(payload));
+console.log(`saved ${OUT_URL.pathname}`);

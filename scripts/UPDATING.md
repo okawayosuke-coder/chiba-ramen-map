@@ -254,6 +254,32 @@ node scripts/fetch-surface-geom.mjs   # highways-geom の近傍120m以内の tru
 
 ---
 
+# 全国データ（地方ブロック `public/regions/<key>/`）の生成手順
+
+高速機能（判定・色分け・施設ストリップ・方面看板）を関東の外でも使うための**オンデマンド地方ブロック**。
+同梱の関東版（public/ 直下）は**不変**で、現在地/ルートが関東bboxの外に出たときだけアプリが該当ブロックを取得して
+追記マージする（`src/hwRegions.ts`。プリキャッシュ対象外・SWランタイムキャッシュで再訪はオフライン可）。
+
+地域定義は **`src/data/hw-regions.json` が単一の正**（生成側とアプリ側の両方が読む。bbox/tileをここで管理）。
+ブロック: tohoku / hokkaido / chubu / kinki / chugoku_shikoku / kyushu / okinawa の7つ。
+
+```bash
+cd ~/code/chiba-ramen-map
+node scripts/build-region.mjs okinawa        # 1地域（最小・約1分＝パイプライン検証に最適）
+node scripts/build-region.mjs chubu kinki    # 複数指定
+node scripts/build-region.mjs all            # 全地域（Overpass収集で数時間規模）
+```
+
+- 中身は関東版と同じ5本を env(HW_BBOX/HW_TILE/HW_*_FILE) 経由で地域向きに実行:
+  ①fetch-highway-geom ②fetch-highway ③assign-facility-roads ④enrich-highway-amenities ⑤fetch-surface-geom
+  （**③④を飛ばすと関東版と同じ静かな事故**。build-region.mjs は必ず5本通しで実行する）
+- 検証: `npm run validate-data` が public/regions/ 配下の**存在するブロックだけ**自動検査
+  （geom≥50本・施設≥8・road付与≥40%・surface≥10本。生成途中のブロックは正しく fail する＝ビルドしない）
+- 目安サイズ: 沖縄 geom55KB/施設8KB/surface17KB、中部 geomは約2.4MB(高速密度が高い)
+- 更新頻度: 関東版と同じく稀（路線開通時）。まず okinawa で通しの健全性を確かめてから対象地域を回すと安全
+
+---
+
 # 天気予報の地域マッピング（jma-area.json）の更新手順
 
 天気バーは **主系 Open-Meteo（緯度経度直・現在値/風/降水完備）＋ フォールバック 気象庁予報JSON（政府ソース・高可用）** の二重化。

@@ -5,9 +5,21 @@
 // 起こさないので不要）＋ Douglas-Peucker 簡略化(ε≈13m)＋5桁丸め。データ元 OpenStreetMap (ODbL)。
 import { readFileSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const BBOX = [34.85, 138.4, 37.25, 141.0]; // fetch-highway-geom.mjs と同じ関東全域
-const TILE = 0.5;
+// 全国化(地方ブロック生成)用に env で上書き可: HW_BBOX / HW_TILE / HW_GEOM_FILE(入力) / HW_SURFACE_FILE(出力)。
+// 未指定なら従来どおり関東bbox＋public/ 直下（build-region.mjs から地域別に呼ばれる）。
+const BBOX = process.env.HW_BBOX
+  ? process.env.HW_BBOX.split(",").map(Number)
+  : [34.85, 138.4, 37.25, 141.0]; // fetch-highway-geom.mjs と同じ関東全域
+const TILE = Number(process.env.HW_TILE || 0.5);
+const GEOM_URL = process.env.HW_GEOM_FILE
+  ? pathToFileURL(resolve(process.env.HW_GEOM_FILE))
+  : new URL("../public/highways-geom.json", import.meta.url);
+const OUT_URL = process.env.HW_SURFACE_FILE
+  ? pathToFileURL(resolve(process.env.HW_SURFACE_FILE))
+  : new URL("../public/surface-geom.json", import.meta.url);
 const PROX_M = 120; // 高速センターラインからこの距離以内の一般道だけ残す
 const MIRRORS = [
   "https://overpass.osm.jp/api/interpreter",
@@ -19,7 +31,7 @@ const MIRRORS = [
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // 高速センターライン（既存同梱）を読み bbox プレフィルタ付きで最寄り距離を測れるようにする
-const geom = JSON.parse(readFileSync(new URL("../public/highways-geom.json", import.meta.url), "utf8"));
+const geom = JSON.parse(readFileSync(GEOM_URL, "utf8"));
 const HW = [];
 for (const r of geom.roads) {
   if (!Array.isArray(r.c) || r.c.length < 2) continue;
@@ -121,6 +133,6 @@ console.log(`簡略化: ${rawPts} → ${keptPts} 点（${roads.length} 本 / ${t
 
 const payload = { generated: new Date().toISOString().slice(0, 10), bbox: BBOX, prox_m: PROX_M, source: "© OpenStreetMap contributors (ODbL)", roads };
 const json = JSON.stringify(payload);
-writeFileSync(new URL("../public/surface-geom.json", import.meta.url), json);
+writeFileSync(OUT_URL, json);
 const gz = gzipSync(Buffer.from(json));
-console.log(`saved public/surface-geom.json  raw=${(json.length / 1024).toFixed(0)}KB gzip=${(gz.length / 1024).toFixed(0)}KB`);
+console.log(`saved ${OUT_URL.pathname}  raw=${(json.length / 1024).toFixed(0)}KB gzip=${(gz.length / 1024).toFixed(0)}KB`);

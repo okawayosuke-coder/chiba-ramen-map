@@ -3,6 +3,8 @@
 // 走行中、自車の現在路線名と一致する施設だけをストリップに出す＝並走道路(京葉道路 等)を確実に除外するため。
 // 入出力: public/highway.json を読んで road を足して上書き。データ元 OSM(ODbL)。
 import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 // ── 路線名正規化（src/roadName.ts と同一実装の複製。片方を直したら必ず同期すること）──
 const ALIASES = [["首都圏中央連絡自動車道", /^(首都圏中央連絡自動車道|圏央道)$/]];
@@ -18,8 +20,13 @@ function canonicalRoad(raw) {
   return s;
 }
 
-const facFile = new URL("../public/highway.json", import.meta.url);
-const geomFile = new URL("../public/highways-geom.json", import.meta.url);
+// 全国化(地方ブロック生成)用に env で上書き可: HW_FAC_FILE / HW_GEOM_FILE。未指定なら従来どおり public/ 直下。
+const facFile = process.env.HW_FAC_FILE
+  ? pathToFileURL(resolve(process.env.HW_FAC_FILE))
+  : new URL("../public/highway.json", import.meta.url);
+const geomFile = process.env.HW_GEOM_FILE
+  ? pathToFileURL(resolve(process.env.HW_GEOM_FILE))
+  : new URL("../public/highways-geom.json", import.meta.url);
 const data = JSON.parse(readFileSync(facFile, "utf8"));
 const geom = JSON.parse(readFileSync(geomFile, "utf8"));
 
@@ -78,4 +85,4 @@ console.log("路線別(上位15):");
 console.log(Object.entries(byRoad).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, v]) => `  ${String(v).padStart(4)}  ${k}`).join("\n"));
 
 writeFileSync(facFile, JSON.stringify(data));
-console.log("saved public/highway.json");
+console.log(`saved ${facFile.pathname}`);

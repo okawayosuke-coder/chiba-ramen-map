@@ -3,7 +3,7 @@
 // 目的: 「ビルド/型は通るが機能が静かに壊れる」データ事故（例: highway.json 再生成で
 //   assign-facility-roads.mjs を飛ばし road が全欠落→路線フィルタ全無効）を本番前に自動で弾く。
 // 閾値は現状値より十分低い保守的な床値＝正常な増減では鳴らず、ステップ抜け/ファイル破損だけを検知する。
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 
 const root = new URL("../", import.meta.url);
 const load = (rel) => JSON.parse(readFileSync(new URL(rel, root), "utf8"));
@@ -79,6 +79,32 @@ safe("surface-geom.json", () => {
   const r = load("public/surface-geom.json").roads;
   check(Array.isArray(r) && r.length >= 1000, "surface-geom.json 路線数≥1000", `= ${r?.length}`);
 });
+
+// ===== 地方ブロック（全国化: scripts/build-region.mjs 生成。存在するブロックだけ検査＝段階的追加OK）=====
+// ブロックは3ファイル揃って初めて機能する（欠けるとアプリのensureRegionsが毎回404で全滅扱いになる）。
+// 床値は最小地域(沖縄=roads552/施設50/road94%/surface271)より十分低い汎用値。
+{
+  const dirUrl = new URL("public/regions/", root);
+  if (!existsSync(dirUrl)) {
+    ok("regions/ 未生成（全国ブロックなし＝関東のみ運用）");
+  } else {
+    const cfg = load("src/data/hw-regions.json");
+    for (const key of readdirSync(dirUrl).filter((d) => !d.startsWith("."))) {
+      // 地域ごとに独立検査（1地域の生成途中/破損が他地域の検査を隠さないように）
+      safe(`regions/${key}`, () => {
+        check(!!cfg.regions[key], `regions/${key} が hw-regions.json に定義済み`);
+        const g = load(`public/regions/${key}/highways-geom.json`);
+        check(Array.isArray(g.roads) && g.roads.length >= 50, `regions/${key} geom路線数≥50`, `= ${g.roads?.length}`);
+        const f = load(`public/regions/${key}/highway.json`).facilities;
+        check(Array.isArray(f) && f.length >= 8, `regions/${key} 施設数≥8`, `= ${f?.length}`);
+        const road = f.filter((x) => x.road).length;
+        check(pct(road, f.length) >= 40, `regions/${key} road付与率≥40%（assign実行の証跡）`, `${road}/${f.length} = ${pct(road, f.length)}%`);
+        const s = load(`public/regions/${key}/surface-geom.json`);
+        check(Array.isArray(s.roads) && s.roads.length >= 10, `regions/${key} surface路線数≥10`, `= ${s.roads?.length}`);
+      });
+    }
+  }
+}
 
 // ===== muni.json（fetch_muni.mjs。逆ジオの muniCd→市区町村）=====
 safe("muni.json", () => {
