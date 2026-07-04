@@ -2363,10 +2363,32 @@ function RamenMapbox(props: Props) {
       if (hwRanges.length) return isHwSeg(segIdxAtKm(m.atKm));
       return false;
     };
-    // 方面テキストの解決: 方面名→路線番号→道路名→指示文から地名抽出→方向語、の優先順位。
+    // 位置から都道府県道の種別語を返す（Mapboxのstep.refは番号のみで種別が無いため補う）。
+    // 北海道=道道 / 東京=都道 / 京都・大阪=府道 / その他=県道。境界際は generic な県道に寄せる。
+    const prefRoadWord = (lat: number, lng: number): string => {
+      if (lat >= 41.4) return "道道"; // 北海道（本州と海で隔絶＝安全）
+      if (lat >= 35.5 && lat <= 35.83 && lng >= 138.95 && lng <= 139.9) return "都道"; // 東京都（区部＋多摩の内側）
+      if (lat >= 34.3 && lat <= 35.78 && lng >= 135.0 && lng <= 135.83) return "府道"; // 京都・大阪（内側）
+      return "県道";
+    };
+    // 路線番号refを種別付きラベルへ。step.refは番号のみ("65"/"7; 64")だが step.name に種別が入る
+    // （国道="国道121号; 一般国道121号"／県道は"会津若松裏磐梯線"等の固有名）。nameに「◯◯号」の正式路線名が
+    // あれば最優先、無ければ nameの国道有無＋位置から都道府県道の語を付ける。裸の「65」を「県道65号」に。
+    const refRoadLabel = (m: RouteManeuver): string => {
+      const name = m.name || "";
+      const exact = name.match(/(国道|県道|都道|府道|道道)\s*(\d+)\s*号/);
+      if (exact) return `${exact[1]}${exact[2]}号`;
+      const num = (m.ref || "").split(/[;,]/)[0].trim();
+      if (!num) return name; // 番号が無ければ固有名（あれば）をそのまま
+      if (!/^\d/.test(num)) return name || m.ref || ""; // E49等の高速refは番号化しない
+      if (/国道/.test(name)) return `国道${num}号`;
+      return `${prefRoadWord(m.lat, m.lng)}${num}号`;
+    };
+    // 方面テキストの解決: 方面名→路線(種別付き番号/道路名)→指示文から地名抽出→方向語、の優先順位。
     const resolveTowardText = (next: RouteManeuver): string => {
       if (next.toward) return next.toward.split(";").slice(0, 3).join("・");
-      if (next.ref) return next.ref;
+      const roadLabel = refRoadLabel(next);
+      if (roadLabel) return roadLabel;
       if (next.name) return next.name;
       // 「◯◯を右方向です。」のような指示文から「を」の直前(地名/道路名)を抽出。方向語のみの文（例:「左方向です。」）はここで空になり方向語フォールバックへ。
       const afterLead = (next.instruction || "").replace(/^[^、]*、/, "");
