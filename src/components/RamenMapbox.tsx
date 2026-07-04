@@ -2092,8 +2092,25 @@ function RamenMapbox(props: Props) {
         if (last && pathM(last[1], r[0]) < GAP_M && bridgeable(last[1], r[0])) last[1] = r[1];
         else merged.push([r[0], r[1]]);
       }
-      // ④ 短区間（跨ぎ/掠り）を距離で足切り。
-      return merged.filter(([a, b]) => pathM(a, b) >= MIN_HW_M);
+      // ④ 区間の先頭/末尾を「確実に高速上（センターライン<15m）」の頂点まで刈り込む。
+      //    ICの取り付け部では一般道が高速に45m以内・方向一致で並走しやすく、その頂点が範囲の頭/尻に
+      //    連なると高速判定がICのかなり手前から始まって見える（実走FB。8ルート実測で最大898m先行）。
+      //    ランプ上はセンターライン0〜6mなので「ランプ起点=IC入口からの判定」は保たれ、並走一般道の
+      //    頭出し/尻残りだけが落ちる。中央は触らない（高架下に側道が並走する区間を巻き添えにしない）。
+      const TRIM_SOLID_M = 15;
+      const solid = (k: number) => {
+        const sn = nearestHighway(g, coords[k][0], coords[k][1]);
+        return !!sn && sn.distM < TRIM_SOLID_M;
+      };
+      const trimmed: [number, number][] = [];
+      for (const [a0, b0] of merged) {
+        let a = a0, b = b0;
+        while (a < b && !solid(a)) a++;
+        while (b > a && !solid(b - 1)) b--;
+        if (a < b) trimmed.push([a, b]);
+      }
+      // ⑤ 短区間（跨ぎ/掠り）を距離で足切り。
+      return trimmed.filter(([a, b]) => pathM(a, b) >= MIN_HW_M);
     };
     // ルート線を渋滞度(congestion_numeric)で色分け＝緑(空)/黄(やや混)/橙(混)/赤(激混)・不明は青。
     // 高速/有料の有無はここでは扱わず「🛣含む」バッジ(hwNotice)で別途示す(色の意味を渋滞1つに統一)。
