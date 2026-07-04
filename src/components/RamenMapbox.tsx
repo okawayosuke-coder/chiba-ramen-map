@@ -774,6 +774,7 @@ function RamenMapbox(props: Props) {
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
   const lastTrafficAtRef = useRef<number>(0); // 渋滞タイルを最後に取得した時刻(ms)。天気バーに「渋滞 HH:MM時点」表示
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
+  const routeEtaRef = useRef<string | null>(null); // ルートの残り距離・到着時間テキスト。route effectが算出→dest-box(目的地名ウィンドウ)が2行目に表示。ルート無しはnull
   const hwToggleLabelRef = useRef<(() => void) | null>(null); // 高速トグルのラベル更新（follow基準effectが設定）
   const styleRef = useRef<string>(""); // 現在適用中の地図スタイルURL（テーマ切替の重複setStyle防止）
   const threeDCtrlRef = useRef<ThreeDToggleControl | null>(null); // 地図上「3D」ボタン（点灯状態の同期用）
@@ -1965,10 +1966,12 @@ function RamenMapbox(props: Props) {
       };
     }
 
-    // 残距離/ETA ボックス（左上・既存CSS .route-box）
+    // 残距離/ETA は目的地名ウィンドウ(dest-box)に統合表示する（routeEtaRef経由）。
+    // route-box要素自体は非表示のまま保持（テキストはrefに集約。他参照/クリーンアップの互換のため残す）。
     const box = document.createElement("div");
     box.className = "route-box";
-    box.textContent = "🛣 現在地を取得中…";
+    box.style.display = "none";
+    routeEtaRef.current = "🛣 現在地を取得中…";
     map.getContainer().appendChild(box);
 
     // 高速・有料道路を含む経路の案内バッジ（含む時だけ表示。区間はルート線を緑で色分け）
@@ -2433,11 +2436,11 @@ function RamenMapbox(props: Props) {
       if (!rCoords || rKm <= 0) return null;
       const pr = projectOnRoute(rCoords, rSuffix, here);
       if (pr.remKm < 0.08) {
-        box.textContent = "🛣 まもなく到着";
+        routeEtaRef.current = "🛣 まもなく到着";
       } else {
         const remMin = rMin * (pr.remKm / rKm);
         const dist = pr.remKm < 10 ? pr.remKm.toFixed(1) : Math.round(pr.remKm).toString();
-        box.textContent = `🛣 残り ${dist}km ・ ${fmtEta(remMin)}着`;
+        routeEtaRef.current = `🛣 残り ${dist}km ・ ${fmtEta(remMin)}着`;
       }
       // 走行済み区間の消去は line-trim-offset を自車(カメラ)と同じ補間で動かす（線は再スライスしない）。
       // 全ルートを描いたまま [0, 道なり進行率] をGPU側で透明化＝自車の滑らかさに同期して消える。
@@ -2470,9 +2473,6 @@ function RamenMapbox(props: Props) {
       // 高速を使う経路で一般道の代替が取れている時は「常に」選択UIを表示（走行中も。要望）。
       // follow(走行モード)には依存させない＝同一店舗なら状態に関わらず一貫して選択UIが出る。
       const showSel = fastHasHw && !!fastRoute && !!localRoute;
-      // 選択UI(route-alt)は目的地名(dest-box)と同じ左上位置に重なるため、出す時だけコンテナに印を付け
-      // CSS側で dest-box を選択UIの下へ退避させる（別effectのdest-boxとはこのクラス経由で協調）。
-      map.getContainer().classList.toggle("crm-has-route-alt", showSel);
       if (showSel) {
         altFastBtn.innerHTML =
           `<span class="route-alt__lb">🛣 高速あり</span><span class="route-alt__t">${fastRoute!.min}<small>分</small>・${Math.round(fastRoute!.km)}<small>km</small></span>`;
@@ -2594,10 +2594,10 @@ function RamenMapbox(props: Props) {
     const route = (from: Pt) => {
       lastRouteAt = Date.now();
       const isFirst = !rCoords;
-      if (isFirst) box.textContent = "🛣 経路を計算中…";
+      if (isFirst) routeEtaRef.current = "🛣 経路を計算中…";
       fetchRoute(from, to, lastHeading, avoidHw).then((r) => {
         if (aborted || !r) {
-          if (!rCoords && !aborted) box.textContent = "🛣 経路を取得できませんでした";
+          if (!rCoords && !aborted) routeEtaRef.current = "🛣 経路を取得できませんでした";
           return;
         }
         if (avoidHw) localRoute = r; else fastRoute = r;
@@ -2633,12 +2633,12 @@ function RamenMapbox(props: Props) {
       watchId = navigator.geolocation.watchPosition(
         onPos,
         () => {
-          if (!aborted && !rCoords) box.textContent = "🛣 現在地を取得できませんでした";
+          if (!aborted && !rCoords) routeEtaRef.current = "🛣 現在地を取得できませんでした";
         },
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
       );
     } else {
-      box.textContent = "🛣 現在地が使えません（HTTPSが必要）";
+      routeEtaRef.current = "🛣 現在地が使えません（HTTPSが必要）";
     }
 
     return () => {
@@ -2650,7 +2650,7 @@ function RamenMapbox(props: Props) {
       hwNotice.remove();
       signCard.remove();
       altPanel.remove();
-      map.getContainer().classList.remove("crm-has-route-alt"); // dest-box退避の印を解除
+      routeEtaRef.current = null; // 残距離/ETA表示をクリア（dest-boxの2行目が消える）
       clearBtn.remove();
       hwStrip.remove();
       routeSnapRef.current = null;
@@ -3090,13 +3090,16 @@ function RamenMapbox(props: Props) {
     let addrReqId = 0;
     let elevReqId = 0; // 自車横の標高表示の競合排除（住所と同じ約40m毎に更新）
 
-    // 左上(残距離の下): 目的地名＋方位矢印（地図の向きに対する相対方位）。目的地セット時のみ表示。
+    // 左上: 目的地名ウィンドウ。1行目=方位矢印＋目的地名、2行目=残り距離・到着時間(route effectがrouteEtaRefへ算出)。
+    // 目的地セット時のみ表示。旧route-box(残距離/ETA単独)はここに統合し非表示化した。
     const destBox = document.createElement("div");
     destBox.className = "dest-box";
     destBox.style.display = "none";
     destBox.innerHTML =
+      '<div class="dest-line1">' +
       '<svg class="dest-arrow" width="20" height="20" viewBox="0 0 24 24"><path d="M12 2 L19 20 L12 15 L5 20 Z" fill="#2f9e44" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
-      '<span class="dest-txt"></span>';
+      '<span class="dest-txt"></span></div>' +
+      '<div class="dest-eta"></div>';
     map.getContainer().appendChild(destBox);
     const norm360 = (d: number) => ((d % 360) + 360) % 360;
     const angDiff = (a: number, b: number) => (((a - b + 540) % 360) - 180); // a-b を[-180,180)
@@ -3324,16 +3327,22 @@ function RamenMapbox(props: Props) {
         const dkm = haversineKm(rawPt, { lat: dst.lat, lng: dst.lng });
         const txt = destBox.querySelector(".dest-txt") as HTMLElement | null;
         const arr = destBox.querySelector(".dest-arrow") as HTMLElement | null;
-        if (dkm < 0.06) {
-          if (txt) txt.textContent = `まもなく到着: ${dst.name ?? ""}`;
-          if (arr) arr.style.visibility = "hidden";
-        } else {
-          if (txt) txt.textContent = dst.name ?? "目的地";
-          if (arr) {
+        const eta = destBox.querySelector(".dest-eta") as HTMLElement | null;
+        // 1行目: 目的地名（＋この先で目的地の方向を指す方位矢印）。2行目: 残り距離・到着時間(routeEtaRef)。
+        if (txt) txt.textContent = dst.name ?? "目的地";
+        if (arr) {
+          if (dkm < 0.06) {
+            arr.style.visibility = "hidden";
+          } else {
             arr.style.visibility = "";
             const rel = norm360(bearingDeg(rawPt, { lat: dst.lat, lng: dst.lng }) - map.getBearing());
             arr.style.transform = `rotate(${rel}deg)`;
           }
+        }
+        if (eta) {
+          const line = routeEtaRef.current; // route effectがルート沿いの残距離/ETAを算出。ルート未計算/無ければnull
+          eta.textContent = line ?? "";
+          eta.style.display = line ? "" : "none";
         }
       } else {
         destBox.style.display = "none";
