@@ -2418,37 +2418,53 @@ function RamenMapbox(props: Props) {
       if (placeMatch && placeMatch[1]) return placeMatch[1];
       return DIR_TEXT[next.modifier || "straight"] || "";
     };
-    // 案内標識カード更新: 前方の直近の意味ある分岐(方面/出口/レーン/距離)を表示。無ければ隠す。
+    // 「案内する意味のある分岐」判定（fromKm より先・案内不要種別を除外）。next/その先の共通条件。
+    const isMeaningfulMan = (m: RouteManeuver, fromKm: number): boolean => {
+      if (SKIP_MAN.has(m.type) || m.atKm <= fromKm + 0.02) return false;
+      if (!isHwManeuver(m)) {
+        if (SKIP_MAN_ROAD_ONLY.has(m.type)) return false;
+        if (m.type === "turn" && m.modifier === "straight") return false;
+      }
+      return true;
+    };
+    const signDistTxt = (distM: number) =>
+      distM >= 1000 ? (distM / 1000).toFixed(1) + "km" : Math.round(distM / 10) * 10 + "m";
+    // 路線番号(進入先)のバッジ表示。E14/E51等の高速ナンバー先頭のみ（; 区切りの複数refは先頭）。
+    const signRef = (ref: string) => ref.split(/[;,]/)[0].trim();
+    // 案内標識カード更新: 前方の直近の意味ある分岐(路線番号/方面/出口/レーン/距離)＋「その先の分岐」を表示。無ければ隠す。
     const updateSignCard = (carDistKm: number) => {
       if (!maneuvers.length) { signCard.style.display = "none"; return; }
-      const next = maneuvers.find((m) => {
-        if (SKIP_MAN.has(m.type) || m.atKm <= carDistKm + 0.02) return false;
-        if (!isHwManeuver(m)) {
-          if (SKIP_MAN_ROAD_ONLY.has(m.type)) return false;
-          if (m.type === "turn" && m.modifier === "straight") return false;
-        }
-        return true;
-      });
+      const next = maneuvers.find((m) => isMeaningfulMan(m, carDistKm));
       if (!next) { signCard.style.display = "none"; return; }
       const isHw = isHwManeuver(next);
       const distM = Math.max(0, (next.atKm - carDistKm) * 1000);
       const showKm = isHw ? SIGN_SHOW_KM_HW : SIGN_SHOW_KM_ROAD;
       if (distM > showKm * 1000) { signCard.style.display = "none"; return; }
-      const distTxt = distM >= 1000 ? (distM / 1000).toFixed(1) + "km" : Math.round(distM / 10) * 10 + "m";
+      const distTxt = signDistTxt(distM);
       const toward = resolveTowardText(next) || "この先分岐";
       const exitBadge = next.exit ? `<span class="nav-exit">出口 ${escHtml(next.exit)}</span>` : "";
+      // 路線番号バッジ: 高速の分岐で進入先の路線番号(E14等)があれば方面の前に表示（路線番号・方面の強化）。
+      const refBadge = isHw && next.ref ? `<span class="nav-ref">${escHtml(signRef(next.ref))}</span>` : "";
       const laneRow =
         next.lanes && next.lanes.length
           ? `<div class="nav-lanes-label">${escHtml(toward)}</div><div class="nav-lanes">${next.lanes
               .map((l) => arrowSpan(modAngle(l.activeDir || l.dirs[0]), l.active ? "lane-on" : "lane-off"))
               .join("")}</div>`
           : "";
+      // その先の分岐: 次の分岐の先にある意味ある分岐を小さく予告（近距離のみ＝高速12km/一般道2km以内で先読み）。
+      const next2 = maneuvers.find((m) => isMeaningfulMan(m, next.atKm));
+      const aheadPreviewKm = isHw ? 12 : 2;
+      const next2DistM = next2 ? Math.max(0, (next2.atKm - carDistKm) * 1000) : 0;
+      const aheadRow =
+        next2 && next2DistM <= aheadPreviewKm * 1000
+          ? `<div class="nav-ahead">${arrowSpan(modAngle(next2.modifier), "nav-ahead-arrow")}<span>その先 ${signDistTxt(next2DistM)} ・ ${escHtml(resolveTowardText(next2) || DIR_TEXT[next2.modifier || "straight"] || "分岐")}</span></div>`
+          : "";
       signCard.classList.toggle("nav-sign--road", !isHw);
       signCard.style.display = "";
       signCard.innerHTML =
         `<div class="nav-top">${arrowSpan(modAngle(next.modifier), "nav-dir")}` +
-        `<div class="nav-info"><div class="nav-toward">${exitBadge}${escHtml(toward)}</div>` +
-        `<div class="nav-dist">${distTxt}</div></div></div>${laneRow}`;
+        `<div class="nav-info"><div class="nav-toward">${refBadge}${exitBadge}${escHtml(toward)}</div>` +
+        `<div class="nav-dist">${distTxt}</div></div></div>${laneRow}${aheadRow}`;
     };
 
     const refresh = (here: Pt) => {

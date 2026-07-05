@@ -1307,6 +1307,37 @@ body {
   border-radius: 6px;
   padding: 1px 8px;
 }
+/* 進入先の路線番号(E14等)バッジ＝高速の路線ナンバー標識調（白地・角丸・アクセント枠） */
+.nav-ref {
+  flex: none;
+  font-size: 14px;
+  font-weight: 800;
+  background: #fff;
+  color: var(--nav-accent);
+  border: 2px solid var(--nav-accent);
+  border-radius: 7px;
+  padding: 0 7px;
+  letter-spacing: 0.3px;
+}
+/* 「その先の分岐」予告（案内標識カード下部・小さく・区切り線つき） */
+.nav-ahead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.92;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-ahead .nav-ahead-arrow {
+  font-size: 15px;
+  flex: none;
+}
 .nav-dist {
   font-size: 16px;
   font-weight: 700;
