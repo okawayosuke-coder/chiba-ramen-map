@@ -2030,6 +2030,9 @@ function RamenMapbox(props: Props) {
     let congestion: (number | null)[] = []; // セグメント毎の渋滞度(Mapbox congestion_numeric)。ルート線の渋滞色分け用
     let maneuvers: RouteManeuver[] = []; // 分岐/方面/レーンの案内標識列(Mapbox banner由来)。案内カード用
     let curRouteCoords: [number, number][] | null = null; // 現在有効なルートの座標列（非同期再判定の鮮度ガード）
+    let curRemKm: number | null = null; // 走行中の「選択中ルートの残り距離(km)」＝選択UIの選択側表示用（dest-boxと一致）
+    let curRemMin: number | null = null; // 同・残り所要(分)
+    let lastAltRefreshAt = 0; // 非選択の代替ルートを現在地から取り直す間隔スロットル(ms)
     const isHwSeg = (segIdx: number) => hwRanges.some(([a, b]) => segIdx >= a && segIdx < b);
 
     // 経路の高速/有料区間: ORS waycategory があればそれ、無ければ(Mapbox等)同梱の高速形状で経路座標を判定。
@@ -2438,6 +2441,8 @@ function RamenMapbox(props: Props) {
     const refresh = (here: Pt) => {
       if (!rCoords || rKm <= 0) return null;
       const pr = projectOnRoute(rCoords, rSuffix, here);
+      curRemKm = pr.remKm; // 選択UIの選択側は「走行中の残り」を出す（dest-boxと一致・毎フィックス減る）
+      curRemMin = rKm > 0 ? rMin * (pr.remKm / rKm) : null;
       if (pr.remKm < 0.08) {
         routeEtaRef.current = "🛣 まもなく到着";
       } else {
@@ -2462,8 +2467,15 @@ function RamenMapbox(props: Props) {
       updateHwStrip(rKm - pr.remKm, segBearing);
       updateSignCard(rKm - pr.remKm); // 前方の分岐/方面/レーン案内カードを更新
       updateAheadGrade(rKm - pr.remKm); // この先の急勾配を先読みして aheadGradeRef に反映
+      // 選択UI: 選択側の残りを毎フィックス反映＋非選択の代替を現在地から定期取り直し（実車FB=非選択が減らない対策）
+      updateSelector();
+      if (fastHasHw && fastRoute && localRoute && performance.now() - lastAltRefreshAt > ALT_REFRESH_MS) {
+        lastAltRefreshAt = performance.now();
+        refreshInactiveAlt(here);
+      }
       return pr;
     };
+    const ALT_REFRESH_MS = 12000; // 非選択の代替ルートを現在地から取り直す最小間隔
 
     // ===== ルート選択（高速あり fast / 一般道のみ local）＝所要時間で選べる =====
     let avoidHw = false; // 現在の選択。既定は高速あり(速い方)
@@ -2477,10 +2489,16 @@ function RamenMapbox(props: Props) {
       // follow(走行モード)には依存させない＝同一店舗なら状態に関わらず一貫して選択UIが出る。
       const showSel = fastHasHw && !!fastRoute && !!localRoute;
       if (showSel) {
+        // 選択中の案は「走行中の残り(curRem)」＝dest-boxと一致し毎フィックス減る。非選択の案は
+        // 現在地から取り直した全長(fastRoute/localRoute.km/min)＝refreshInactiveAltが更新し減っていく。
+        const fastMin = !avoidHw && curRemMin != null ? curRemMin : fastRoute!.min;
+        const fastKm = !avoidHw && curRemKm != null ? curRemKm : fastRoute!.km;
+        const localMin = avoidHw && curRemMin != null ? curRemMin : localRoute!.min;
+        const localKm = avoidHw && curRemKm != null ? curRemKm : localRoute!.km;
         altFastBtn.innerHTML =
-          `<span class="route-alt__lb">🛣 高速あり</span><span class="route-alt__t">${fastRoute!.min}<small>分</small>・${Math.round(fastRoute!.km)}<small>km</small></span>`;
+          `<span class="route-alt__lb">🛣 高速あり</span><span class="route-alt__t">${Math.round(fastMin)}<small>分</small>・${Math.round(fastKm)}<small>km</small></span>`;
         altLocalBtn.innerHTML =
-          `<span class="route-alt__lb">🚗 一般道のみ</span><span class="route-alt__t">${localRoute!.min}<small>分</small>・${Math.round(localRoute!.km)}<small>km</small></span>`;
+          `<span class="route-alt__lb">🚗 一般道のみ</span><span class="route-alt__t">${Math.round(localMin)}<small>分</small>・${Math.round(localKm)}<small>km</small></span>`;
         altFastBtn.classList.toggle("is-active", !avoidHw);
         altLocalBtn.classList.toggle("is-active", avoidHw);
         altPanel.style.display = "";
@@ -2565,12 +2583,28 @@ function RamenMapbox(props: Props) {
       updateSelector();
     };
 
-    // 選択ボタン: タップで avoidHw を切替え、取得済みルートを即適用（全体へ引き直す）。
-    altFastBtn.onclick = () => {
-      if (avoidHw && fastRoute) { avoidHw = false; applyRoute(fastRoute, lastHereHw, true); }
+    // 選択ボタン: タップで avoidHw を切替え、その場（現在の自車位置）から選択モードのルートを取り直す。
+    // 実車FB「途中で押すと出発地からのルートになる」対策＝保存済み(出発地)ルートの流用をやめ route(現在地) で再検索。
+    const switchMode = (avoid: boolean) => {
+      if (avoidHw === avoid) return; // 既にそのモード
+      avoidHw = avoid;
+      updateSelector(); // is-active と選択側表示を即切替
+      const from =
+        lastHereHw ?? (rCoords ? { lat: rCoords[0][0], lng: rCoords[0][1] } : null);
+      if (from) route(from); // 現在地から選択モードで再ルート（isFirst=falseなのでfitBoundsせず追従維持）
+      else { const r = avoid ? localRoute : fastRoute; if (r) applyRoute(r, lastHereHw, true); } // GPS未取得時のみ保存流用
     };
-    altLocalBtn.onclick = () => {
-      if (!avoidHw && localRoute) { avoidHw = true; applyRoute(localRoute, lastHereHw, true); }
+    altFastBtn.onclick = () => switchMode(false);
+    altLocalBtn.onclick = () => switchMode(true);
+
+    // 非選択側の代替ルートを現在地から取り直す（表示を現在地基準に。選択側は走行中の残りで別途更新）。
+    const refreshInactiveAlt = (from: Pt) => {
+      const avoid = !avoidHw; // いま非選択のモード
+      fetchRoute(from, to, lastHeading, avoid).then((r) => {
+        if (aborted || !r) return;
+        if (avoid) localRoute = r; else fastRoute = r;
+        updateSelector();
+      });
     };
 
     // fetchRoute を最大 tries 回リトライ（APIの一時失敗で片方の案が欠けると選択UIが黙って出ない対策）。
