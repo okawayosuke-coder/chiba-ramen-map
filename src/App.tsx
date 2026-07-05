@@ -109,6 +109,15 @@ const DEFAULTS: Filters = {
   sort: "rating",
 };
 
+/** 所要時間の表示。60分以上は「1h」「1h6分」形式（要望）、未満は「6分」。 */
+function fmtDurText(min: number): string {
+  const m = Math.max(0, Math.round(min));
+  if (m < 60) return `${m}分`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return mm > 0 ? `${h}h${mm}分` : `${h}h`;
+}
+
 // 各店のジャンルを一度だけ計算（店名判定 ∪ Web調査による上書き）
 const SHOP_GENRES = new Map<Shop, string[]>(
   ALL_SHOPS.map((s) => {
@@ -630,7 +639,7 @@ export default function App() {
               </div>
               {destDist != null && (
                 <div className="dest-mini__dist">
-                  📍 直線{fmtDistance(destDist)}・車約{roughMinutes(destDist)}分
+                  📍 直線{fmtDistance(destDist)}・車約{fmtDurText(roughMinutes(destDist))}
                 </div>
               )}
               <div className="dest-mini__actions">
@@ -907,7 +916,7 @@ export default function App() {
                 <span>口コミ {s.reviews.toLocaleString()}件</span>
                 {km != null && (
                   <span className="shop__dist">
-                    📍直線{fmtDistance(km)}・車約{roughMinutes(km)}分
+                    📍直線{fmtDistance(km)}・車約{fmtDurText(roughMinutes(km))}
                   </span>
                 )}
               </div>

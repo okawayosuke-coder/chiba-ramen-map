@@ -261,6 +261,15 @@ function roundNum150(num: number): number {
   return pow10 * d;
 }
 
+/** 所要時間の表示HTML。60分以上は「1h」「1h6分」形式（要望）、未満は「6分」。単位は<small>で小さく。 */
+function fmtDurHtml(min: number): string {
+  const m = Math.max(0, Math.round(min));
+  if (m < 60) return `${m}<small>分</small>`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return mm > 0 ? `${h}<small>h</small>${mm}<small>分</small>` : `${h}<small>h</small>`;
+}
+
 /** 半段(0.5)ズームの +/- コントロール（Leaflet zoomDelta/zoomSnap=0.5 移植）。
  *  Mapbox標準は1段ズーム＝ユーザに「一回タップで2段階」に感じられ、かつ縮尺150mを飛ばすため自作。 */
 class HalfStepZoomControl implements mapboxgl.IControl {
@@ -2284,7 +2293,7 @@ function RamenMapbox(props: Props) {
           return (
             `<div class="hw-row hw-${rf.f.kind}"><div class="hw-top"><span class="hw-badge">${HW_BADGE[rf.f.kind]}</span>` +
             `<span class="hw-name">${escHtml(rf.f.name)}</span></div>${amenRow}${towardRowHtml(rf.f, heading)}` +
-            `<div class="hw-dist">${dist}<small>km</small> ・ ${remMin}<small>分</small></div></div>`
+            `<div class="hw-dist">${dist}<small>km</small> ・ ${fmtDurHtml(remMin)}</div></div>`
           );
         })
         .join("");
@@ -2500,9 +2509,9 @@ function RamenMapbox(props: Props) {
         const localMin = avoidHw && curRemMin != null ? curRemMin : localRoute!.min;
         const localKm = avoidHw && curRemKm != null ? curRemKm : localRoute!.km;
         altFastBtn.innerHTML =
-          `<span class="route-alt__lb">🛣 高速あり</span><span class="route-alt__t">${Math.round(fastMin)}<small>分</small>・${Math.round(fastKm)}<small>km</small></span>`;
+          `<span class="route-alt__lb">🛣 高速あり</span><span class="route-alt__t">${fmtDurHtml(fastMin)}・${Math.round(fastKm)}<small>km</small></span>`;
         altLocalBtn.innerHTML =
-          `<span class="route-alt__lb">🚗 一般道のみ</span><span class="route-alt__t">${Math.round(localMin)}<small>分</small>・${Math.round(localKm)}<small>km</small></span>`;
+          `<span class="route-alt__lb">🚗 一般道のみ</span><span class="route-alt__t">${fmtDurHtml(localMin)}・${Math.round(localKm)}<small>km</small></span>`;
         altFastBtn.classList.toggle("is-active", !avoidHw);
         altLocalBtn.classList.toggle("is-active", avoidHw);
         altPanel.style.display = "";
@@ -2872,7 +2881,7 @@ function RamenMapbox(props: Props) {
                   .map((t) => `<span class="hw-dir" style="transform:rotate(${bearingToArrowAngle(t.bearing, hd)}deg)">⬆</span>${esc(t.name)}`)
                   .join("")}</div>`
               : "";
-          const minTxt = min != null ? ` ・ ${min}<small>分</small>` : "";
+          const minTxt = min != null ? ` ・ ${fmtDurHtml(min)}` : "";
           return (
             `<div class="hw-row hw-${f.kind}"><div class="hw-top"><span class="hw-badge">${BADGE[f.kind]}</span>` +
             `<span class="hw-name">${esc(f.name)}</span></div>${amenRow}${towardRow}` +
