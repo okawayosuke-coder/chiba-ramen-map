@@ -408,11 +408,11 @@ class Scale150Control implements mapboxgl.IControl {
   }
 }
 
-/** 縮尺バーが「150 m」を表示するズームを返す。Scale150Controlは中心緯度で maxWidth(130px) 幅の実距離を
- *  roundNum150 で丸める＝実距離が [150,200) m のとき「150 m」と表示する。確実に150mへ入れるため中央付近の
- *  170m を狙う。Mapbox: metersPerPixel = 40075016.686 * cos(lat) / 2^(zoom+9)（512pxタイル）。 */
-function zoomForScale150(lat: number): number {
-  const TARGET_M = 170; // [150,200) の中央付近＝縮尺バーが確実に「150 m」表示になる
+/** 縮尺バーが「200 m」を表示するズームを返す。Scale150Controlは中心緯度で maxWidth(130px) 幅の実距離を
+ *  roundNum150 で丸める＝実距離が [200,300) m のとき「200 m」と表示する。確実に200mへ入れるため中央付近の
+ *  250m を狙う。Mapbox: metersPerPixel = 40075016.686 * cos(lat) / 2^(zoom+9)（512pxタイル）。 */
+function zoomForScale200(lat: number): number {
+  const TARGET_M = 250; // [200,300) の中央付近＝縮尺バーが確実に「200 m」表示になる
   const MAX_WIDTH = 130; // Scale150Control の maxWidth と一致
   return Math.log2((MAX_WIDTH * 40075016.686 * Math.cos((lat * Math.PI) / 180)) / TARGET_M) - 9;
 }
@@ -3079,7 +3079,7 @@ function RamenMapbox(props: Props) {
     const c0 = propsRef.current.userPos ?? { lat: map.getCenter().lat, lng: map.getCenter().lng };
     geoMarker.setLngLat([c0.lng, c0.lat]).addTo(map);
 
-    // 「現在地」ボタン（要望で常時表示）。タップで現在地へ復帰＋表示スケールを150mに。
+    // 「現在地」ボタン（要望で常時表示）。タップで現在地へ復帰＋表示スケールを200mに。
     const recBtn = document.createElement("button");
     recBtn.type = "button";
     recBtn.className = "recenter-btn"; // 右・中央（Leaflet版と同じ位置）。常時表示。
@@ -3096,16 +3096,16 @@ function RamenMapbox(props: Props) {
     };
     recBtn.onclick = () => {
       setFollowing(true);
-      // 現在地へ戻る＋表示スケールを150mに（要望）。中心はGPS実位置、無ければ現在の地図中心。
+      // 現在地へ戻る＋表示スケールを200mに（要望）。中心はGPS実位置、無ければ現在の地図中心。
       const center = (lastHere ?? (map.getCenter().toArray() as [number, number])) as [number, number];
       const lat = lastHere ? lastHere[1] : map.getCenter().lat;
-      const targetZoom = zoomForScale150(lat);
+      const targetZoom = zoomForScale200(lat);
       if (camRaf) {
         // 走行追従ループ稼働中＝center/bearingは毎フレーム上書きされるので縮尺だけ即時反映
         // （applyFollowはzoomを触らないため保持される）。
         map.setZoom(targetZoom);
       } else {
-        // 追従が外れている（手動パン／停車）＝現在地へ滑らかに寄せ直し＋150m縮尺。
+        // 追従が外れている（手動パン／停車）＝現在地へ滑らかに寄せ直し＋200m縮尺。
         map.easeTo({ center, zoom: targetZoom, bearing: headingUp ? lastBearing : 0, offset: [0, leadPx()], duration: 600 });
       }
     };
