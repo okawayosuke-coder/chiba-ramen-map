@@ -1933,8 +1933,12 @@ function RamenMapbox(props: Props) {
     };
     const animateTrimTo = (target: number) => {
       trimTo = Math.max(0, Math.min(1, target));
-      // 変化が微小（停車/低速）なら rAF を回さず即適用＝GPUを起こさない（省電力・発熱低減）。
-      if (Math.abs(trimTo - trimFrac) < 0.0008) {
+      // 「ほぼ停車」(移動<8m＝GPSジッタ相当)なら rAF を回さず即適用＝GPUを起こさない（省電力・停車中の線のふらつき防止）。
+      // 走行中(>8m/fix)は下で追従カメラと同じ1100ms補間＝自車マークと同期させ、線が自車より先に消えないようにする。
+      // ★旧実装はフラクション<0.0008で早期スナップ→長経路(例50km≈40m)では高速の1フィックス移動(≈28m)でも毎回スナップし、
+      //   1100ms補間で追従中のカメラ(自車)より trim が先行して消えていた（実車FB）。絶対距離基準に変更して解消。
+      const moveM = rKm > 0 ? Math.abs(trimTo - trimFrac) * rKm * 1000 : 0;
+      if (moveM < 8) {
         if (trimRaf) {
           cancelAnimationFrame(trimRaf);
           trimRaf = 0;
