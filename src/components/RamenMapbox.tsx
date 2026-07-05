@@ -2809,9 +2809,39 @@ function RamenMapbox(props: Props) {
       propsRef.current.hwOverride === "on" ||
       (propsRef.current.hwOverride === "auto" && autoEff);
     const toRad = (d: number) => (d * Math.PI) / 180;
+
+    // フリー走行（ルート未設定）の分岐案内カード＝上部中央の緑看板。前方の直近IC/JCTの方面(矢印+地名)＋
+    // 出口番号＋距離＋「その先の分岐」を表示。ルート案内中(目的地あり)は route effect の nav-sign が担うので出さない。
+    const branchCard = document.createElement("div");
+    branchCard.className = "nav-sign nav-sign--free";
+    branchCard.style.display = "none";
+    map.getContainer().appendChild(branchCard);
+    const BR_SHOW_KM = 3; // この距離以内の前方IC/JCTだけカード表示
+    const brDist = (km: number) => (km < 1 ? Math.round((km * 1000) / 10) * 10 + "m" : km.toFixed(1) + "km");
+    const updateBranchCard = (ahead: { f: HwFacility; fwd: number }[], hd: number) => {
+      if (propsRef.current.dest) { branchCard.style.display = "none"; return; } // 案内中はnav-signに任せる
+      const branches = ahead.filter((c) => (c.f.kind === "ic" || c.f.kind === "jct") && !!c.f.toward?.length);
+      const b0 = branches[0];
+      if (!b0 || b0.fwd > BR_SHOW_KM) { branchCard.style.display = "none"; return; }
+      const f = b0.f;
+      const badge = `<span class="nav-ref">${BADGE[f.kind]}</span>`;
+      const exitBadge = f.exit ? `<span class="nav-exit">出口 ${esc(f.exit)}</span>` : "";
+      const dirs = f.toward!
+        .slice(0, 3)
+        .map((t) => `<span class="nav-branch-dir"><span class="nav-arrow" style="transform:rotate(${bearingToArrowAngle(t.bearing, hd)}deg)">⬆</span>${esc(t.name)}</span>`)
+        .join("");
+      const b1 = branches[1];
+      const aheadRow = b1 ? `<div class="nav-ahead"><span>その先 ${brDist(b1.fwd)} ・ ${esc(b1.f.name)}</span></div>` : "";
+      branchCard.style.display = "";
+      branchCard.innerHTML =
+        `<div class="nav-top"><div class="nav-info"><div class="nav-toward">${badge}${exitBadge}${esc(f.name)}</div>` +
+        `<div class="nav-dist">${brDist(b0.fwd)}</div></div></div>` +
+        `<div class="nav-branch-dirs">${dirs}</div>${aheadRow}`;
+    };
     const render = (here: Pt, hd: number) => {
       if (!facilities || !effOn()) {
         strip.style.display = "none";
+        branchCard.style.display = "none";
         return;
       }
       // 現在路線が確定し、かつその名前の施設が実在する(=信頼できる)ときだけ路線名で厳密に絞る。
@@ -2877,6 +2907,7 @@ function RamenMapbox(props: Props) {
       const ahead = Array.from(best.values()).slice(0, LOOK);
       if (!ahead.length) {
         strip.style.display = "none";
+        branchCard.style.display = "none";
         return;
       }
       strip.style.display = "";
@@ -2909,6 +2940,7 @@ function RamenMapbox(props: Props) {
       while (strip.children.length > 1 && strip.scrollHeight > strip.clientHeight + 1) {
         strip.removeChild(strip.lastElementChild!);
       }
+      updateBranchCard(ahead, hd); // フリー走行の分岐カード（前方IC/JCTの方面）を更新
     };
     loadHighway()
       .then((d) => {
@@ -2993,6 +3025,7 @@ function RamenMapbox(props: Props) {
       hwActiveRef.current = effOn();
       if (lastHd == null || !effOn()) {
         strip.style.display = "none";
+        branchCard.style.display = "none";
         return;
       }
       render(here, lastHd);
@@ -3004,6 +3037,7 @@ function RamenMapbox(props: Props) {
       aborted = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
       strip.remove();
+      branchCard.remove();
       hwActiveRef.current = false; // 高速モード状態を解放（勾配メーターの抑制も解除）
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
