@@ -145,15 +145,19 @@ export async function geocodePlaces(
       }>;
     };
     const feats = Array.isArray(j.features) ? j.features : [];
+    // 住所タイプの結果は Mapbox が name/place_formatted を「〒285-0807 千葉県…」と郵便番号込みで返す。
+    // 目的地名(dest-box)が郵便番号ぶん横長になるので、先頭の郵便番号(〒NNN-NNNN)を除去する。
+    const stripPostal = (s: string) => (s || "").replace(/〒?\s*\d{3}-\d{4}\s*/, "").trim();
     const out: PlaceHit[] = [];
     for (const f of feats) {
       const c = f.geometry?.coordinates;
       if (!c || c.length < 2) continue;
+      const title = stripPostal(f.properties?.name || "") || q;
       out.push({
         lat: c[1],
         lng: c[0],
-        title: f.properties?.name || q,
-        subtitle: f.properties?.place_formatted || "",
+        title,
+        subtitle: stripPostal(f.properties?.place_formatted || ""),
       });
     }
     return out;
