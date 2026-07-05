@@ -3045,10 +3045,13 @@ function RamenMapbox(props: Props) {
     let hdgPrevPt: Pt | null = null; // GPS heading 無し端末向け: 位置差分から方位を出すフォールバック用
     let carRot = 0; // ノースアップ時の自車矢印の連続回転角（最短回転）
 
+    // 矢印は縦グラデ(上=明/下=暗)で陰影を付け立体的に見せる。3D時はupdateCarTiltでドロップシャドウも足す。
     const CAR_SVG =
       '<svg class="car-arrow" width="64" height="64" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs><linearGradient id="carGrad" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#5b9cf0"/><stop offset="1" stop-color="#0d54bd"/></linearGradient></defs>' +
       '<circle cx="18" cy="18" r="15" fill="rgba(26,115,232,0.18)"/>' +
-      '<path d="M18 4 L27 26 L18 21 L9 26 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
+      '<path d="M18 4 L27 26 L18 21 L9 26 Z" fill="url(#carGrad)" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
     // 自車の右に標高(m)を常設表示（Leaflet版＝自車マーク横ツールチップ「標高 ◯m」移植）。約40m毎更新。
     const CAR_HTML = CAR_SVG + '<span class="car-elev-label">標高 …</span>';
     // 追従中の自車＝画面固定オーバーレイ（カメラが自車を中央追従するので地図がなめらかに流れる）。
@@ -3231,10 +3234,12 @@ function RamenMapbox(props: Props) {
     };
     const updateCarTilt = () => {
       const rot = headingUp ? 0 : carRot;
+      // 3D(pitch>0.5)時のみ影を落として「路面から少し浮いた立体」に見せる。2Dは影なし(平面)。
+      const filt = map.getPitch() > 0.5 ? "drop-shadow(0 3px 4px rgba(0,0,0,0.55))" : "";
       const a = carEl.querySelector(".car-arrow") as HTMLElement | null;
-      if (a) a.style.transform = carArrowTransform(rot); // 画面固定の自車
+      if (a) { a.style.transform = carArrowTransform(rot); a.style.filter = filt; } // 画面固定の自車
       const b = geoEl.querySelector(".car-arrow") as HTMLElement | null;
-      if (b) b.style.transform = carArrowTransform(rot); // 追従パン中の地理マーカー
+      if (b) { b.style.transform = carArrowTransform(rot); b.style.filter = filt; } // 追従パン中の地理マーカー
     };
     const applyCarRotation = () => {
       if (headingUp) return;
