@@ -179,11 +179,11 @@ function parseElements(j: { elements?: unknown[] }): Poi[] {
   return out;
 }
 
-/** 指定bbox・指定種類のPOIを取得。kinds が空なら通信せず空配列を返す。
+/** 指定bbox・指定種類のPOIを Overpass から取得。kinds が空なら通信せず空配列を返す。
  *  nwr + out center で node だけでなく way/relation（駐車場のポリゴン等）も中心点で拾う。
  *  全ミラーへ並列に1リクエストずつ投げ、最初に成功した応答を採用する（Promise.any）。
  *  各リクエストは TIMEOUT_MS で自動中断。呼び出し側で最小間隔を担保しているため過剰アクセスにはならない。 */
-export async function fetchPois(b: BBox, kinds: PoiKind[]): Promise<Poi[]> {
+async function fetchOverpass(b: BBox, kinds: PoiKind[]): Promise<Poi[]> {
   if (!kinds.length) return [];
   const bbox = `${b.s},${b.w},${b.n},${b.e}`;
   const body = kinds.map((k) => `nwr${KIND_FILTER[k]}(${bbox});`).join("");
@@ -212,4 +212,121 @@ export async function fetchPois(b: BBox, kinds: PoiKind[]): Promise<Poi[]> {
 
   // 最速の成功を採用。全滅時は Promise.any が AggregateError を投げる（呼び出し側で捕捉）。
   return Promise.any(ENDPOINTS.map(once));
+}
+
+// ── Mapbox Search Box /category を主ソースにする（Overpass は不安定＝1秒〜20秒超・ズーム制限が必要）。────
+// Overpass 依存を減らし、全国どこでも高速・安定に施設を出す。カテゴリの canonical id は環境で揺れる可能性が
+// あるため「候補を順に試し、最初に通ったidをキャッシュ」＝実行時に自己検証する（存在しない前提を作らない）。
+
+/** 地図と共通のトークン（env優先→PWAのlocalStorage）。route.ts/geocode.ts と同じ規則。無ければ ""。 */
+function mapboxToken(): string {
+  const env = (import.meta.env.VITE_MAPBOX_TOKEN as string | undefined) || "";
+  if (env) return env;
+  try {
+    return localStorage.getItem("mapbox_poc_token") || "";
+  } catch {
+    return "";
+  }
+}
+
+// PoiKind → Mapbox のカテゴリ canonical id 候補（先頭から試す）。表記揺れ・taxonomy変更に備えて複数持つ。
+const KIND_CANDIDATES: Record<PoiKind, string[]> = {
+  conv: ["convenience_store", "convenience"],
+  fuel: ["gas_station", "fuel", "petrol_station"],
+  parking: ["parking", "parking_lot", "parking_garage"],
+  ev: ["charging_station", "ev_charging_station"], // Android docs で charging_station を確認
+  toilet: ["restroom", "toilet", "public_bathroom", "public_toilet"],
+};
+const resolvedCatId: Partial<Record<PoiKind, string>> = {}; // 通ったidをキャッシュ（次回以降は候補探索をスキップ）
+const deadCatKind = new Set<PoiKind>(); // 全候補が「存在しないid」だった種類（＝以降は常に Overpass）
+const CATEGORY = "https://api.mapbox.com/search/searchbox/v1/category";
+// Search Box category は1リクエスト最大25件/カテゴリ（API上限）。地図の表示bbox内なら実用上十分。
+
+/** 文字列→符号なし32bit風の数値ID（Poi.id は number 型。mapbox_id や座標から安定生成）。 */
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** /category レスポンス(GeoJSON FeatureCollection)を Poi[] へ整形。label は brand/name（アイコン判定に使う）。 */
+function parseCategory(j: unknown, kind: PoiKind): Poi[] {
+  const feats = (j as { features?: unknown[] })?.features;
+  if (!Array.isArray(feats)) return [];
+  const out: Poi[] = [];
+  for (const f of feats as Array<Record<string, unknown>>) {
+    const geom = f.geometry as { coordinates?: [number, number] } | undefined;
+    const c = geom?.coordinates;
+    if (!c || c.length < 2) continue;
+    const p = (f.properties ?? {}) as Record<string, unknown>;
+    const brand = Array.isArray(p.brand) ? String((p.brand as unknown[])[0] ?? "") : (p.brand as string) || "";
+    const label = brand || (p.name as string) || POI_KIND_META[kind].label;
+    const idKey = (p.mapbox_id as string) || `${c[0]},${c[1]}`;
+    out.push({ id: hashStr(idKey), lat: c[1], lng: c[0], kind, label });
+  }
+  return out;
+}
+
+/** 1種類ぶんを Mapbox /category から取得。候補idを順に試し、通ったidをキャッシュ。
+ *  返り値 null = 「Mapboxで取得不可（トークン無し/通信失敗/全候補が無効id）」＝この種類は Overpass に回す合図。 */
+async function fetchCategoryForKind(
+  kind: PoiKind,
+  bboxStr: string,
+  proxStr: string,
+  tok: string
+): Promise<Poi[] | null> {
+  if (deadCatKind.has(kind)) return null;
+  const cached = resolvedCatId[kind];
+  const candidates = cached ? [cached] : KIND_CANDIDATES[kind];
+  let allInvalid = true; // 全候補が 404/400/422（＝存在しないid）だったか
+  for (const id of candidates) {
+    let r: Response;
+    try {
+      r = await fetch(
+        `${CATEGORY}/${id}?bbox=${bboxStr}&proximity=${proxStr}&limit=25&language=ja&country=jp&access_token=${tok}`
+      );
+    } catch {
+      return null; // 通信失敗は一時的 → 今回だけ Overpass（dead 扱いにはしない）
+    }
+    if (r.ok) {
+      resolvedCatId[kind] = id;
+      try {
+        return parseCategory(await r.json(), kind);
+      } catch {
+        return null;
+      }
+    }
+    // 401/429 等は「idが悪い」ではない → dead 扱いにしない（次回リトライ余地を残す）
+    if (r.status !== 404 && r.status !== 400 && r.status !== 422) allInvalid = false;
+  }
+  if (allInvalid) deadCatKind.add(kind); // どの候補も存在しないid → 以降この種類は Overpass 固定
+  return null;
+}
+
+/** 指定bbox・指定種類のPOIを取得。Mapbox /category を主ソースにし、取得できない種類だけ Overpass へフォールバック。
+ *  返却の Poi 形状・呼び出し規約は従来どおり（マーカー描画・キャッシュ・ズーム制限は呼び出し側で不変）。 */
+export async function fetchPois(b: BBox, kinds: PoiKind[]): Promise<Poi[]> {
+  if (!kinds.length) return [];
+  const tok = mapboxToken();
+  if (!tok) return fetchOverpass(b, kinds); // トークン未設定は従来どおり Overpass
+  const bboxStr = `${b.w},${b.s},${b.e},${b.n}`; // Mapbox は minLng,minLat,maxLng,maxLat
+  const proxStr = `${(b.w + b.e) / 2},${(b.s + b.n) / 2}`;
+  const results = await Promise.all(
+    kinds.map((k) => fetchCategoryForKind(k, bboxStr, proxStr, tok))
+  );
+  const out: Poi[] = [];
+  const overpassKinds: PoiKind[] = [];
+  kinds.forEach((k, i) => {
+    const r = results[i];
+    if (r === null) overpassKinds.push(k);
+    else out.push(...r);
+  });
+  if (overpassKinds.length) {
+    const extra = await fetchOverpass(b, overpassKinds).catch(() => [] as Poi[]);
+    out.push(...extra);
+  }
+  return out;
 }
