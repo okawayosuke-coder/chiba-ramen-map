@@ -252,7 +252,34 @@ function hashStr(s: string): number {
   return h >>> 0;
 }
 
-/** /category レスポンス(GeoJSON FeatureCollection)を Poi[] へ整形。label は brand/name（アイコン判定に使う）。 */
+/** 2点間の概算距離(m)。近接POIの重複統合の判定用（緯度補正した等距円筒近似）。 */
+function distM(a: Poi, b: Poi): number {
+  const dLat = (a.lat - b.lat) * 111320;
+  const dLng = (a.lng - b.lng) * 111320 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot(dLat, dLng);
+}
+// 同一物理店舗がブランド名/運営会社名/表記違いで複数返るため、同種でこの距離以内は1件に統合する。
+// 例:「アポロステーションセルフ大日SS」と「千葉石油 セルフ大日SS」(~15m)、「セブンイレブン」と「セブン-イレブン」。
+const DEDUPE_M = 35;
+/** ブランド専用アイコンが付く（＝ブランド判定できた）Poi か。統合時の代表選択で優先する。 */
+function hasBrandIcon(p: Poi): boolean {
+  const f = poiIconFile(p.kind, p.label);
+  return !!f && f !== "generic.png";
+}
+/** 近接重複を統合（同種・DEDUPE_M以内）。ブランドアイコンが付く方を代表に残す。 */
+function dedupeByProximity(pois: Poi[]): Poi[] {
+  // ブランド判定できる方を先に見て代表に採るためソート（安定・branded優先）。
+  const sorted = [...pois].sort((a, b) => (hasBrandIcon(b) ? 1 : 0) - (hasBrandIcon(a) ? 1 : 0));
+  const kept: Poi[] = [];
+  for (const p of sorted) {
+    if (kept.some((q) => q.kind === p.kind && distM(q, p) < DEDUPE_M)) continue;
+    kept.push(p);
+  }
+  return kept;
+}
+
+/** /category レスポンス(GeoJSON FeatureCollection)を Poi[] へ整形。label は brand/name（アイコン判定に使う）。
+ *  Mapboxは同一店舗を別名で複数返すため近接重複を統合してから返す。 */
 function parseCategory(j: unknown, kind: PoiKind): Poi[] {
   const feats = (j as { features?: unknown[] })?.features;
   if (!Array.isArray(feats)) return [];
@@ -267,7 +294,7 @@ function parseCategory(j: unknown, kind: PoiKind): Poi[] {
     const idKey = (p.mapbox_id as string) || `${c[0]},${c[1]}`;
     out.push({ id: hashStr(idKey), lat: c[1], lng: c[0], kind, label });
   }
-  return out;
+  return dedupeByProximity(out);
 }
 
 /** 1種類ぶんを Mapbox /category から取得。候補idを順に試し、通ったidをキャッシュ。
