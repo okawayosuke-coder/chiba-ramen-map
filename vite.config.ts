@@ -23,10 +23,10 @@ export default defineConfig(({ command }) => ({
       registerType: "prompt",
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
-        name: "千葉ラーメンMAP",
-        short_name: "千葉ラーメン",
+        name: "TechMagic NAVI",
+        short_name: "TechMagic NAVI",
         description:
-          "千葉県＋江東区・江戸川区の高評価ラーメン店マップ。カーナビ起動対応。",
+          "TechMagic NAVI — カーナビ＋千葉県＋江東区・江戸川区の高評価ラーメン店マップ。",
         lang: "ja",
         theme_color: "#c92a2a",
         background_color: "#15171a",

@@ -1,4 +1,6 @@
-# 千葉ラーメンMAP 🍜
+# TechMagic NAVI 🧭🍜
+
+（旧称: 千葉ラーメンMAP。リポジトリ名/URL は `chiba-ramen-map` のまま）
 
 **公開URL: https://okawayosuke-coder.github.io/chiba-ramen-map/**
 
