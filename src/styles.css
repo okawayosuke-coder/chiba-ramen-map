@@ -640,6 +640,11 @@ body {
   color: var(--accent);
   font-weight: 600;
 }
+/* 実移動時間（Matrix・渋滞込み）バッジ。直線距離と区別する緑系 */
+.shop__dist--real {
+  color: #0ca678;
+  margin-left: 8px;
+}
 .shop__actions {
   display: flex;
   gap: 6px;

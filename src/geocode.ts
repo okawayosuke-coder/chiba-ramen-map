@@ -119,6 +119,110 @@ export interface PlaceHit {
   subtitle: string; // 住所（例: 千葉県佐倉市栄町）
 }
 
+/** Search Box /suggest の候補1件（座標はまだ持たない＝タップ時に /retrieve で取得）。 */
+export interface PlaceSuggestion {
+  mapboxId: string; // /retrieve に渡すID
+  title: string; // 施設/地名
+  subtitle: string; // 住所・文脈
+}
+
+// 郵便番号(〒NNN-NNNN)の先頭付与を除去（dest-box が横長になるのを防ぐ）。
+const stripPostal = (s: string) => (s || "").replace(/〒?\s*\d{3}-\d{4}\s*/, "").trim();
+
+/** Search Box のセッショントークン。/suggest→/retrieve を1セッションとして課金・関連付けするための UUID。
+ *  retrieve 完了でセッション終了 → 次の検索で resetSearchSession() が新トークンを発行する。 */
+let searchSession = "";
+function sessionToken(): string {
+  if (!searchSession) {
+    try {
+      searchSession = crypto.randomUUID();
+    } catch {
+      // crypto 不可の環境向けフォールバック（衝突しても課金分割されるだけで機能影響なし）
+      searchSession = "s-" + String(performance.now()).replace(".", "") + "-" + String(performance.now());
+    }
+  }
+  return searchSession;
+}
+/** 目的地確定（/retrieve 実行）でセッションを閉じる。次入力から新セッション。 */
+export function resetSearchSession(): void {
+  searchSession = "";
+}
+
+/** Search Box API(/suggest) で「入力途中の文字列 → 候補（地名/駅/施設/住所）」をタイプアヘッド取得。
+ *  /forward と違い1文字ごとに安く叩ける設計。座標は含まないため、確定は retrievePlace() で取得する。
+ *  トークン未設定/失敗/2文字未満は空配列。失敗時は呼び出し側が geocodePlaces にフォールバックできる。 */
+export async function suggestPlaces(
+  query: string,
+  proximity?: { lat: number; lng: number } | null
+): Promise<PlaceSuggestion[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const tok = mapboxToken();
+  if (!tok) return [];
+  const prox = proximity ? `&proximity=${proximity.lng},${proximity.lat}` : "";
+  try {
+    const r = await fetch(
+      `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(q)}` +
+        `&country=jp&language=ja&limit=6&session_token=${sessionToken()}${prox}&access_token=${tok}`
+    );
+    if (!r.ok) return [];
+    const j = (await r.json()) as {
+      suggestions?: Array<{
+        mapbox_id?: string;
+        name?: string;
+        place_formatted?: string;
+        full_address?: string;
+      }>;
+    };
+    const sugs = Array.isArray(j.suggestions) ? j.suggestions : [];
+    const out: PlaceSuggestion[] = [];
+    for (const s of sugs) {
+      if (!s.mapbox_id) continue;
+      out.push({
+        mapboxId: s.mapbox_id,
+        title: stripPostal(s.name || "") || q,
+        subtitle: stripPostal(s.place_formatted || s.full_address || ""),
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/** Search Box API(/retrieve) で /suggest 候補の mapbox_id → 座標を取得（同一 session_token）。
+ *  取得後はセッションを閉じる。失敗・座標欠落は null。 */
+export async function retrievePlace(sug: PlaceSuggestion): Promise<PlaceHit | null> {
+  const tok = mapboxToken();
+  if (!tok) return null;
+  try {
+    const r = await fetch(
+      `https://api.mapbox.com/search/searchbox/v1/retrieve/${encodeURIComponent(sug.mapboxId)}` +
+        `?language=ja&session_token=${sessionToken()}&access_token=${tok}`
+    );
+    resetSearchSession(); // retrieve でセッション完了 → 次入力は新セッション
+    if (!r.ok) return null;
+    const j = (await r.json()) as {
+      features?: Array<{
+        geometry?: { coordinates?: [number, number] };
+        properties?: { name?: string; place_formatted?: string };
+      }>;
+    };
+    const f = Array.isArray(j.features) ? j.features[0] : null;
+    const c = f?.geometry?.coordinates;
+    if (!c || c.length < 2) return null;
+    return {
+      lat: c[1],
+      lng: c[0],
+      title: stripPostal(f?.properties?.name || "") || sug.title,
+      subtitle: stripPostal(f?.properties?.place_formatted || "") || sug.subtitle,
+    };
+  } catch {
+    resetSearchSession();
+    return null;
+  }
+}
+
 /** Mapbox Search Box API(/forward) で「キーワード → 地名/駅/施設/住所」を複数候補で返す。
  *  GSI住所ジオコーダは住所専用で「佐倉駅」等のPOI/駅名/ランドマークを解決できないため、
  *  目的地のキーワード検索はこちらを使う。proximity(現在地)で近い候補を上位に。日本・日本語固定。
@@ -146,8 +250,7 @@ export async function geocodePlaces(
     };
     const feats = Array.isArray(j.features) ? j.features : [];
     // 住所タイプの結果は Mapbox が name/place_formatted を「〒285-0807 千葉県…」と郵便番号込みで返す。
-    // 目的地名(dest-box)が郵便番号ぶん横長になるので、先頭の郵便番号(〒NNN-NNNN)を除去する。
-    const stripPostal = (s: string) => (s || "").replace(/〒?\s*\d{3}-\d{4}\s*/, "").trim();
+    // 目的地名(dest-box)が郵便番号ぶん横長になるので、先頭の郵便番号(〒NNN-NNNN)を除去する（module の stripPostal）。
     const out: PlaceHit[] = [];
     for (const f of feats) {
       const c = f.geometry?.coordinates;

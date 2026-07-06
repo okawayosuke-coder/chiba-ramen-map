@@ -56,6 +56,7 @@ interface Props {
   onNav: (s: Dest) => void;
   onShare: (s: Shop) => void;
   distanceTo: (s: Shop) => number | null;
+  reachGeojson?: GeoJSON.FeatureCollection | null; // 到達圏（Isochrone）オーバーレイ。null で消す
 }
 
 const STYLE_LIGHT = "mapbox://styles/mapbox/streets-v12";
@@ -1411,6 +1412,55 @@ function RamenMapbox(props: Props) {
     fitCameraToDest(map, { lat: props.dest.lat, lng: props.dest.lng }, propsRef.current.userPos);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.recenterDest]);
+
+  // 到達圏（Isochrone）オーバーレイ: reachGeojson があれば塗り＋輪郭を店ピンの下に敷く。null で消す。
+  // style 切替で source/layer は消えるが mapReady false→true 再実行で再構築される（他レイヤと同じ流儀）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const fc = props.reachGeojson;
+    if (!fc) {
+      if (map.getLayer("reach-line")) map.removeLayer("reach-line");
+      if (map.getLayer("reach-fill")) map.removeLayer("reach-fill");
+      if (map.getSource("reach")) map.removeSource("reach");
+      return;
+    }
+    const src = map.getSource("reach") as mapboxgl.GeoJSONSource | undefined;
+    if (src) {
+      src.setData(fc);
+    } else {
+      map.addSource("reach", { type: "geojson", data: fc });
+      // 店ピン/クラスタ（"clusters"）より下に敷く。Standard(夜間)はカスタム塗りが暗転するので emissive を上げる。
+      const before = map.getLayer("clusters") ? "clusters" : undefined;
+      map.addLayer(
+        {
+          id: "reach-fill",
+          type: "fill",
+          source: "reach",
+          paint: {
+            "fill-color": "#12b886",
+            "fill-opacity": 0.14,
+            "fill-emissive-strength": 1,
+          },
+        },
+        before
+      );
+      map.addLayer(
+        {
+          id: "reach-line",
+          type: "line",
+          source: "reach",
+          paint: {
+            "line-color": "#0ca678",
+            "line-width": 2,
+            "line-dasharray": [2, 1.5],
+            "line-emissive-strength": 1,
+          },
+        },
+        before
+      );
+    }
+  }, [mapReady, props.reachGeojson]);
 
   // 地図長押しの初回ヒント（一度だけ）。「長押しで目的地」を周知し、OK か12秒で消える。
   useEffect(() => {

@@ -46,8 +46,22 @@ import {
   useRecentDests,
   useTheme,
 } from "./storage";
-import { geocodePlaces, type PlaceHit } from "./geocode";
+import {
+  geocodePlaces,
+  suggestPlaces,
+  retrievePlace,
+  resetSearchSession,
+  type PlaceHit,
+  type PlaceSuggestion,
+} from "./geocode";
 import { useGeolocation, useMovementDetector } from "./hooks";
+import {
+  fetchIsochrone,
+  containsPt,
+  fetchDriveSeconds,
+  MATRIX_MAX,
+  type Isochrone,
+} from "./reach";
 import { downloadTrackGPX, trackStats } from "./track";
 import {
   buildSearchKey,
@@ -107,6 +121,7 @@ const DEFAULTS: Filters = {
   region: "all",
   genres: [],
   sort: "rating",
+  maxMin: null,
 };
 
 /** 所要時間の表示。60分以上は「1h」「1h6分」形式（要望）、未満は「6分」。 */
@@ -169,11 +184,17 @@ export default function App() {
   const [threeD, setThreeD] = useThreeD();
   const [home, setHome] = useHome(); // 自宅（端末内のみ保存）。🏠帰宅ボタンの目的地
   const { recents, push: pushRecent, clear: clearRecents } = useRecentDests(); // 最近の目的地（端末内のみ）
-  // 検索ボックスの入力を地名/駅/施設/住所として解決した候補（ラーメン店に限らず任意地点を目的地化）
-  const [placeHits, setPlaceHits] = useState<PlaceHit[]>([]);
+  // 検索ボックスの入力を地名/駅/施設/住所として解決したタイプアヘッド候補（座標はタップ時に /retrieve で取得）
+  const [placeHits, setPlaceHits] = useState<PlaceSuggestion[]>([]);
   const addrReqRef = useRef(0); // ジオコーディングの競合（古い応答）を捨てるための連番
   // 検索候補タップ後の「決定前プレビュー」地点（地図にピン＋確認ポップアップを出す→決定でルート化）
   const [candidate, setCandidate] = useState<{ lat: number; lng: number; name: string; subtitle?: string } | null>(null);
+  // 到達圏（Isochrone）と実移動時間（Matrix）。「◯分で行ける店」の絞り込み・実運転時間の並べ替え・地図オーバーレイ用。
+  const [iso, setIso] = useState<Isochrone | null>(null); // 現在の到達圏（maxMin と現在地から取得）
+  const [isoLoading, setIsoLoading] = useState(false);
+  const [driveSecs, setDriveSecs] = useState<Map<string, number>>(new Map()); // shopKey → 実運転時間(秒・Matrix)
+  const isoReqRef = useRef(0); // 到達圏取得の競合破棄
+  const matrixReqRef = useRef(0); // Matrix取得の競合破棄
   const [recenterTick, setRecenterTick] = useState(0); // 「地図で見る」で地図を目的地へ寄せる信号
   const [hwOverride, cycleHwOverride] = useHwOverride(); // 高速道路切り替え（手動: 自動/高速/一般道）
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -276,6 +297,9 @@ export default function App() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // 到達圏フィルタが有効か（分指定あり＆現在地の到達圏が同じ分数で取得済み）。
+  const isoActive = filters.maxMin != null && iso != null && iso.minutes === filters.maxMin;
+
   const view = useMemo(() => {
     const qterms = parseQuery(filters.query);
     const arr = ALL_SHOPS.filter((s) => {
@@ -289,10 +313,13 @@ export default function App() {
         return false;
       if (favOnly && !favs.has(shopKey(s))) return false;
       if (qterms && !matchesQuery(SHOP_SEARCH.get(s)!, qterms)) return false;
+      // 到達圏フィルタ: 現在地から maxMin 分で行ける（Isochrone ポリゴン内）店だけ
+      if (isoActive && !containsPt(iso!, s)) return false;
       return true;
     }).map((s) => ({
       s,
       km: geo.pos ? haversineKm(geo.pos, s) : null,
+      sec: driveSecs.get(shopKey(s)) ?? null, // 実運転時間(秒・Matrix)。未取得は null
       // 検索時の関連度（店名/読み一致を上位に。住所/ジャンルだけの一致は下位）
       score: qterms ? scoreQuery(SHOP_NAME.get(s)!, qterms) : 0,
     }));
@@ -300,6 +327,13 @@ export default function App() {
     arr.sort((a, b) => {
       // 検索中は関連度を最優先（同点なら選択中の並び順）
       if (qterms && b.score !== a.score) return b.score - a.score;
+      // 実移動時間順（Matrix）。取得済みを先に、未取得(null)は直線距離で後方に回す
+      if (filters.sort === "drive") {
+        if (a.sec != null && b.sec != null) return a.sec - b.sec;
+        if (a.sec != null) return -1;
+        if (b.sec != null) return 1;
+        if (a.km != null && b.km != null) return a.km - b.km;
+      }
       if (filters.sort === "near" && a.km != null && b.km != null)
         return a.km - b.km;
       if (filters.sort === "reviews") return b.s.reviews - a.s.reviews;
@@ -307,7 +341,66 @@ export default function App() {
       return b.s.rating - a.s.rating || b.s.reviews - a.s.reviews;
     });
     return arr;
-  }, [filters, favOnly, favs, geo.pos]);
+  }, [filters, favOnly, favs, geo.pos, isoActive, iso, driveSecs]);
+
+  // 現在地を約110m格子に丸めた文字列キー。到達圏/Matrix の高頻度な再取得（GPSフィックス毎）を抑える。
+  const coarseKey = geo.pos
+    ? `${Math.round(geo.pos.lat * 1000)},${Math.round(geo.pos.lng * 1000)}`
+    : "";
+
+  // 到達圏（Isochrone）取得: maxMin と現在地から。約110m動くか分数変更で取り直す。
+  useEffect(() => {
+    const m = filters.maxMin;
+    if (m == null || !geo.pos) {
+      setIso(null);
+      setIsoLoading(false);
+      return;
+    }
+    const id = ++isoReqRef.current;
+    setIsoLoading(true);
+    (async () => {
+      const r = await fetchIsochrone(geo.pos!, m);
+      if (id !== isoReqRef.current) return;
+      setIso(r);
+      setIsoLoading(false);
+      if (!r) setToast("到達圏を取得できませんでした（トークン/通信をご確認ください）");
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.maxMin, coarseKey]);
+
+  // 実移動時間（Matrix）の対象＝現在の絞り込み結果を直線距離の近い順で最大 MATRIX_MAX 件。
+  // driveSecs には依存させない（並べ替え結果→再取得の無限ループを防ぐ。membersが変わった時だけ key が変わる）。
+  const matrixTargets = useMemo(() => {
+    if (filters.sort !== "drive" || !geo.pos)
+      return { key: "", pts: [] as { key: string; lat: number; lng: number }[] };
+    const near = [...view]
+      .sort((a, b) => (a.km ?? 1e9) - (b.km ?? 1e9))
+      .slice(0, MATRIX_MAX);
+    return {
+      key: near.map((v) => shopKey(v.s)).join("|"),
+      pts: near.map((v) => ({ key: shopKey(v.s), lat: v.s.lat, lng: v.s.lng })),
+    };
+  }, [view, filters.sort, geo.pos]);
+
+  // Matrix で実運転時間（driving-traffic＝渋滞込み）を取得し driveSecs に積む。
+  useEffect(() => {
+    const { key, pts } = matrixTargets;
+    if (!key || !geo.pos) return;
+    const id = ++matrixReqRef.current;
+    (async () => {
+      const secs = await fetchDriveSeconds(geo.pos!, pts);
+      if (id !== matrixReqRef.current) return;
+      setDriveSecs((prev) => {
+        const mp = new Map(prev);
+        pts.forEach((p, i) => {
+          const v = secs[i];
+          if (v != null) mp.set(p.key, v);
+        });
+        return mp;
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matrixTargets.key, coarseKey]);
 
   const shops = useMemo(() => view.map((v) => v.s), [view]);
   // 地図のラーメンピンは「検索テキストでは絞り込まない」＝目的地キーワード検索(佐倉駅 等)や店名検索の入力で
@@ -411,25 +504,43 @@ export default function App() {
     const q = filters.query.trim();
     if (q.length < 2) {
       setPlaceHits([]);
+      resetSearchSession(); // 入力クリアでセッションも閉じる（次の検索は新セッション）
       return;
     }
     const id = ++addrReqRef.current;
     const t = setTimeout(async () => {
-      const r = await geocodePlaces(q, geo.pos); // 現在地を近接ヒントに（近い候補を上位へ）
+      // Search Box /suggest でタイプアヘッド。失敗/未対応環境は /forward を PlaceSuggestion 形に変換してフォールバック。
+      let r = await suggestPlaces(q, geo.pos); // 現在地を近接ヒントに（近い候補を上位へ）
+      if (r.length === 0) {
+        const fw = await geocodePlaces(q, geo.pos);
+        r = fw.map((f) => ({ mapboxId: `fw:${f.lat},${f.lng}`, title: f.title, subtitle: f.subtitle }));
+      }
       if (id !== addrReqRef.current) return; // 古い応答は捨てる
       setPlaceHits(r);
-    }, 400);
+    }, 300); // /suggest は軽いのでデバウンスを 400→300ms に短縮
     return () => clearTimeout(t);
   }, [filters.query, geo.pos]);
 
   // 候補行をタップ → 即ルート化せず、まず地図にプレビュー（ピン＋確認ポップアップ）。
   // 地図上で「🧭 ここへ案内」を押して初めて目的地確定＝ルート化（RamenMapbox の candidate effect が担当）。
-  const onSetDestFromPlace = useCallback((p: PlaceHit) => {
+  const onSetDestFromPlace = useCallback(async (sug: PlaceSuggestion) => {
     // 走行モードは解除しない（HUD・「現在地」ボタンを残す）。カメラ追従の一時停止は RamenMapbox の
     // candidate effect が followApiRef.suspend() で行い、プレビュー後は「現在地」タップで追従復帰。
-    setCandidate({ lat: p.lat, lng: p.lng, name: p.title, subtitle: p.subtitle });
     setPlaceHits([]); // 候補リストを閉じる
     setSheetOpen(false); // 狭い画面ではサイドシートを閉じて地図を見せる
+    let hit: PlaceHit | null = null;
+    if (sug.mapboxId.startsWith("fw:")) {
+      // /forward フォールバック候補は座標を id に埋め込み済み（retrieve 不要）
+      const [lat, lng] = sug.mapboxId.slice(3).split(",").map(Number);
+      if (isFinite(lat) && isFinite(lng)) hit = { lat, lng, title: sug.title, subtitle: sug.subtitle };
+    } else {
+      hit = await retrievePlace(sug); // /retrieve で座標確定（セッション終了）
+    }
+    if (!hit) {
+      setToast("この候補の場所を取得できませんでした");
+      return;
+    }
+    setCandidate({ lat: hit.lat, lng: hit.lng, name: hit.title, subtitle: hit.subtitle });
   }, []);
 
   // この店が現在の目的地か（座標一致で判定）。最近の目的地チップ等で dest が
@@ -520,6 +631,7 @@ export default function App() {
     filters.minRating !== DEFAULT_RATING ||
     filters.minReviews !== MIN_REVIEWS ||
     filters.genres.length > 0 ||
+    filters.maxMin != null ||
     favOnly;
 
   const geoNotice =
@@ -828,9 +940,40 @@ export default function App() {
                 >
                   <option value="rating">評価が高い順</option>
                   <option value="reviews">口コミ件数が多い順</option>
-                  <option value="near">現在地から近い順</option>
+                  <option value="near">現在地から近い順（直線）</option>
+                  <option value="drive">実移動時間が短い順（渋滞込み）</option>
                   <option value="name">店名順</option>
                 </select>
+              </div>
+
+              <div className="field">
+                <label>
+                  到達圏で絞り込み{" "}
+                  {isoLoading && <span className="range-val">計算中…</span>}
+                  {isoActive && !isoLoading && (
+                    <span className="range-val">この時間で行ける店のみ</span>
+                  )}
+                </label>
+                <div className="chips-row">
+                  {([null, 10, 15, 20, 30] as (number | null)[]).map((m) => (
+                    <button
+                      key={m ?? "off"}
+                      className={`chip chip--sm${filters.maxMin === m ? " chip--on" : ""}`}
+                      disabled={m != null && !geo.pos}
+                      onClick={() => set("maxMin", m)}
+                      title={
+                        m == null
+                          ? "到達圏の絞り込みを解除"
+                          : `現在地から車で${m}分以内に行ける店だけ表示`
+                      }
+                    >
+                      {m == null ? "指定なし" : `車${m}分`}
+                    </button>
+                  ))}
+                </div>
+                {filters.maxMin != null && !geo.pos && (
+                  <p className="data-updated">現在地が必要です（位置情報を許可してください）</p>
+                )}
               </div>
           </div>
         )}
@@ -875,7 +1018,7 @@ export default function App() {
         <div className="list">
           {placeHits.map((p, i) => (
             <button
-              key={`${p.lat},${p.lng},${i}`}
+              key={`${p.mapboxId},${i}`}
               className="addr-suggest"
               onClick={() => onSetDestFromPlace(p)}
               title={`「${p.title}」を目的地に設定`}
@@ -890,7 +1033,7 @@ export default function App() {
               <span className="addr-suggest__go">設定 →</span>
             </button>
           ))}
-          {view.map(({ s, km }) => (
+          {view.map(({ s, km, sec }) => (
             <div
               key={shopKey(s)}
               className={`shop${focus === s ? " active" : ""}`}
@@ -917,6 +1060,11 @@ export default function App() {
                 {km != null && (
                   <span className="shop__dist">
                     📍直線{fmtDistance(km)}・車約{fmtDurText(roughMinutes(km))}
+                  </span>
+                )}
+                {sec != null && (
+                  <span className="shop__dist shop__dist--real" title="Mapbox 実道路・渋滞込みの推定">
+                    🚗実{fmtDurText(Math.round(sec / 60))}
                   </span>
                 )}
               </div>
@@ -1012,6 +1160,7 @@ export default function App() {
               onNav: startGoogleNav,
               onShare: doShare,
               distanceTo,
+              reachGeojson: isoActive ? iso!.fc : null, // 到達圏オーバーレイ（fill＋輪郭）。Leaflet版は無視
             };
             return ENGINE_MAPBOX ? (
               <Suspense fallback={<div className="map" />}>
