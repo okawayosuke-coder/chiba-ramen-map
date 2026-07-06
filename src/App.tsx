@@ -936,7 +936,12 @@ export default function App() {
                 <label>並べ替え</label>
                 <select
                   value={filters.sort}
-                  onChange={(e) => set("sort", e.target.value as Filters["sort"])}
+                  onChange={(e) => {
+                    const v = e.target.value as Filters["sort"];
+                    set("sort", v);
+                    // 実移動時間順/近い順は現在地が要る。未取得なら選択時に取得を要求。
+                    if ((v === "drive" || v === "near") && !geo.pos) geo.request();
+                  }}
                 >
                   <option value="rating">評価が高い順</option>
                   <option value="reviews">口コミ件数が多い順</option>
@@ -959,8 +964,11 @@ export default function App() {
                     <button
                       key={m ?? "off"}
                       className={`chip chip--sm${filters.maxMin === m ? " chip--on" : ""}`}
-                      disabled={m != null && !geo.pos}
-                      onClick={() => set("maxMin", m)}
+                      onClick={() => {
+                        set("maxMin", m);
+                        // 到達圏は現在地が要る。未取得なら押した時点で取得を要求（走行中もサイドバー現在地タップ不要に）。
+                        if (m != null && !geo.pos) geo.request();
+                      }}
                       title={
                         m == null
                           ? "到達圏の絞り込みを解除"
@@ -972,7 +980,15 @@ export default function App() {
                   ))}
                 </div>
                 {filters.maxMin != null && !geo.pos && (
-                  <p className="data-updated">現在地が必要です（位置情報を許可してください）</p>
+                  <p className="data-updated">
+                    {geo.status === "loading"
+                      ? "現在地を取得中…"
+                      : geo.status === "denied"
+                      ? "位置情報が拒否されています。ブラウザ設定で許可してください。"
+                      : geo.status === "unavailable"
+                      ? "位置情報を取得できません（対応環境・通信をご確認ください）。"
+                      : "現在地を取得しています。許可すると到達圏で絞り込みます。"}
+                  </p>
                 )}
               </div>
           </div>
