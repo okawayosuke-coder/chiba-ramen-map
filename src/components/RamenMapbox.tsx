@@ -1708,8 +1708,8 @@ function RamenMapbox(props: Props) {
     let local: LocalPoiData | null = null;
     let localLoadFailed = false;
 
+    // bundled(pois.json)対象の種類（conv/fuel）。今は Mapbox を主ソースにし、これはオフライン/取得失敗時の保険。
     const localActive = active.filter((k) => LOCAL_KINDS.includes(k));
-    const liveOnly = active.filter((k) => !LOCAL_KINDS.includes(k));
 
     const expand = (b: BBox, f: number): BBox => {
       const dy = (b.n - b.s) * f;
@@ -1804,25 +1804,9 @@ function RamenMapbox(props: Props) {
       if (!bd) return;
       const view: BBox = { s: bd.getSouth(), w: bd.getWest(), n: bd.getNorth(), e: bd.getEast() };
 
-      let liveNeeded = liveOnly.slice();
+      // conv/fuel も含め全種類を Mapbox(fetchPois=/category 主・失敗時Overpass) へ。bundled はオフライン保険に降格。
+      const liveNeeded = active.slice();
       let changed = false;
-      if (localActive.length) {
-        if (local && coverageContains(local, view)) {
-          if (!localArea || !inside(localArea, view)) {
-            const larea = expand(view, BUFFER);
-            lastLocal = localPoisInView(local, larea, localActive);
-            localArea = larea;
-            changed = true;
-          }
-        } else if (local || localLoadFailed) {
-          if (lastLocal.length || localArea) {
-            lastLocal = [];
-            localArea = null;
-            changed = true;
-          }
-          liveNeeded = liveNeeded.concat(localActive);
-        }
-      }
 
       const liveKey = [...liveNeeded].sort().join(",");
       if (liveKey !== lastLiveKey) {
@@ -1850,12 +1834,24 @@ function RamenMapbox(props: Props) {
         cachedLive = area;
         failStreak = 0;
         lastLive = pois;
+        // オンライン取得成功 → bundled保険はクリア（conv/fuel の二重表示防止）
+        if (lastLocal.length || localArea) {
+          lastLocal = [];
+          localArea = null;
+        }
         if (hint.textContent !== ZOOM_HINT) hint.style.display = "none";
         draw();
       } catch {
         if (aborted) return;
         failStreak++;
-        if (failStreak >= 2) {
+        // オフライン/取得失敗の保険: bundled(pois.json・関東を precache)がカバーする範囲の conv/fuel を表示（走行中の欠落防止）。
+        if (localActive.length && (local || localLoadFailed) && local && coverageContains(local, view)) {
+          const larea = expand(view, BUFFER);
+          lastLocal = localPoisInView(local, larea, localActive);
+          localArea = larea;
+          draw();
+          hint.style.display = "none";
+        } else if (failStreak >= 2) {
           hint.textContent = "⚠ 周辺施設を取得中…（地図サーバ混雑）";
           hint.style.display = "";
         }
