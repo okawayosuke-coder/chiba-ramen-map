@@ -1006,6 +1006,13 @@ function RamenMapbox(props: Props) {
     const map = mapRef.current;
     if (!map || !mapReady) return;
     threeDCtrlRef.current?.setActive(!!props.threeD); // 地図上「3D」ボタンの点灯を同期
+    // 追従中は自車を軸にピッチ変更＝画面固定の自車が2D/3D切替でずれない（ズーム±と同じ理由）。
+    // 追従ループ停止中(停車/フィックス間)に効く。閲覧中は null＝中心軸（実位置マーカーは地理固定でずれない）。
+    const pitchAround = carAnchorRef.current;
+    const tilt = (pitch: number) =>
+      map.easeTo(
+        pitchAround ? { pitch, around: pitchAround, duration: 600 } : { pitch, duration: 600 }
+      );
     if (props.threeD) {
       if (!map.getSource("mapbox-dem")) {
         map.addSource("mapbox-dem", {
@@ -1038,11 +1045,11 @@ function RamenMapbox(props: Props) {
           firstSymbol
         );
       }
-      map.easeTo({ pitch: PITCH_3D, duration: 600 });
+      tilt(PITCH_3D);
     } else {
       map.setTerrain(null);
       if (map.getLayer("3d-buildings")) map.removeLayer("3d-buildings");
-      map.easeTo({ pitch: 0, duration: 600 });
+      tilt(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, props.threeD]);
