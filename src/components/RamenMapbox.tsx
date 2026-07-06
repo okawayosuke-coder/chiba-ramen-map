@@ -2789,6 +2789,11 @@ function RamenMapbox(props: Props) {
     let surfHits = 0; // 「一般道が明確に近い」が連続したフィックス数（誤OFFのちらつき防止）
     let autoEff = false; // 実効の自動判定（位置スナップ優先・速度フォールバック）
     let curRoad = ""; // 現在走行中の路線名（位置スナップで把握）。施設を路線名で絞り並走道路を除外する
+    // curRoad切替のヒステリシス: 並走別路線(四街道付近の東関東道↔京葉道路等)が一瞬最寄りになっても即切替えず、
+    // 連続 ROAD_SWITCH_HITS フィックスで最寄りが続いた時だけ切替える（武石IC等の数秒フリッカ対策）。
+    let roadCand = "";
+    let roadCandHits = 0;
+    const ROAD_SWITCH_HITS = 3;
     const updateAutoHw = (kmh: number) => {
       if (!isFinite(kmh)) return;
       if (kmh >= 65) {
@@ -3016,8 +3021,18 @@ function RamenMapbox(props: Props) {
           else if (snap.distM > 90) posOn = false; // 明確に高速外
           // それ以外(35〜90m / 高架の真下で引き分けの<35m)は曖昧→速度に委ねる
           // 現在路線名: 一般道判定でなく、名前付き路線が80m以内なら更新／200m超or一般道判定でクリア
-          if (posOn !== false && snap.name && snap.namedDistM < 80) curRoad = snap.name;
-          else if (posOn === false || snap.namedDistM > 200) curRoad = "";
+          if (posOn !== false && snap.name && snap.namedDistM < 80) {
+            if (snap.name === curRoad) { roadCand = ""; roadCandHits = 0; } // 現路線を維持
+            else if (!curRoad) { curRoad = snap.name; roadCand = ""; roadCandHits = 0; } // 未設定は即採用
+            else {
+              // 別路線(並走)が最寄り→連続 ROAD_SWITCH_HITS フィックス確認できたら切替（一瞬だけなら維持）
+              if (snap.name === roadCand) roadCandHits++;
+              else { roadCand = snap.name; roadCandHits = 1; }
+              if (roadCandHits >= ROAD_SWITCH_HITS) { curRoad = snap.name; roadCand = ""; roadCandHits = 0; }
+            }
+          } else if (posOn === false || snap.namedDistM > 200) {
+            curRoad = ""; roadCand = ""; roadCandHits = 0;
+          }
         }
       }
       autoEff = posOn != null ? posOn : autoHw;
