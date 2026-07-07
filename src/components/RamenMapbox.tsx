@@ -1014,40 +1014,47 @@ function RamenMapbox(props: Props) {
         pitchAround ? { pitch, around: pitchAround, duration: 600 } : { pitch, duration: 600 }
       );
     if (props.threeD) {
-      if (!map.getSource("mapbox-dem")) {
-        map.addSource("mapbox-dem", {
-          type: "raster-dem",
-          url: "mapbox://mapbox.mapbox-terrain-dem-v1",
-          tileSize: 512,
-          maxzoom: 14,
-        });
-      }
-      map.setTerrain({ source: "mapbox-dem", exaggeration: 1.3 });
-      // 手動の3D建物押出は classic スタイル(streets-v12)用。Standard(夜間)は建物を内蔵描画する
-      // （pitchを倒すと自動で3D建物が立つ）ので composite/building の手動追加はスキップ＝二重描画/エラー回避。
-      if (!isStandard(styleRef.current) && !map.getLayer("3d-buildings")) {
-        const firstSymbol = map.getStyle().layers?.find((l) => l.type === "symbol")?.id;
-        map.addLayer(
-          {
-            id: "3d-buildings",
-            type: "fill-extrusion",
-            source: "composite",
-            "source-layer": "building",
-            filter: ["==", ["get", "extrude"], "true"],
-            minzoom: 14,
-            paint: {
-              "fill-extrusion-color": "#8c98a8",
-              "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["get", "height"]],
-              "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["get", "min_height"]],
-              "fill-extrusion-opacity": 0.6,
+      // ★Standard(夜間)は基盤(imported basemap)が3D建物・地形を内蔵描画する。ここに自前の raster-dem 地形を
+      //   重ねると内蔵の3D建物が消える/ちらつく（実車FB＋sim実証：setTerrainありで新宿でも建物ゼロ→setTerrain(null)で
+      //   全ビルが安定描画）。setStyle(テーマ切替)は diff で地形を引き継ぐため、Standard では「足さない」だけでなく
+      //   引き継がれた自前地形を能動的に解除する。自前DEM地形＋手動fill-extrusionは従来型スタイル(streets-v12=昼)専用。
+      if (isStandard(styleRef.current)) {
+        if (map.getTerrain()) map.setTerrain(null); // 引き継ぎ地形を解除＝基盤ネイティブの3D建物を安定描画
+        if (map.getLayer("3d-buildings")) map.removeLayer("3d-buildings");
+      } else {
+        if (!map.getSource("mapbox-dem")) {
+          map.addSource("mapbox-dem", {
+            type: "raster-dem",
+            url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+            tileSize: 512,
+            maxzoom: 14,
+          });
+        }
+        map.setTerrain({ source: "mapbox-dem", exaggeration: 1.3 });
+        if (!map.getLayer("3d-buildings")) {
+          const firstSymbol = map.getStyle().layers?.find((l) => l.type === "symbol")?.id;
+          map.addLayer(
+            {
+              id: "3d-buildings",
+              type: "fill-extrusion",
+              source: "composite",
+              "source-layer": "building",
+              filter: ["==", ["get", "extrude"], "true"],
+              minzoom: 14,
+              paint: {
+                "fill-extrusion-color": "#8c98a8",
+                "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["get", "height"]],
+                "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["get", "min_height"]],
+                "fill-extrusion-opacity": 0.6,
+              },
             },
-          },
-          firstSymbol
-        );
+            firstSymbol
+          );
+        }
       }
       tilt(PITCH_3D);
     } else {
-      map.setTerrain(null);
+      if (map.getTerrain()) map.setTerrain(null);
       if (map.getLayer("3d-buildings")) map.removeLayer("3d-buildings");
       tilt(0);
     }
