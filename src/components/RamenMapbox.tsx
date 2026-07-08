@@ -1875,11 +1875,17 @@ function RamenMapbox(props: Props) {
       try {
         const pois = await fetchPois(area, liveNeeded);
         if (aborted) return;
-        cachedLive = area;
         failStreak = 0;
         lastLive = pois;
-        // オンライン取得成功 → bundled保険はクリア（conv/fuel の二重表示防止）
-        if (lastLocal.length || localArea) {
+        // Mapbox が空（オフライン/一時障害/該当なし。fetchPois は失敗を握り潰して [] を返すため throw では拾えない）で、
+        // かつ bundled(pois.json・関東を precache)がこの範囲をカバーするなら、conv/fuel を bundled で補完＝走行中の欠落防止。
+        cachedLive = area; // この範囲は取得済み扱い（移動して範囲を出たら再取得。空でも静止中の無駄打ちを防ぐ）
+        if (pois.length === 0 && localActive.length && local && coverageContains(local, view)) {
+          const larea = expand(view, BUFFER);
+          lastLocal = localPoisInView(local, larea, localActive);
+          localArea = larea;
+        } else if (lastLocal.length || localArea) {
+          // オンライン取得成功 → bundled保険はクリア（conv/fuel の二重表示防止）
           lastLocal = [];
           localArea = null;
         }
