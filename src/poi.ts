@@ -74,7 +74,7 @@ export function poiBrandStyle(kind: PoiKind, label: string): PoiStyle {
     }
     case "fuel": {
       if (has("eneos", "エネオス")) return { bg: "#e60012", fg: "#fff", t: "EN" };
-      if (has("idemitsu", "出光", "apollostation", "apollo")) return { bg: "#003f8e", fg: "#ffd200", t: "出" };
+      if (has("idemitsu", "出光", "apollostation", "apollo", "アポロステーション", "アポロ")) return { bg: "#003f8e", fg: "#ffd200", t: "出" };
       if (has("cosmo", "コスモ")) return { bg: "#e8400c", fg: "#fff", t: "コ" };
       if (has("shell", "シェル")) return { bg: "#ffd400", fg: "#d2002e", t: "S" };
       if (has("kygnus", "キグナス")) return { bg: "#16639e", fg: "#fff", t: "Ky" };
@@ -140,7 +140,7 @@ export function poiIconFile(kind: PoiKind, label: string): string | null {
     const has = (...keys: string[]) => keys.some((k) => s.includes(k.toLowerCase()));
     // 現役主要ブランドのみ（旧ブランドはENEOS/出光に統合済み・OSMでも現ブランド表記が大半）
     if (has("eneos", "エネオス")) return "gs-eneos.png";
-    if (has("idemitsu", "出光", "apollostation", "apollo")) return "gs-idemitsu.png";
+    if (has("idemitsu", "出光", "apollostation", "apollo", "アポロステーション", "アポロ")) return "gs-idemitsu.png";
     if (has("cosmo", "コスモ")) return "gs-cosmo.png";
     if (has("kygnus", "キグナス")) return "gs-kygnus.png";
     if (has("solato", "太陽石油", "taiyo")) return "gs-solato.png";
