@@ -112,6 +112,7 @@ function convIconByName(label: string): string | null {
   if (has("circle k", "circlek", "サークルk")) return "circlek.png";
   if (has("sunkus", "sankus", "サンクス")) return "sunkus.png";
   if (has("am/pm", "am-pm", "ampm", "エーエムピーエム")) return "ampm.png";
+  if (has("newdays", "new days", "new-days", "ニューデイズ", "ニューデイズ")) return "newdays.png";
   if (has("heart in", "heart-in", "heartin", "ハートイン")) return "heartin.png";
   if (has("community store", "community-store", "コミュニティストア", "コミュニティ・ストア"))
     return "community.png";
