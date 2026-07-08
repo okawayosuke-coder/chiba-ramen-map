@@ -1672,9 +1672,14 @@ function RamenMapbox(props: Props) {
     if (active.length === 0) return;
 
     const MINZOOM = 14;
-    const MIN_INTERVAL = 4000;
+    const MIN_INTERVAL = 3000;
     const MAX = 600;
-    const BUFFER = 0.7;
+    // ★Mapbox /category は proximity 最寄り最大25件/カテゴリしか返さない。取得範囲(bbox)を広げすぎると
+    //   25件が広域に薄く散り、表示中の範囲＝目の前の店が25件から漏れる（実API確認：同一bboxでも
+    //   proximityがA→Bと動くと返る25件が総入れ替え）。そのため取得範囲は表示範囲＋小マージンに絞り、
+    //   移動で範囲を出たら再取得(下の cachedLive/inside 判定)＝常に現在地近傍の25件が出るようにする。
+    //   旧値0.7(面積5.8倍)は薄すぎて「目の前の店が出ない・再起動で出る」の原因だった。
+    const BUFFER = 0.2;
     const ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
     const ZOOM_HINT = "🏪 ズームすると周辺の施設を表示";
 
