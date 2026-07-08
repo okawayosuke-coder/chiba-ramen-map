@@ -278,9 +278,8 @@ function dedupeByProximity(pois: Poi[]): Poi[] {
   return kept;
 }
 
-/** /category レスポンス(GeoJSON FeatureCollection)を Poi[] へ整形。label は brand/name（アイコン判定に使う）。
- *  Mapboxは同一店舗を別名で複数返すため近接重複を統合してから返す。 */
-function parseCategory(j: unknown, kind: PoiKind): Poi[] {
+/** /category レスポンス(GeoJSON FeatureCollection)を Poi[] へ整形（重複統合は呼び出し側で全セル結合後に実施）。 */
+function parseCategoryRaw(j: unknown, kind: PoiKind): Poi[] {
   const feats = (j as { features?: unknown[] })?.features;
   if (!Array.isArray(feats)) return [];
   const out: Poi[] = [];
@@ -294,56 +293,97 @@ function parseCategory(j: unknown, kind: PoiKind): Poi[] {
     const idKey = (p.mapbox_id as string) || `${c[0]},${c[1]}`;
     out.push({ id: hashStr(idKey), lat: c[1], lng: c[0], kind, label });
   }
-  return dedupeByProximity(out);
+  return out;
 }
 
-/** 1種類ぶんを Mapbox /category から取得。候補idを順に試し、通ったidをキャッシュ。
- *  返り値 null = 「Mapboxで取得不可（トークン無し/通信失敗/全候補が無効id）」＝この種類は Overpass に回す合図。 */
+/** bbox を最大 maxDim×maxDim のセル（約 cellKm 四方）に等分割し、各セルの {bbox文字列, proximity文字列} を返す。
+ *  /category は proximity 最寄り25件/カテゴリしか返さないため、広い範囲を1回で取ると薄くなる。セル毎に25件取れば
+ *  「ある程度広い範囲」を「密に」カバーできる（＝知らない土地でも自車周辺～少し先のコンビニ等が漏れず出る）。 */
+function tileCells(b: BBox, cellKm: number, maxDim: number): { bbox: string; prox: string }[] {
+  const midLat = (b.s + b.n) / 2;
+  const wKm = (b.e - b.w) * 111.32 * Math.cos((midLat * Math.PI) / 180);
+  const hKm = (b.n - b.s) * 111.32;
+  const nx = Math.min(maxDim, Math.max(1, Math.round(wKm / cellKm)));
+  const ny = Math.min(maxDim, Math.max(1, Math.round(hKm / cellKm)));
+  const cells: { bbox: string; prox: string }[] = [];
+  for (let iy = 0; iy < ny; iy++) {
+    for (let ix = 0; ix < nx; ix++) {
+      const w = b.w + ((b.e - b.w) * ix) / nx;
+      const e = b.w + ((b.e - b.w) * (ix + 1)) / nx;
+      const s = b.s + ((b.n - b.s) * iy) / ny;
+      const n = b.s + ((b.n - b.s) * (iy + 1)) / ny;
+      cells.push({ bbox: `${w},${s},${e},${n}`, prox: `${(w + e) / 2},${(s + n) / 2}` });
+    }
+  }
+  return cells;
+}
+
+// 1リクエストの上限。/category は最大25/カテゴリ。
+const CAT_LIMIT = 25;
+const catUrl = (id: string, cell: { bbox: string; prox: string }, tok: string) =>
+  `${CATEGORY}/${id}?bbox=${cell.bbox}&proximity=${cell.prox}&limit=${CAT_LIMIT}&language=ja&country=jp&access_token=${tok}`;
+
+/** 1種類ぶんを Mapbox /category からタイル分割で取得（各セル25件→結合→近接重複統合）。候補idは cell[0] で解決しキャッシュ。
+ *  返り値 null = 「Mapboxで取得不可（通信失敗/全候補が無効id）」＝この種類は Overpass に回す合図。 */
 async function fetchCategoryForKind(
   kind: PoiKind,
-  bboxStr: string,
-  proxStr: string,
+  cells: { bbox: string; prox: string }[],
   tok: string
 ): Promise<Poi[] | null> {
-  if (deadCatKind.has(kind)) return null;
+  if (deadCatKind.has(kind) || !cells.length) return deadCatKind.has(kind) ? null : [];
+  // ① canonical id を解決（cell[0] で候補を順に試す）。その応答は第1セルのデータとして再利用。
   const cached = resolvedCatId[kind];
   const candidates = cached ? [cached] : KIND_CANDIDATES[kind];
-  let allInvalid = true; // 全候補が 404/400/422（＝存在しないid）だったか
-  for (const id of candidates) {
+  let id: string | null = null;
+  let firstPois: Poi[] = [];
+  let allInvalid = true;
+  for (const cand of candidates) {
     let r: Response;
     try {
-      r = await fetch(
-        `${CATEGORY}/${id}?bbox=${bboxStr}&proximity=${proxStr}&limit=25&language=ja&country=jp&access_token=${tok}`
-      );
+      r = await fetch(catUrl(cand, cells[0], tok));
     } catch {
-      return null; // 通信失敗は一時的 → 今回だけ Overpass（dead 扱いにはしない）
+      return null; // 通信失敗は一時的 → 今回だけ Overpass
     }
     if (r.ok) {
-      resolvedCatId[kind] = id;
+      id = cand;
+      resolvedCatId[kind] = cand;
       try {
-        return parseCategory(await r.json(), kind);
+        firstPois = parseCategoryRaw(await r.json(), kind);
       } catch {
         return null;
       }
+      break;
     }
-    // 401/429 等は「idが悪い」ではない → dead 扱いにしない（次回リトライ余地を残す）
     if (r.status !== 404 && r.status !== 400 && r.status !== 422) allInvalid = false;
   }
-  if (allInvalid) deadCatKind.add(kind); // どの候補も存在しないid → 以降この種類は Overpass 固定
-  return null;
+  if (!id) {
+    if (allInvalid) deadCatKind.add(kind); // 全候補が存在しないid → 以降この種類は Overpass 固定
+    return null;
+  }
+  // ② 残りセルを並列取得（各セル25件）。1セルでも失敗は空扱いで継続。
+  const rest = await Promise.all(
+    cells.slice(1).map(async (c) => {
+      try {
+        const r = await fetch(catUrl(id!, c, tok));
+        if (!r.ok) return [] as Poi[];
+        return parseCategoryRaw(await r.json(), kind);
+      } catch {
+        return [] as Poi[];
+      }
+    })
+  );
+  return dedupeByProximity([...firstPois, ...rest.flat()]);
 }
 
-/** 指定bbox・指定種類のPOIを取得。Mapbox /category を主ソースにし、取得できない種類だけ Overpass へフォールバック。
+/** 指定bbox・指定種類のPOIを取得。Mapbox /category をタイル分割で主ソースにし、取得できない種類だけ Overpass へフォールバック。
+ *  タイル分割＝範囲を約700m四方のセル(最大3×3)に分け各25件取得＝「ある程度広い範囲」を「密に」カバー（自車近傍偏重を解消）。
  *  返却の Poi 形状・呼び出し規約は従来どおり（マーカー描画・キャッシュ・ズーム制限は呼び出し側で不変）。 */
 export async function fetchPois(b: BBox, kinds: PoiKind[]): Promise<Poi[]> {
   if (!kinds.length) return [];
   const tok = mapboxToken();
   if (!tok) return fetchOverpass(b, kinds); // トークン未設定は従来どおり Overpass
-  const bboxStr = `${b.w},${b.s},${b.e},${b.n}`; // Mapbox は minLng,minLat,maxLng,maxLat
-  const proxStr = `${(b.w + b.e) / 2},${(b.s + b.n) / 2}`;
-  const results = await Promise.all(
-    kinds.map((k) => fetchCategoryForKind(k, bboxStr, proxStr, tok))
-  );
+  const cells = tileCells(b, 0.7, 3); // 約700m四方・最大3×3セル（=最大9セル×25件/カテゴリ）
+  const results = await Promise.all(kinds.map((k) => fetchCategoryForKind(k, cells, tok)));
   const out: Poi[] = [];
   const overpassKinds: PoiKind[] = [];
   kinds.forEach((k, i) => {

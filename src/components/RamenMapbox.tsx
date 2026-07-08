@@ -1674,12 +1674,11 @@ function RamenMapbox(props: Props) {
     const MINZOOM = 14;
     const MIN_INTERVAL = 3000;
     const MAX = 600;
-    // ★Mapbox /category は proximity 最寄り最大25件/カテゴリしか返さない。取得範囲(bbox)を広げすぎると
-    //   25件が広域に薄く散り、表示中の範囲＝目の前の店が25件から漏れる（実API確認：同一bboxでも
-    //   proximityがA→Bと動くと返る25件が総入れ替え）。そのため取得範囲は表示範囲＋小マージンに絞り、
-    //   移動で範囲を出たら再取得(下の cachedLive/inside 判定)＝常に現在地近傍の25件が出るようにする。
-    //   旧値0.7(面積5.8倍)は薄すぎて「目の前の店が出ない・再起動で出る」の原因だった。
-    const BUFFER = 0.2;
+    // ★Mapbox /category は proximity 最寄り最大25件/カテゴリしか返さない。1回で広範囲を取ると25件が薄く散り
+    //   「目の前の店が漏れる」、逆に狭く取ると「近い店ばかりで探せない」。→ poi.ts でタイル分割(各セル25件)し、
+    //   取得範囲は下の coverage() で「表示範囲＋20%、ただし最低 MIN_COVER_KM 四方」を確保＝広い範囲を密にカバー。
+    const MIN_COVER_KM = 2.0; // 走行ズームでも自車周辺～少し先(約半径1km)のコンビニ等を漏れなく出す
+    const BUFFER = 0.2; // オフライン保険(bundled)の範囲余白にのみ使用
     const ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
     const ZOOM_HINT = "🏪 ズームすると周辺の施設を表示";
 
@@ -1745,6 +1744,19 @@ function RamenMapbox(props: Props) {
       const dy = (b.n - b.s) * f;
       const dx = (b.e - b.w) * f;
       return { s: b.s - dy, w: b.w - dx, n: b.n + dy, e: b.e + dx };
+    };
+    // 取得範囲: 表示範囲＋20%、ただし最低 MIN_COVER_KM 四方を確保。走行ズーム(表示~数百m)でも自車の少し先まで
+    // カバーし「知らない土地でコンビニ等を探す」に使える範囲にする。密度は poi.ts のタイル分割(各セル25件)で担保。
+    const coverage = (v: BBox): BBox => {
+      const b = expand(v, 0.2);
+      const midLat = (b.s + b.n) / 2;
+      const minHalfLat = MIN_COVER_KM / 2 / 111.32;
+      const minHalfLng = MIN_COVER_KM / 2 / (111.32 * Math.cos((midLat * Math.PI) / 180));
+      const cy = (b.s + b.n) / 2,
+        cx = (b.w + b.e) / 2;
+      const halfLat = Math.max((b.n - b.s) / 2, minHalfLat);
+      const halfLng = Math.max((b.e - b.w) / 2, minHalfLng);
+      return { s: cy - halfLat, n: cy + halfLat, w: cx - halfLng, e: cx + halfLng };
     };
     const inside = (o: BBox, i: BBox) => i.s >= o.s && i.w >= o.w && i.n <= o.n && i.e <= o.e;
 
@@ -1857,7 +1869,7 @@ function RamenMapbox(props: Props) {
       if (now - lastReqAt < MIN_INTERVAL) return;
       lastReqAt = now;
       inFlight = true;
-      const area = expand(view, BUFFER);
+      const area = coverage(view);
       try {
         const pois = await fetchPois(area, liveNeeded);
         if (aborted) return;
