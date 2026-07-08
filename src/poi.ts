@@ -73,7 +73,7 @@ export function poiBrandStyle(kind: PoiKind, label: string): PoiStyle {
       return { bg: "#6b7280", fg: "#fff", t: "🏪", emoji: true };
     }
     case "fuel": {
-      if (has("eneos", "エネオス")) return { bg: "#e60012", fg: "#fff", t: "EN" };
+      if (has("eneos", "エネオス", "日石", "日本石油", "nisseki")) return { bg: "#e60012", fg: "#fff", t: "EN" };
       if (has("idemitsu", "出光", "apollostation", "apollo", "アポロステーション", "アポロ")) return { bg: "#003f8e", fg: "#ffd200", t: "出" };
       if (has("cosmo", "コスモ")) return { bg: "#e8400c", fg: "#fff", t: "コ" };
       if (has("shell", "シェル")) return { bg: "#ffd400", fg: "#d2002e", t: "S" };
@@ -144,7 +144,9 @@ export function poiIconFile(kind: PoiKind, label: string): string | null {
     const s = (label || "").toLowerCase();
     const has = (...keys: string[]) => keys.some((k) => s.includes(k.toLowerCase()));
     // 現役主要ブランドのみ（旧ブランドはENEOS/出光に統合済み・OSMでも現ブランド表記が大半）
-    if (has("eneos", "エネオス")) return "gs-eneos.png";
+    // 日石(日本石油)は 新日本石油→JX→現ENEOS の前身。旧日石系SSは現在ENEOS看板が大半のためENEOSロゴに寄せる。
+    // has() は部分一致なので「千葉日石」「日石レオン」等 前後に名前が付いても拾う。
+    if (has("eneos", "エネオス", "日石", "日本石油", "nisseki")) return "gs-eneos.png";
     if (has("idemitsu", "出光", "apollostation", "apollo", "アポロステーション", "アポロ")) return "gs-idemitsu.png";
     if (has("cosmo", "コスモ")) return "gs-cosmo.png";
     if (has("kygnus", "キグナス")) return "gs-kygnus.png";
