@@ -1679,7 +1679,7 @@ function RamenMapbox(props: Props) {
     // ★Mapbox /category は proximity 最寄り最大25件/カテゴリしか返さない。1回で広範囲を取ると25件が薄く散り
     //   「目の前の店が漏れる」、逆に狭く取ると「近い店ばかりで探せない」。→ poi.ts でタイル分割(各セル25件)し、
     //   取得範囲は下の coverage() で「表示範囲＋20%、ただし最低 MIN_COVER_KM 四方」を確保＝広い範囲を密にカバー。
-    const MIN_COVER_KM = 2.0; // 走行ズームでも自車周辺～少し先(約半径1km)のコンビニ等を漏れなく出す
+    const MIN_COVER_KM = 1.5; // 取得範囲の最低サイズ。1リクエスト25件上限をこの範囲に集める（広すぎると薄くなる）
     const BUFFER = 0.2; // オフライン保険(bundled)の範囲余白にのみ使用
     const ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
     const ZOOM_HINT = "🏪 ズームすると周辺の施設を表示";

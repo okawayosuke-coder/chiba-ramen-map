@@ -379,14 +379,16 @@ async function fetchCategoryForKind(
   return dedupeByProximity([...firstPois, ...rest.flat()]);
 }
 
-/** 指定bbox・指定種類のPOIを取得。Mapbox /category をタイル分割で主ソースにし、取得できない種類だけ Overpass へフォールバック。
- *  タイル分割＝範囲を約700m四方のセル(最大3×3)に分け各25件取得＝「ある程度広い範囲」を「密に」カバー（自車近傍偏重を解消）。
+/** 指定bbox・指定種類のPOIを取得。Mapbox /category を主ソースにし、取得できない種類だけ Overpass へフォールバック。
+ *  ★1取得=1種類につき1リクエスト（範囲全体を1セルで）。理由: /category は Search Box のレート制限が厳しく、
+ *  タイル分割(旧v0.8.95で最大18req)は連続取得で大量に HTTP 429 を返し「全然取れない」を招いた（実測: 18req中8〜18が429）。
+ *  1種類1req(既定conv+fuelで計2req)なら連続取得でも429ゼロを実測。範囲は呼び出し側 coverage() のbboxに25件上限で収める。
  *  返却の Poi 形状・呼び出し規約は従来どおり（マーカー描画・キャッシュ・ズーム制限は呼び出し側で不変）。 */
 export async function fetchPois(b: BBox, kinds: PoiKind[]): Promise<Poi[]> {
   if (!kinds.length) return [];
   const tok = mapboxToken();
   if (!tok) return fetchOverpass(b, kinds); // トークン未設定は従来どおり Overpass
-  const cells = tileCells(b, 0.7, 3); // 約700m四方・最大3×3セル（=最大9セル×25件/カテゴリ）
+  const cells = tileCells(b, 0.7, 1); // 1セル=範囲全体（1リクエスト/カテゴリ・レート制限回避）
   const results = await Promise.all(kinds.map((k) => fetchCategoryForKind(k, cells, tok)));
   const out: Poi[] = [];
   const overpassKinds: PoiKind[] = [];
