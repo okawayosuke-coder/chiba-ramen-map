@@ -122,6 +122,7 @@ function convIconByName(label: string): string | null {
   if (has("coco", "ここストア", "ココストア")) return "coco.png";
   // 100均だが Mapbox は convenience_store カテゴリに含めるため、ここでロゴを付ける（従来は generic 表示）。
   if (has("daiso", "ダイソー")) return "daiso.png";
+  if (has("can do", "can★do", "cando", "キャンドゥ")) return "cando.png";
   // スリーエフは lawson 判定より後（「ローソン・スリーエフ」は上のローソンに当てる。単独スリーエフのみ threef）。
   if (has("スリーエフ", "three f", "three-f", "threef")) return "threef.png";
   if (has("seicomart", "seico", "セイコーマート", "セコマ")) return "seicomart.png";
