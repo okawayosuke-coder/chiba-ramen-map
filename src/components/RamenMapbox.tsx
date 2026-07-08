@@ -1680,6 +1680,7 @@ function RamenMapbox(props: Props) {
     //   「目の前の店が漏れる」、逆に狭く取ると「近い店ばかりで探せない」。→ poi.ts でタイル分割(各セル25件)し、
     //   取得範囲は下の coverage() で「表示範囲＋20%、ただし最低 MIN_COVER_KM 四方」を確保＝広い範囲を密にカバー。
     const MIN_COVER_KM = 1.5; // 取得範囲の最低サイズ。1リクエスト25件上限をこの範囲に集める（広すぎると薄くなる）
+    const REFRESH_MOVE_KM = 0.6; // 地図中心がこの距離動いたら再取得（pitchに依存しない＝3D/2D切替では再取得しない）
     const BUFFER = 0.2; // オフライン保険(bundled)の範囲余白にのみ使用
     const ICON_BASE = `${import.meta.env.BASE_URL}poi-icons/`;
     const ZOOM_HINT = "🏪 ズームすると周辺の施設を表示";
@@ -1726,7 +1727,7 @@ function RamenMapbox(props: Props) {
       return wrap.firstElementChild as HTMLElement;
     };
 
-    let cachedLive: BBox | null = null;
+    let cachedCenter: { lat: number; lng: number } | null = null; // 前回取得時の地図中心（pitch非依存の再取得判定用）
     let lastReqAt = 0;
     let aborted = false;
     let inFlight = false;
@@ -1747,20 +1748,19 @@ function RamenMapbox(props: Props) {
       const dx = (b.e - b.w) * f;
       return { s: b.s - dy, w: b.w - dx, n: b.n + dy, e: b.e + dx };
     };
-    // 取得範囲: 表示範囲＋20%、ただし最低 MIN_COVER_KM 四方を確保。走行ズーム(表示~数百m)でも自車の少し先まで
-    // カバーし「知らない土地でコンビニ等を探す」に使える範囲にする。密度は poi.ts のタイル分割(各セル25件)で担保。
+    // 取得範囲: 中心は必ず「地図中心(=追従中は自車)」。★3D(高ピッチ)時 getBounds() は地平線まで肥大し中心も
+    //   進行方向へズレるため、view の大きさをそのまま使うと施設が自車から離れた広域に薄く散り、2Dに戻すと
+    //   自車周辺に何も無い状態になる（実車FB）。→ 中心は getCenter に固定し、サイズは view から出すが
+    //   [MIN_COVER_KM, 上限] にクランプ。上限は高ピッチ時は狭め(3D肥大の抑制)、2D時はズームアウトも拾えるよう広め。
     const coverage = (v: BBox): BBox => {
-      const b = expand(v, 0.2);
-      const midLat = (b.s + b.n) / 2;
-      const minHalfLat = MIN_COVER_KM / 2 / 111.32;
-      const minHalfLng = MIN_COVER_KM / 2 / (111.32 * Math.cos((midLat * Math.PI) / 180));
-      const cy = (b.s + b.n) / 2,
-        cx = (b.w + b.e) / 2;
-      const halfLat = Math.max((b.n - b.s) / 2, minHalfLat);
-      const halfLng = Math.max((b.e - b.w) / 2, minHalfLng);
-      return { s: cy - halfLat, n: cy + halfLat, w: cx - halfLng, e: cx + halfLng };
+      const c = map.getCenter();
+      const maxKm = map.getPitch() > 20 ? 2.5 : 6.0;
+      const kLng = 111.32 * Math.cos((c.lat * Math.PI) / 180);
+      const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
+      const halfLat = clamp(((v.n - v.s) / 2) * 1.2, MIN_COVER_KM / 2 / 111.32, maxKm / 2 / 111.32);
+      const halfLng = clamp(((v.e - v.w) / 2) * 1.2, MIN_COVER_KM / 2 / kLng, maxKm / 2 / kLng);
+      return { s: c.lat - halfLat, n: c.lat + halfLat, w: c.lng - halfLng, e: c.lng + halfLng };
     };
-    const inside = (o: BBox, i: BBox) => i.s >= o.s && i.w >= o.w && i.n <= o.n && i.e <= o.e;
 
     const capPick = (pois: Poi[]): Poi[] => {
       const buckets = new Map<PoiKind, Poi[]>();
@@ -1854,7 +1854,7 @@ function RamenMapbox(props: Props) {
 
       const liveKey = [...liveNeeded].sort().join(",");
       if (liveKey !== lastLiveKey) {
-        cachedLive = null;
+        cachedCenter = null;
         if (lastLive.length) {
           lastLive = [];
           changed = true;
@@ -1866,7 +1866,7 @@ function RamenMapbox(props: Props) {
 
       if (!liveNeeded.length) return;
       if (inFlight) return;
-      if (cachedLive && inside(cachedLive, view)) return;
+      if (cachedCenter && haversineKm(map.getCenter(), cachedCenter) < REFRESH_MOVE_KM) return;
       const now = performance.now();
       if (now - lastReqAt < MIN_INTERVAL) return;
       lastReqAt = now;
@@ -1879,7 +1879,7 @@ function RamenMapbox(props: Props) {
         lastLive = pois;
         // Mapbox が空（オフライン/一時障害/該当なし。fetchPois は失敗を握り潰して [] を返すため throw では拾えない）で、
         // かつ bundled(pois.json・関東を precache)がこの範囲をカバーするなら、conv/fuel を bundled で補完＝走行中の欠落防止。
-        cachedLive = area; // この範囲は取得済み扱い（移動して範囲を出たら再取得。空でも静止中の無駄打ちを防ぐ）
+        cachedCenter = { lat: map.getCenter().lat, lng: map.getCenter().lng }; // 取得時の中心を記録（次回はここから0.6km動くまで再取得しない・pitch非依存）
         if (pois.length === 0 && localActive.length && local && coverageContains(local, view)) {
           const larea = expand(view, BUFFER);
           lastLocal = localPoisInView(local, larea, localActive);
