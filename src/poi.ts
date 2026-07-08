@@ -120,6 +120,8 @@ function convIconByName(label: string): string | null {
   if (has("community store", "community-store", "コミュニティストア", "コミュニティ・ストア"))
     return "community.png";
   if (has("coco", "ここストア", "ココストア")) return "coco.png";
+  // 100均だが Mapbox は convenience_store カテゴリに含めるため、ここでロゴを付ける（従来は generic 表示）。
+  if (has("daiso", "ダイソー")) return "daiso.png";
   return null;
 }
 
