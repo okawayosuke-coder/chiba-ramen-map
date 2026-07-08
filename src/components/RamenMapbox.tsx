@@ -1672,7 +1672,9 @@ function RamenMapbox(props: Props) {
     if (active.length === 0) return;
 
     const MINZOOM = 14;
-    const MIN_INTERVAL = 3000;
+    // 施設取得の最小間隔。手動スクロール後に取得済み範囲(約2km)の外へ出た時、この間隔だけ待って取り直す。
+    // 短いほどパン先の施設が速く出る（走行中は約2km圏内なら再取得しないのでコスト増は小さい）。
+    const MIN_INTERVAL = 1500;
     const MAX = 600;
     // ★Mapbox /category は proximity 最寄り最大25件/カテゴリしか返さない。1回で広範囲を取ると25件が薄く散り
     //   「目の前の店が漏れる」、逆に狭く取ると「近い店ばかりで探せない」。→ poi.ts でタイル分割(各セル25件)し、
