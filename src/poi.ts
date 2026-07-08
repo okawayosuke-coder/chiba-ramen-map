@@ -105,7 +105,9 @@ function convIconByName(label: string): string | null {
     return "lawson100.png";
   if (has("lawson", "ローソン")) return "lawson.png";
   if (has("7-eleven", "7‐eleven", "7eleven", "seven", "セブン")) return "seven.png";
-  if (has("familymart", "family mart", "ファミリーマート", "ファミマ")) return "familymart.png";
+  // FamilyMart は表記揺れが多い（実データ由来）: 正規「ファミリーマート」/英字/「ファミマ(!!)」/長音欠落「ファミリマート」/切詰め「ファミリー」。
+  if (has("familymart", "family mart", "family-mart", "famima", "ファミリーマート", "ファミリマート", "ファミリー", "ファミマ"))
+    return "familymart.png";
   if (has("ministop", "ミニストップ")) return "ministop.png";
   if (has("daily", "デイリーヤマザキ", "ヤマザキ")) return "dailyyamazaki.png";
   if (has("poplar", "ポプラ")) return "poplar.png";
