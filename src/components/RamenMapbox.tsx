@@ -790,6 +790,7 @@ function RamenMapbox(props: Props) {
   // 復帰は「現在地」ボタン（followeffect内・setFollowing(true)）で手動。
   const followApiRef = useRef<{ suspend: () => void } | null>(null);
   const startNavUpdateRef = useRef<(() => void) | null>(null); // 「案内開始」ボタンの表示可否を再評価（目的地変化・追従切替時）
+  const recenterRef = useRef<(() => void) | null>(null); // 現在地へ再センター（ペイン開閉のresize後に追従中なら呼ぶ）
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
   const lastTrafficAtRef = useRef<number>(0); // 渋滞タイルを最後に取得した時刻(ms)。天気バーに「渋滞 HH:MM時点」表示
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
@@ -973,6 +974,28 @@ function RamenMapbox(props: Props) {
     placeUser(map, props.userPos);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.userPos]);
+
+  // 左ペイン開閉でコンテナ幅が変わる → 地図を再計測。ResizeObserver だけだと「案内開始」での即時クローズを
+  // 取りこぼし、地図キャンバスが旧幅(ペイン開)のまま＝画面固定の自車マークが実位置とズレる不具合が出るため、
+  // paneHidden 変化で明示的に resize する。レイアウト確定後に呼ぶため rAF を2発挟む。resize は中心を保つので
+  // 追従中は自車が画面中央に居続ける（幅が広がった分だけ正しく中央へ再描画される）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        map.resize();
+        // 追従中はresizeで中心画素が動く＝画面固定の自車マークが実位置とズレるので、resize後に再センター。
+        // （「案内開始」でペインを閉じた直後の自車マーク位置ズレ対策。停車中も確実に合わせる。）
+        if (followingRef.current) recenterRef.current?.();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
+  }, [props.paneHidden, mapReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -3296,6 +3319,7 @@ function RamenMapbox(props: Props) {
       }
     };
     recBtn.onclick = recenterToCar;
+    recenterRef.current = recenterToCar; // ペイン開閉のresize後に追従中なら再センターするため外部へ公開
     map.getContainer().appendChild(recBtn);
 
     // 「🧭 案内開始」ボタン: 目的地を設定して全体ルートを表示した状態（＝追従OFF）でのみ出す。
@@ -3794,6 +3818,7 @@ function RamenMapbox(props: Props) {
       map.off("pitch", updateCarTilt);
       followApiRef.current = null; // 走行モード終了でカメラ一時停止APIを無効化
       startNavUpdateRef.current = null;
+      recenterRef.current = null;
       carEl.remove();
       geoMarker.remove();
       recBtn.remove();
