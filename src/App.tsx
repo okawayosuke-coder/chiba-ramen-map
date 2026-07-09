@@ -1165,6 +1165,8 @@ export default function App() {
               dest,
               onSetDest,
               onClearDest,
+              onStartNav: () => { setPaneHidden(true); setSheetOpen(false); }, // 「案内開始」押下で左ペイン/シートを閉じて地図を全画面に
+
               candidate, // 検索候補の決定前プレビュー（地図にピン＋確認ポップアップ）
               onCandidateClose: () => setCandidate(null), // 決定/取消でプレビューを閉じる
               recenterDest: recenterTick, // 「地図で見る」で目的地へカメラを寄せる信号

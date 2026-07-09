@@ -45,6 +45,7 @@ interface Props {
   dest: Dest | null;
   onSetDest: (s: Dest) => void;
   onClearDest: () => void;
+  onStartNav?: () => void; // 「案内開始」押下時＝左ペイン/シートを閉じる等（App側）
   candidate?: { lat: number; lng: number; name: string; subtitle?: string } | null; // 検索候補の目的地プレビュー（決定前・地図にピン＋確認ポップアップ）
   onCandidateClose?: () => void; // プレビューを閉じる（決定でルート化 or 取消）
   recenterDest?: number; // 増えるたびに地図を目的地（＋現在地）へ寄せる信号（目的地カードの「地図で見る」）
@@ -3300,7 +3301,10 @@ function RamenMapbox(props: Props) {
     startNavBtn.className = "startnav-btn";
     startNavBtn.textContent = "🧭 案内開始";
     startNavBtn.style.display = "none";
-    startNavBtn.onclick = recenterToCar;
+    startNavBtn.onclick = () => {
+      propsRef.current.onStartNav?.(); // 左ペイン/シートを閉じて地図を全画面に
+      recenterToCar(); // 「現在地」と同じ＝追従ON＋自車へ寄せ＋200m縮尺で走行開始
+    };
     map.getContainer().appendChild(startNavBtn);
     const updateStartNav = () => {
       startNavBtn.style.display = propsRef.current.dest && !following ? "" : "none";
