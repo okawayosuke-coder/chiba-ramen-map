@@ -284,10 +284,13 @@ function fmtDurHtml(min: number): string {
  *  Mapbox標準は1段ズーム＝ユーザに「一回タップで2段階」に感じられ、かつ縮尺150mを飛ばすため自作。 */
 class HalfStepZoomControl implements mapboxgl.IControl {
   private _c?: HTMLDivElement;
-  // 追従中の自車位置 [lng,lat] を返す getter（あれば拡縮の軸に使い、画面固定の自車がズームでずれないようにする）。
+  // 追従中の自車位置 [lng,lat] を返す getter（非nullなら追従中＝自車を軸に拡縮し画面固定の自車がずれない）。
   private _getAnchor?: () => [number, number] | null;
-  constructor(getAnchor?: () => [number, number] | null) {
+  // 追従中のズーム適用（follow effect が実装）。走行中(camRaf稼働)=setZoom即時 / 停車中=自車軸easeTo を内部で判断。
+  private _zoomAtCar?: (next: number) => void;
+  constructor(getAnchor?: () => [number, number] | null, zoomAtCar?: (next: number) => void) {
     this._getAnchor = getAnchor;
+    this._zoomAtCar = zoomAtCar;
   }
   onAdd(map: mapboxgl.Map): HTMLElement {
     const c = document.createElement("div");
@@ -306,12 +309,13 @@ class HalfStepZoomControl implements mapboxgl.IControl {
         // 0.5刻みにスナップ（zoomSnap=0.5相当）
         const next = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), Math.round((z + delta) * 2) / 2));
         const anchor = this._getAnchor?.();
-        if (anchor) {
-          // 追従中: 30fps追従ループ(camTick)が毎フレーム easeTo(duration:0) でカメラを上書きするため、
-          // 200msの easeTo ズームは即キャンセルされて「切り替わらない」(特に走行中／3D中に発生)。
-          // recenterToCar と同じく setZoom で即時反映する（applyFollow は zoom を指定しないので設定した縮尺は
-          // 追従ループに保持される）。自車は画面固定オーバーレイなので縮尺が変わっても画面位置はずれない。
-          map.setZoom(next);
+        if (anchor && this._zoomAtCar) {
+          // 追従中は follow effect に委譲＝走行中/停車中で適切に出し分ける（下記 zoomAtCarRef）:
+          //  ・走行中(camRaf稼働): easeTo は毎フレームの追従ループにキャンセルされるので setZoom で即時反映
+          //    （applyFollow は zoom を触らないので保持される。v0.8.118 で「3D走行中に効かない」を修正）。
+          //  ・停車中(camRaf停止): 再センターが走らないので、自車の地理点を軸に easeTo し画面位置を固定
+          //    （setZoom は中心軸のため、ヘディングアップ等で自車が中心オフセット位置だとマークがずれる。v0.8.119）。
+          this._zoomAtCar(next);
         } else {
           // 閲覧中(追従OFF)は従来どおり中心軸へなめらかにズーム。
           map.easeTo({ zoom: next, duration: 200 });
@@ -920,6 +924,8 @@ function RamenMapbox(props: Props) {
   // 追従中の自車の地理位置 [lng,lat]（追従ループが書く）。ズーム±ボタンがこの点を軸に拡縮し、
   // 画面固定の自車マーク(carEl)がズームでずれないようにする。閲覧中(手動パン)は null＝従来どおり中心軸。
   const carAnchorRef = useRef<[number, number] | null>(null);
+  // 追従中のズーム適用（follow effectが実装）。走行中(camRaf稼働)=setZoom即時／停車中=自車軸easeTo を出し分ける。
+  const zoomAtCarRef = useRef<((next: number) => void) | null>(null);
   const hwActiveRef = useRef(false); // 現在「高速道路扱い」か（経路effectが書き、勾配effectが勾配抑制に読む）
   // この先の急勾配予告: 経路effectが前方GRADE_LOOKマークの標高から最急(≥GRADE_STEEP%)を書き、勾配effectが表示に読む
   const aheadGradeRef = useRef<{ grade: number; distM: number } | null>(null);
@@ -979,7 +985,13 @@ function RamenMapbox(props: Props) {
     (window as unknown as Record<string, unknown>).__mbmap = map; // 検証/デバッグ用（試験エンジン時のみ）
     // ズーム+/- は左上（Leaflet版と同じ位置）。コンパスは出さない。Leaflet同様の半段(0.5)ズーム＝
     // 1タップ0.5段（標準1段だと「2段階」に感じる）＋縮尺150mを飛ばさない。CSSで大きくタップしやすく。
-    map.addControl(new HalfStepZoomControl(() => carAnchorRef.current), "top-left");
+    map.addControl(
+      new HalfStepZoomControl(
+        () => carAnchorRef.current,
+        (next) => zoomAtCarRef.current?.(next)
+      ),
+      "top-left"
+    );
     // 縮尺ボタンの直下に「3D」ボタン（2D/3D切替）。同じ top-left に後から足すと縮尺の下へ積まれる。
     const threeDCtrl = new ThreeDToggleControl({
       isOn: () => !!propsRef.current.threeD,
@@ -3444,6 +3456,19 @@ function RamenMapbox(props: Props) {
     };
     recBtn.onclick = recenterToCar;
     recenterRef.current = recenterToCar; // ペイン開閉のresize後に追従中なら再センターするため外部へ公開
+    // ズーム±ボタンの追従中適用（HalfStepZoomControl から呼ばれる）:
+    //  ・走行中(camRaf稼働): easeTo は毎フレームの追従ループ(camTick)に消されるので setZoom で即時反映
+    //    （applyFollow は zoom を触らないため保持される）。→ v0.8.118「3D走行中に効かない」修正。
+    //  ・停車中(camRaf停止): 再センターが走らないので、自車の地理点(carAnchorRef)を軸に easeTo し画面位置を固定。
+    //    setZoom は中心軸のため、ヘディングアップ等で自車が中心オフセット位置だとマークがずれる。→ v0.8.119修正。
+    zoomAtCarRef.current = (next: number) => {
+      if (camRaf) {
+        map.setZoom(next);
+      } else {
+        const a = carAnchorRef.current;
+        map.easeTo(a ? { zoom: next, around: a, duration: 200 } : { zoom: next, duration: 200 });
+      }
+    };
     map.getContainer().appendChild(recBtn);
 
     // 「🧭 案内開始」ボタン: 目的地を設定して全体ルートを表示した状態（＝追従OFF）でのみ出す。
@@ -3943,6 +3968,7 @@ function RamenMapbox(props: Props) {
       followApiRef.current = null; // 走行モード終了でカメラ一時停止APIを無効化
       startNavUpdateRef.current = null;
       recenterRef.current = null;
+      zoomAtCarRef.current = null; // 追従中ズーム適用の委譲を解除（閲覧モードでは中心軸easeToへ）
       carEl.remove();
       geoMarker.remove();
       recBtn.remove();
