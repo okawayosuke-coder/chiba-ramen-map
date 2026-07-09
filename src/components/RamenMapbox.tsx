@@ -2534,6 +2534,8 @@ function RamenMapbox(props: Props) {
     const signRef = (ref: string) => ref.split(/[;,]/)[0].trim();
     // 案内標識カード更新: 前方の直近の意味ある分岐(路線番号/方面/出口/レーン/距離)＋「その先の分岐」を表示。無ければ隠す。
     const updateSignCard = (carDistKm: number) => {
+      // 「案内開始」を押して追従ON(=走行開始)になるまでは方面案内を出さない。全体ルート表示(suspend=追従OFF)・手動閲覧中は非表示。
+      if (!followingRef.current) { signCard.style.display = "none"; return; }
       if (!maneuvers.length) { signCard.style.display = "none"; return; }
       const next = maneuvers.find((m) => isMeaningfulMan(m, carDistKm));
       if (!next) { signCard.style.display = "none"; return; }
