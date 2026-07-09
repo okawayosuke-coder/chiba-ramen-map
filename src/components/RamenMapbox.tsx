@@ -3248,6 +3248,10 @@ function RamenMapbox(props: Props) {
     // 開始地点の目印として残す（setFollowing の showGeoWhenOff で制御）。追従中は非表示。
     const geoEl = document.createElement("div");
     geoEl.style.position = "relative"; // 標高ラベル(absolute)の位置基準
+    // ★サイズを矢印(64x64)に固定。省略すると block div が地図幅いっぱい(~889px)に広がり、
+    //   Marker(anchor:center)が横長ボックスを中心化して矢印が実位置から数百px左へズレる(全体ルート表示時の自車マーク異常位置バグ)。
+    geoEl.style.width = "64px";
+    geoEl.style.height = "64px";
     geoEl.innerHTML = CAR_HTML;
     geoEl.style.display = "none";
     // 追従パン時の自車(地理マーカー)。3D時の傾きは carEl と同じく updateCarTilt で「少し起こして」手動付与する。
