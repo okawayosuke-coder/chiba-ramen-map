@@ -305,9 +305,17 @@ class HalfStepZoomControl implements mapboxgl.IControl {
         const z = map.getZoom();
         // 0.5刻みにスナップ（zoomSnap=0.5相当）
         const next = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), Math.round((z + delta) * 2) / 2));
-        // 追従中は自車位置を軸に拡縮＝画面固定の自車マークがズームでずれない。閲覧中は従来どおり中心軸。
         const anchor = this._getAnchor?.();
-        map.easeTo(anchor ? { zoom: next, around: anchor, duration: 200 } : { zoom: next, duration: 200 });
+        if (anchor) {
+          // 追従中: 30fps追従ループ(camTick)が毎フレーム easeTo(duration:0) でカメラを上書きするため、
+          // 200msの easeTo ズームは即キャンセルされて「切り替わらない」(特に走行中／3D中に発生)。
+          // recenterToCar と同じく setZoom で即時反映する（applyFollow は zoom を指定しないので設定した縮尺は
+          // 追従ループに保持される）。自車は画面固定オーバーレイなので縮尺が変わっても画面位置はずれない。
+          map.setZoom(next);
+        } else {
+          // 閲覧中(追従OFF)は従来どおり中心軸へなめらかにズーム。
+          map.easeTo({ zoom: next, duration: 200 });
+        }
       });
       return b;
     };
