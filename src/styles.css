@@ -1757,6 +1757,35 @@ body {
   user-select: none;
 }
 
+/* 🧭案内開始ボタン（画面下・中央）。目的地を検索して全体ルートを表示した状態（追従OFF）でだけ表示。
+   タップ＝「現在地」ボタンと同じ動作（追従ON＋自車へ寄せて走行ビュー開始）。 */
+.startnav-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 92px; /* 更新バー(bottom:18)の上・下端クラスタ(速度計/ルート解除)より中央上。iPad横は更新バー1行で非干渉 */
+  transform: translateX(-50%);
+  z-index: 4500; /* 全UIの最前面。まれに更新バー(4000)と重なっても必ずタップできるように */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #2f9e44; /* 開始＝緑（GO） */
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 28px;
+  min-height: 52px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.startnav-btn:active {
+  background: #268a3a;
+}
+
 /* 🏠帰宅ボタン（画面右・中央下＝HW切替の下）。自宅登録済みのときだけ表示。 */
 .home-btn {
   position: absolute;

@@ -788,6 +788,7 @@ function RamenMapbox(props: Props) {
   // 走行モードを抜けずにカメラ追従だけ止めて全体を見せるために candidate/route effect から呼ぶ。
   // 復帰は「現在地」ボタン（followeffect内・setFollowing(true)）で手動。
   const followApiRef = useRef<{ suspend: () => void } | null>(null);
+  const startNavUpdateRef = useRef<(() => void) | null>(null); // 「案内開始」ボタンの表示可否を再評価（目的地変化・追従切替時）
   const weatherBoxRef = useRef<HTMLDivElement | null>(null);
   const lastTrafficAtRef = useRef<number>(0); // 渋滞タイルを最後に取得した時刻(ms)。天気バーに「渋滞 HH:MM時点」表示
   const routeReapplyRef = useRef<(() => void) | null>(null); // 高速切替を次のGPS待たず即反映
@@ -817,6 +818,10 @@ function RamenMapbox(props: Props) {
     () => (props.dest ? `${props.dest.lat.toFixed(5)},${props.dest.lng.toFixed(5)}` : ""),
     [props.dest]
   );
+  // 目的地の設定/解除で「案内開始」ボタンの表示可否を再評価（全体ルート表示＝追従OFF＋目的地あり→表示）
+  useEffect(() => {
+    startNavUpdateRef.current?.();
+  }, [destKey, mapReady]);
   // 天気の再取得キー（現在地・約1km丸め）
   const wxPosKey = useMemo(
     () => (props.userPos ? `${props.userPos.lat.toFixed(2)},${props.userPos.lng.toFixed(2)}` : "center"),
@@ -1141,7 +1146,7 @@ function RamenMapbox(props: Props) {
     // ボタン/情報ボックスの上＋周囲16pxは発火させない（UIタップが地図に貫通して誤標高を出さない）
     const DEAD = 16;
     const UI_SEL =
-      ".mapboxgl-ctrl,.recenter-btn,.clear-dest-btn,.hw-toggle,.home-btn,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.weather-bar,.poi-hint,.lp-hint,.nav-sign";
+      ".mapboxgl-ctrl,.recenter-btn,.startnav-btn,.clear-dest-btn,.hw-toggle,.home-btn,.follow-box,.addr-box,.dest-box,.route-box,.grade-box,.hw-strip,.weather-bar,.poi-hint,.lp-hint,.nav-sign";
     const overUI = (cx: number, cy: number): boolean => {
       const cont = map.getContainer();
       const cr = cont.getBoundingClientRect();
@@ -3265,8 +3270,10 @@ function RamenMapbox(props: Props) {
       // ズーム±の拡縮軸: 追従中は自車位置、閲覧中は null（中心軸＝従来）。追従ON時は即座に現在位置を入れる。
       carAnchorRef.current = on ? camCur ?? lastHere ?? (map.getCenter().toArray() as [number, number]) : null;
       updateCarTilt?.(); // 表示を切り替えた自車マークに現在のpitch変換(2Dはscale込み)を確実に適用
+      startNavUpdateRef.current?.(); // 追従ON→案内開始ボタンを隠す／OFF(全体表示)→目的地があれば出す
     };
-    recBtn.onclick = () => {
+    // 「現在地」= 追従ON＋現在地へ寄せ＋200m縮尺。「案内開始」も同じ動作を呼ぶ（要望）。
+    const recenterToCar = () => {
       setFollowing(true);
       // 現在地へ戻る＋表示スケールを200mに（要望）。中心はGPS実位置、無ければ現在の地図中心。
       const center = (lastHere ?? (map.getCenter().toArray() as [number, number])) as [number, number];
@@ -3281,7 +3288,22 @@ function RamenMapbox(props: Props) {
         map.easeTo({ center, zoom: targetZoom, bearing: headingUp ? lastBearing : 0, offset: [0, leadPx()], duration: 600 });
       }
     };
+    recBtn.onclick = recenterToCar;
     map.getContainer().appendChild(recBtn);
+
+    // 「🧭 案内開始」ボタン: 目的地を設定して全体ルートを表示した状態（＝追従OFF）でのみ出す。
+    // タップ＝「現在地」と同じ（追従ON＋自車へ寄せて走行ビュー開始）。走行中(追従ON)・目的地なしは非表示。
+    const startNavBtn = document.createElement("button");
+    startNavBtn.type = "button";
+    startNavBtn.className = "startnav-btn";
+    startNavBtn.textContent = "🧭 案内開始";
+    startNavBtn.style.display = "none";
+    startNavBtn.onclick = recenterToCar;
+    map.getContainer().appendChild(startNavBtn);
+    const updateStartNav = () => {
+      startNavBtn.style.display = propsRef.current.dest && !following ? "" : "none";
+    };
+    startNavUpdateRef.current = updateStartNav;
     // 目的地プレビュー/ルート全体表示のために、走行モードを抜けずにカメラ追従だけ一時停止するAPIを公開。
     // 進行中の30fps補間(camRaf)も止めて、直後の flyTo/fitBounds が上書きされないようにする。復帰は「現在地」ボタン。
     followApiRef.current = {
@@ -3761,9 +3783,11 @@ function RamenMapbox(props: Props) {
       map.off("dragstart", onUserPan);
       map.off("pitch", updateCarTilt);
       followApiRef.current = null; // 走行モード終了でカメラ一時停止APIを無効化
+      startNavUpdateRef.current = null;
       carEl.remove();
       geoMarker.remove();
       recBtn.remove();
+      startNavBtn.remove();
       addrBox.remove();
       destBox.remove();
       box.remove();
