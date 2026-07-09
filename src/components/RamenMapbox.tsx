@@ -40,6 +40,8 @@ interface Props {
   threeD?: boolean; // 3D表示（地形＋3D建物＋俯瞰ピッチ）。任意・既定OFF
   onToggle3D?: () => void; // 地図上「3D」ボタン（縮尺ボタンの下）から2D/3D切替
   onToggleHeadingUp?: () => void; // 地図上「方位」コンパスボタン（3Dボタンの下）からノースアップ/ヘディングアップ切替
+  baseMap?: string; // 地図の種類: "standard"(テーマで昼夜) | "satellite"(航空写真)。既定standard
+  onSetBaseMap?: (v: string) => void; // 地図上「種類」ボタンのメニューから基図を選択
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -64,7 +66,13 @@ const STYLE_LIGHT = "mapbox://styles/mapbox/streets-v12";
 // 夜間用。Mapbox Standard の night ライトプリセット＝駅/地名/POI/道路名がフル表示される本格的なダーク地図。
 // （旧 dark-v11 はデータ可視化向けで駅ラベル層が無く情報量が極端に少なかったため刷新）
 const STYLE_DARK = "mapbox://styles/mapbox/standard";
-const styleFor = (t?: string): string => (t === "dark" ? STYLE_DARK : STYLE_LIGHT);
+// 航空写真（衛星画像＋道路名/地名ラベルつき）。classicスタイルなのでconfig APIは無く、streets-v12と同じ扱い。
+// 昼夜どちらでも衛星画像が主体なのでテーマ(light/dark)に依らず共通で使う。
+const STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-streets-v12";
+// 地図の種類(基図)＋テーマから最終スタイルURLを決める。
+// base="satellite" なら航空写真を最優先（テーマ無視）。それ以外はテーマで昼(streets)/夜(standard)。
+const styleFor = (t?: string, base?: string): string =>
+  base === "satellite" ? STYLE_SATELLITE : t === "dark" ? STYLE_DARK : STYLE_LIGHT;
 // Standard スタイルか（設定はconfig API、ラベルはconfigのlanguageで制御＝classicスタイルと扱いが異なる）
 const isStandard = (url: string): boolean => url.indexOf("/standard") !== -1;
 const PITCH_3D = 60; // 3D表示ON時の俯瞰ピッチ角（度）。OFFは0=真上から平面
@@ -393,6 +401,104 @@ class HeadingUpControl implements mapboxgl.IControl {
     this._c = undefined;
     this._btn = undefined;
     this._rose = undefined;
+  }
+}
+
+/** 地図の種類（基図）を選ぶボタン＝方位コンパスの下。タップで小メニュー（標準／航空写真）を開く。
+ *  現在の選択に応じてアイコン色を切替（航空写真時は青点灯）＋メニュー内の該当項目をハイライト。
+ *  メニューは外側タップ or 選択で閉じる。他コントロールと同じ DOM ベースの IControl。 */
+const MAP_STYLE_OPTS: { key: string; label: string; sub: string }[] = [
+  { key: "standard", label: "標準地図", sub: "道路・地名（昼夜切替）" },
+  { key: "satellite", label: "航空写真", sub: "衛星画像＋道路名" },
+];
+class MapStyleControl implements mapboxgl.IControl {
+  private _c?: HTMLDivElement;
+  private _btn?: HTMLButtonElement;
+  private _menu?: HTMLDivElement;
+  private _open = false;
+  // 外側タップでメニューを閉じる。恒久リスナ(onAddで1度だけ登録)＋pointerdownの外側判定＝
+  // タップ/クリックのイベント順に依存せず確実に動く定石パターン（setTimeoutで後付けする方式はイベント順で不安定だった）。
+  // pointerdown はボタン自身のclickより先に発火するが、ボタンは _c の内側なので containment ガードで閉じない。
+  private _onDocPtr = (e: Event) => {
+    if (this._open && this._c && !this._c.contains(e.target as Node)) this._close();
+  };
+  constructor(private opts: { get: () => string; onSelect: (v: string) => void }) {}
+  onAdd(): HTMLElement {
+    const c = document.createElement("div");
+    c.className = "mapboxgl-ctrl mapboxgl-ctrl-group crm-mapstyle";
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "crm-mapstyle-btn";
+    b.setAttribute("aria-label", "地図の種類を選択");
+    b.setAttribute("aria-haspopup", "true");
+    b.setAttribute("aria-expanded", "false");
+    // レイヤー（重なった地図）アイコン。currentColor で塗り、選択状態で色を変える。
+    b.innerHTML =
+      '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">' +
+      '<path d="M12 3 L21 8 L12 13 L3 8 Z" fill="currentColor" opacity="0.9"/>' +
+      '<path d="M3 12 L12 17 L21 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<path d="M3 16 L12 21 L21 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
+      "</svg>";
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._open ? this._close() : this._openMenu();
+    });
+    c.appendChild(b);
+    const menu = document.createElement("div");
+    menu.className = "crm-mapstyle-menu";
+    menu.setAttribute("role", "menu");
+    for (const o of MAP_STYLE_OPTS) {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "crm-mapstyle-item";
+      item.dataset.key = o.key;
+      item.setAttribute("role", "menuitemradio");
+      item.innerHTML =
+        `<span class="crm-mapstyle-item-label">${o.label}</span>` +
+        `<span class="crm-mapstyle-item-sub">${o.sub}</span>`;
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.opts.onSelect(o.key);
+        this.sync();
+        this._close();
+      });
+      menu.appendChild(item);
+    }
+    c.appendChild(menu);
+    this._c = c;
+    this._btn = b;
+    this._menu = menu;
+    // 外側タップ購読は恒久（登録は1回）。_open のときだけ実際に閉じる。
+    document.addEventListener("pointerdown", this._onDocPtr);
+    this.sync();
+    return c;
+  }
+  private _openMenu(): void {
+    this._open = true;
+    this._menu?.classList.add("crm-mapstyle-menu--open");
+    this._btn?.setAttribute("aria-expanded", "true");
+  }
+  private _close(): void {
+    this._open = false;
+    this._menu?.classList.remove("crm-mapstyle-menu--open");
+    this._btn?.setAttribute("aria-expanded", "false");
+  }
+  /** 現在の選択（propsRef 経由の get）をボタン点灯＋メニューのハイライトへ反映。外部変更時も呼ぶ。 */
+  sync(): void {
+    const cur = this.opts.get();
+    this._btn?.classList.toggle("crm-mapstyle-btn--on", cur === "satellite");
+    this._menu?.querySelectorAll<HTMLButtonElement>(".crm-mapstyle-item").forEach((el) => {
+      const on = el.dataset.key === cur;
+      el.classList.toggle("crm-mapstyle-item--on", on);
+      el.setAttribute("aria-checked", String(on));
+    });
+  }
+  onRemove(): void {
+    document.removeEventListener("pointerdown", this._onDocPtr);
+    this._c?.remove();
+    this._c = undefined;
+    this._btn = undefined;
+    this._menu = undefined;
   }
 }
 
@@ -799,6 +905,7 @@ function RamenMapbox(props: Props) {
   const styleRef = useRef<string>(""); // 現在適用中の地図スタイルURL（テーマ切替の重複setStyle防止）
   const threeDCtrlRef = useRef<ThreeDToggleControl | null>(null); // 地図上「3D」ボタン（点灯状態の同期用）
   const headingCtrlRef = useRef<HeadingUpControl | null>(null); // 地図上「方位」コンパスボタン（点灯＋針回転の同期用）
+  const mapStyleCtrlRef = useRef<MapStyleControl | null>(null); // 地図上「種類」ボタン（基図の選択状態の同期用）
   // 追従中(true)か手動パンで閲覧中(false)か。follow effect の再構築（headingUp/テーマ変更）を跨いで保持し、
   // 閲覧中に方位を切替えても追従が勝手に再開（＝自車へ再センター＋ズーム）しないようにする。
   const followingRef = useRef(true);
@@ -846,7 +953,7 @@ function RamenMapbox(props: Props) {
     }
     mapboxgl.accessToken = token;
     const v = getInitialView();
-    styleRef.current = styleFor(propsRef.current.theme); // 初期スタイル（夜間ならdark）
+    styleRef.current = styleFor(propsRef.current.theme, propsRef.current.baseMap); // 初期スタイル（航空写真優先／夜間はdark）
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: styleRef.current,
@@ -879,6 +986,14 @@ function RamenMapbox(props: Props) {
     });
     map.addControl(headingCtrl, "top-left");
     headingCtrlRef.current = headingCtrl;
+    // 「種類」ボタン（基図＝標準/航空写真の選択メニュー）は右上コーナーへ。
+    // 左上スタック(ズーム/3D/方位)の下はナビ中に route-box(top:224)と重なるため、空いている右上に置く。
+    const mapStyleCtrl = new MapStyleControl({
+      get: () => propsRef.current.baseMap ?? "standard",
+      onSelect: (v) => propsRef.current.onSetBaseMap?.(v),
+    });
+    map.addControl(mapStyleCtrl, "top-right");
+    mapStyleCtrlRef.current = mapStyleCtrl;
     // コンパス針を常に真北へ向ける＝地図の回転(gesture/easeTo/追従ループ)に追従。move/rotate 両方で更新（軽量）。
     const syncCompass = () => headingCtrlRef.current?.setBearing(map.getBearing());
     map.on("rotate", syncCompass);
@@ -1010,7 +1125,8 @@ function RamenMapbox(props: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    const want = styleFor(props.theme);
+    mapStyleCtrlRef.current?.sync(); // 「種類」ボタンの点灯/ハイライトを現在の基図に同期
+    const want = styleFor(props.theme, props.baseMap);
     if (want === styleRef.current) return; // 変化なし
     styleRef.current = want;
     labelOrigRef.current = {}; // 新スタイルのラベル原値を取り直す（bigLabels基準）
@@ -1018,7 +1134,7 @@ function RamenMapbox(props: Props) {
     setMapReady(false); // 全mapReady-effect(route/track/POI/follow/grade/標高プローブ等)を解除→style.loadで再構築
     map.setStyle(want);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.theme]);
+  }, [props.theme, props.baseMap]);
 
   // リアルタイム渋滞表示のON/OFF（traffic レイヤの visibility 切替）。レイヤは setupLayers で常設。
   useEffect(() => {

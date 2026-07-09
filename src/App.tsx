@@ -42,6 +42,7 @@ import {
   useShowTrack,
   useTraffic,
   useThreeD,
+  useBaseMap,
   useHome,
   useRecentDests,
   useTheme,
@@ -182,6 +183,7 @@ export default function App() {
   const [headingUp, setHeadingUp] = useHeadingUp();
   const [traffic, setTraffic] = useTraffic();
   const [threeD, setThreeD] = useThreeD();
+  const [baseMap, setBaseMap] = useBaseMap();
   const [home, setHome] = useHome(); // 自宅（端末内のみ保存）。🏠帰宅ボタンの目的地
   const { recents, push: pushRecent, clear: clearRecents } = useRecentDests(); // 最近の目的地（端末内のみ）
   // 検索ボックスの入力を地名/駅/施設/住所として解決したタイプアヘッド候補（座標はタップ時に /retrieve で取得）
@@ -1160,6 +1162,8 @@ export default function App() {
               threeD, // 3D表示（地形＋3D建物＋俯瞰ピッチ）
               onToggle3D: () => setThreeD(!threeD), // 地図上の「3D」ボタン用（縮尺ボタンの下）
               onToggleHeadingUp: () => setHeadingUp(!headingUp), // 地図上の方位コンパスボタン用（3Dボタンの下・設定チップと同一state）
+              baseMap, // 地図の種類（標準/航空写真）。Mapboxがstyleを切替。Leaflet版は無視
+              onSetBaseMap: (v: string) => setBaseMap(v as "standard" | "satellite"), // 地図上「種類」ボタンのメニュー選択
               hwOverride,
               onCycleHwOverride: cycleHwOverride,
               dest,

@@ -17,6 +17,7 @@ const K = {
   headingUp: "crm_headingup", // 走行中の地図の向き: true=ヘディングアップ / false=ノースアップ(既定)
   traffic: "crm_traffic", // リアルタイム渋滞表示（mapbox-traffic-v1）の表示ON/OFF（既定OFF）
   threeD: "crm_3d", // 3D表示（地形起伏＋3D建物＋俯瞰ピッチ）。任意機能・既定OFF
+  baseMap: "crm_basemap", // 地図の種類: "standard"(=テーマで昼夜切替) | "satellite"(航空写真＋道路名)。既定standard
   home: "crm_home", // 自宅の位置（{lat,lng,name}）。端末内のみ保存（公開ソースに住所を載せない）
   recentDests: "crm_recent_dests", // 最近設定した目的地（{lat,lng,name}[]・端末内のみ・最大6件）
 };
@@ -170,6 +171,19 @@ export function useThreeD(): [boolean, (v: boolean) => void] {
     write(K.threeD, v);
   }, []);
   return [on, set];
+}
+
+export type BaseMap = "standard" | "satellite";
+
+/** 地図の種類（基図）。standard=通常地図（テーマで昼夜切替）／satellite=航空写真（衛星画像＋道路名）。
+ *  端末内に永続化。地図上の「種類」ボタン（左上スタック）から選択する。 */
+export function useBaseMap(): [BaseMap, (v: BaseMap) => void] {
+  const [v, setV] = useState<BaseMap>(() => read<BaseMap>(K.baseMap, "standard"));
+  const set = useCallback((nv: BaseMap) => {
+    setV(nv);
+    write(K.baseMap, nv);
+  }, []);
+  return [v, set];
 }
 
 /** 自宅の位置（緯度経度＋名称）。端末内のみ保存し、公開リポジトリのソースには住所を載せない。

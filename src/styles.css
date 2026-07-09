@@ -1484,6 +1484,90 @@ body {
   background: #1a73e8;
 }
 
+/* 方位コンパスの下の「種類」ボタン（基図＝標準/航空写真の選択）。46px=他と同寸。レイヤーアイコンを中央に。
+   航空写真選択中は3D/方位と同じ青点灯。メニューはボタンの右側に開く（左上スタックなので右へ逃がす）。 */
+.mapboxgl-ctrl-group.crm-mapstyle {
+  position: relative;
+  overflow: visible; /* 左側に開くメニューが親でクリップされないように */
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.mapboxgl-ctrl-group button.crm-mapstyle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px !important; /* 右上コーナーなので left スタックの46px指定が効かない→ここで明示 */
+  height: 46px !important;
+  padding: 0;
+  color: #1a73e8; /* SVGは currentColor 塗り */
+  background: #fff;
+  border: none;
+  cursor: pointer;
+}
+.mapboxgl-ctrl-group button.crm-mapstyle-btn svg {
+  display: block;
+}
+.mapboxgl-ctrl-group button.crm-mapstyle-btn.crm-mapstyle-btn--on {
+  background: #1a73e8;
+  color: #fff;
+}
+/* 選択メニュー（既定は非表示・--open で表示）。ボタンは右上なのでメニューは左隣へ浮かせる。 */
+.crm-mapstyle-menu {
+  display: none;
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 0;
+  z-index: 1000;
+  min-width: 168px;
+  padding: 6px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+}
+.crm-mapstyle-menu.crm-mapstyle-menu--open {
+  display: block;
+}
+/* セレクタは .crm-mapstyle-menu で修飾して詳細度を上げる＝Mapbox既定 .mapboxgl-ctrl-group button
+   (width/height:29px) に勝たせる。修飾しないと項目が29px幅に潰れ、日本語が1字ずつ縦折れする。 */
+.crm-mapstyle-menu .crm-mapstyle-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.crm-mapstyle-menu .crm-mapstyle-item + .crm-mapstyle-item {
+  margin-top: 2px;
+}
+.crm-mapstyle-menu .crm-mapstyle-item:hover {
+  background: #f0f4fb;
+}
+.crm-mapstyle-menu .crm-mapstyle-item.crm-mapstyle-item--on {
+  background: #e8f0fe;
+}
+.crm-mapstyle-item-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #16202c;
+}
+.crm-mapstyle-item.crm-mapstyle-item--on .crm-mapstyle-item-label {
+  color: #1558d6;
+}
+.crm-mapstyle-item-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
 /* ===== 縮尺バー（ScaleControl・右下）。実距離が一目で分かるよう大きめ・高コントラスト ===== */
 .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-scale {
   font-size: 15px;
