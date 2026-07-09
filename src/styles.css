@@ -1499,6 +1499,9 @@ body {
   width: 46px !important; /* 右上コーナーなので left スタックの46px指定が効かない→ここで明示 */
   height: 46px !important;
   padding: 0;
+  /* 3D切替ボタンと同じ形＝四隅とも10px丸。グループにメニューdivが同居するためボタンが
+     :only-child にならず、Mapbox既定の「先頭ボタンは上だけ4px角丸」が当たる→明示で上書き。 */
+  border-radius: 10px !important;
   color: #1a73e8; /* SVGは currentColor 塗り */
   background: #fff;
   border: none;
