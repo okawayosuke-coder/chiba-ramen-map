@@ -1626,8 +1626,10 @@ body {
   z-index: 645;
   pointer-events: none;
   width: 248px; /* 「高速道路切り替え」ボタンと同じ幅 */
-  /* 上端がビューポート上端を超えない高さに（bottom:50%-92px なので 50%+80px で上端は12pxに収まる）。設備付きの背高行を含む5件でも収まる */
-  max-height: calc(50% + 80px);
+  /* 上端の天井: 上端y = (H/2+92) − max-height（Hが相殺し高さに依らず一定）。
+     50%+28px で上端は常に64px＝右上「種類」ボタン(y10〜56)の8px下に収まり重ならない。
+     （旧50%+80pxは上端12px＝背高行が並ぶとボタンに被った）。溢れる分はrender側で自動間引き。 */
+  max-height: calc(50% + 28px);
   display: flex;
   flex-direction: column-reverse; /* 近い順を下から上へ（自車に近い施設が一番下＝実車ナビと同じ） */
   gap: 5px;
