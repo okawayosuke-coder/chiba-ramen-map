@@ -63,6 +63,31 @@ export default defineConfig(({ command }) => ({
               expiration: { maxEntries: 32, maxAgeSeconds: 45 * 24 * 60 * 60 },
             },
           },
+          // Mapbox スタイル / グリフ(フォント) / スプライト / アイコンセット。
+          // これらは URL が安定（sku等の回転パラメータ無し）なのでキャッシュが効く。
+          // ここを持っておくと「圏外で新規起動しても地図が初期化できる」＝地図が死なず、
+          // 濃紺背景＋現在地/ルート/走行トラック/POI が描ける（オフライン継続の土台）。
+          // ※地図タイル本体(.vector.pbf?sku=…)は sku が毎回変わりキャッシュヒットしないため対象外
+          //   （＝未訪問エリアの道路は圏外では出ない。全国オフライン基図は別途 MapLibre 移行が必要）。
+          {
+            urlPattern: /^https:\/\/api\.mapbox\.com\/(styles|fonts)\/v1\//,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "mapbox-style",
+              expiration: { maxEntries: 400, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // TileJSON（タイルセットのメタ。/v4/….json）。タイル本体(.pbf)はここに含めない。
+            urlPattern: /^https:\/\/api\.mapbox\.com\/v4\/[^?]*\.json/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "mapbox-tilejson",
+              expiration: { maxEntries: 50, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
         ],
       },
     }),
