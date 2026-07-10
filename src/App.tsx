@@ -1157,6 +1157,17 @@ export default function App() {
             📴 オフライン：地図の更新は停止中。現在地・ルート案内は継続します
           </div>
         )}
+        {!online && !offlineReady && (
+          <button
+            className="offline-unprepared"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="オフライン地図の準備方法を開く"
+          >
+            ⚠️ オフライン地図が未準備です。地図を表示するには、次回オンライン時に
+            <u>設定 →「オフライン地図を準備」</u>
+            を実行してください（タップで設定を開く）
+          </button>
+        )}
         <button
           className="pane-handle"
           onClick={() => setPaneHidden((v) => !v)}

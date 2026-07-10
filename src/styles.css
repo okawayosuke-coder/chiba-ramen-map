@@ -1602,6 +1602,29 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 圏外だが未準備＝オフライン基図に切替えられず真っさらになる。理由と対処を中央に明示（タップで設定へ）。 */
+.offline-unprepared {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 661;
+  max-width: min(420px, calc(100% - 80px));
+  padding: 16px 20px;
+  background: rgba(146, 64, 14, 0.96);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+  text-align: center;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.offline-unprepared u {
+  text-underline-offset: 3px;
+}
 
 /* ===== 縮尺バー（ScaleControl・右下）。実距離が一目で分かるよう大きめ・高コントラスト ===== */
 .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-scale {
