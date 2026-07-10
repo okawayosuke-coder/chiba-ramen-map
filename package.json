@@ -1,7 +1,7 @@
 {
   "name": "chiba-ramen-map",
   "private": true,
-  "version": "0.8.121",
+  "version": "0.8.122",
   "description": "千葉県の高評価ラーメン店マップ（Google評価3.9以上・口コミ50件以上）。地図＋検索・絞り込み・並べ替え対応の個人用Webアプリ",
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
   "dependencies": {
     "leaflet": "^1.9.4",
     "mapbox-gl": "^3.25.0",
+    "mapbox-pmtiles": "^1.0.56",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-leaflet": "^4.2.1",

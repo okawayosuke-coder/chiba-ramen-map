@@ -56,6 +56,7 @@ import {
   type PlaceSuggestion,
 } from "./geocode";
 import { useGeolocation, useMovementDetector, useOnline } from "./hooks";
+import { isOfflineBasemapReady, warmOfflineBasemapCache } from "./offlineBasemap";
 import {
   fetchIsochrone,
   containsPt,
@@ -221,6 +222,21 @@ export default function App() {
   const [safetyAck, setSafetyAck] = useSafetyAck();
   const geo = useGeolocation();
   const online = useOnline();
+  // オフライン基図の準備状態（pmtilesがキャッシュ済みか）。未準備なら圏外でも従来動作(Mapboxキャッシュ)を維持する。
+  const [offlineReady, setOfflineReady] = useState(false);
+  const [offlinePrep, setOfflinePrep] = useState<"idle" | "working" | "done" | "error">("idle");
+  useEffect(() => { isOfflineBasemapReady().then(setOfflineReady); }, []);
+  const prepareOffline = useCallback(async () => {
+    setOfflinePrep("working");
+    try {
+      await warmOfflineBasemapCache();
+      const ok = await isOfflineBasemapReady();
+      setOfflineReady(ok);
+      setOfflinePrep(ok ? "done" : "error");
+    } catch {
+      setOfflinePrep("error");
+    }
+  }, []);
   const theme = useTheme(geo.pos);
 
   // 全体OFFなら空＝何も取得・表示しない。ONなら選択中の種類を表示
@@ -1135,7 +1151,7 @@ export default function App() {
         </div>
       </aside>
 
-      <div className="map-wrap">
+      <div className={online ? "map-wrap" : "map-wrap is-offline"}>
         {!online && (
           <div className="offline-banner" role="status">
             📴 オフライン：地図の更新は停止中。現在地・ルート案内は継続します
@@ -1163,13 +1179,15 @@ export default function App() {
               bigLabels,
               gyroGrade,
               headingUp,
-              theme: theme.resolved, // 夜間/ライト: Mapboxは地図スタイルをdark/lightに切替（Leafletはタイルにフィルタ）
+              theme: theme.resolved, // 夜間/ライト: Mapboxは地図スタイルをdark/lightに切替（圏外は専用スタイルなので無関係）
               traffic, // リアルタイム渋滞表示（Mapbox Traffic v1）
               threeD, // 3D表示（地形＋3D建物＋俯瞰ピッチ）
               onToggle3D: () => setThreeD(!threeD), // 地図上の「3D」ボタン用（縮尺ボタンの下）
               onToggleHeadingUp: () => setHeadingUp(!headingUp), // 地図上の方位コンパスボタン用（3Dボタンの下・設定チップと同一state）
               baseMap, // 地図の種類（標準/航空写真）。Mapboxがstyleを切替。Leaflet版は無視
               onSetBaseMap: (v: string) => setBaseMap(v as "standard" | "satellite"), // 地図上「種類」ボタンのメニュー選択
+              // 圏外かつ「オフライン地図を準備済み」の時だけ専用スタイルへ。未準備ならMapboxのまま（キャッシュ済みタイルを活かす）。
+              offline: !online && offlineReady,
               hwOverride,
               onCycleHwOverride: cycleHwOverride,
               dest,
@@ -1263,6 +1281,9 @@ export default function App() {
           setPoiKinds={setPoiKinds}
           favs={favs}
           importKeys={importKeys}
+          offlineReady={offlineReady}
+          offlinePrep={offlinePrep}
+          onPrepareOffline={prepareOffline}
           onResetSafety={() => {
             setSafetyAck(false);
             setToast("ナビ起動時の注意を次回表示します");

@@ -1573,6 +1573,14 @@ body {
 
 /* オフラインバナー（画面上・中央）。電波が切れた時に「地図更新は停止／案内は継続」を明示。
    地図タイルが更新されない不安を減らすための告知。route-box(top:224)等より上に薄く出す。 */
+/* オフラインバナー表示中は、上部中央に出る他ラベル(住所/長押しヒント/方面標識)をバナーの下へ退避＝重なり回避 */
+.map-wrap.is-offline .addr-box,
+.map-wrap.is-offline .lp-hint {
+  top: 54px;
+}
+.map-wrap.is-offline .nav-sign {
+  top: 96px;
+}
 .offline-banner {
   position: absolute;
   left: 50%;

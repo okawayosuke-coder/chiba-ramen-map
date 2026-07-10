@@ -49,6 +49,9 @@ interface Props {
   setPoiKinds: (k: PoiKindsUpdater) => void;
   favs: Set<string>;
   importKeys: (keys: string[]) => void;
+  offlineReady: boolean;
+  offlinePrep: "idle" | "working" | "done" | "error";
+  onPrepareOffline: () => void;
   onResetSafety: () => void;
   onClose: () => void;
 }
@@ -79,6 +82,9 @@ export default function Settings({
   setPoiKinds,
   favs,
   importKeys,
+  offlineReady,
+  offlinePrep,
+  onPrepareOffline,
   onResetSafety,
   onClose,
 }: Props) {
@@ -410,6 +416,28 @@ export default function Settings({
           </div>
           <p className="modal__small">
             お気に入りはこの端末内のみに保存されます。機種変更前に書き出しておくと安心です。
+          </p>
+        </section>
+
+        <section className="set-sec">
+          <h3>オフライン地図（圏外対策）</h3>
+          <button
+            className="chip"
+            onClick={onPrepareOffline}
+            disabled={offlinePrep === "working"}
+          >
+            {offlinePrep === "working"
+              ? "ダウンロード中…"
+              : offlineReady
+                ? "オフライン地図を更新する"
+                : "オフライン地図を準備する（約130MB）"}
+          </button>
+          <p className="modal__small">
+            {offlineReady
+              ? "準備済み ✓ 圏外(山奥など)でも道路網・水域・現在地・ルートが表示されます。地名や道路番号の文字は出ません。"
+              : "山奥など電波が切れる場所の対策です。Wi-Fi接続時に一度ダウンロードしておくと、圏外でも道路網・現在地・ルートが表示されます（約130MB／文字ラベルなし）。"}
+            {offlinePrep === "done" && " ダウンロードが完了しました。"}
+            {offlinePrep === "error" && " ダウンロードに失敗しました。通信環境を確認して再度お試しください。"}
           </p>
         </section>
 

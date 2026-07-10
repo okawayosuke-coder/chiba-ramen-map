@@ -20,6 +20,7 @@ import {
 import { fetchWeather, wmo, type Weather } from "../weather";
 import { reverseAddressNoBanchi } from "../geocode";
 import { addTrackPoint, getTrackPoints, subscribeTrack } from "../track";
+import { buildOfflineStyle, addOfflinePmtilesLayers, registerPmtiles, OFFLINE_STYLE_KEY } from "../offlineBasemap";
 import type { HwOverride } from "../storage";
 
 /** Props は Leaflet 版 RamenMap と完全に同一（ドロップイン差し替え用）。
@@ -42,6 +43,7 @@ interface Props {
   onToggleHeadingUp?: () => void; // 地図上「方位」コンパスボタン（3Dボタンの下）からノースアップ/ヘディングアップ切替
   baseMap?: string; // 地図の種類: "standard"(テーマで昼夜) | "satellite"(航空写真)。既定standard
   onSetBaseMap?: (v: string) => void; // 地図上「種類」ボタンのメニューから基図を選択
+  offline?: boolean; // 圏外(!online)。true の間は自前pmtilesのオフライン基図を敷く（Mapboxオンラインタイルの代替）
   hwOverride: HwOverride;
   onCycleHwOverride: () => void;
   dest: Dest | null;
@@ -967,10 +969,13 @@ function RamenMapbox(props: Props) {
     }
     mapboxgl.accessToken = token;
     const v = getInitialView();
-    styleRef.current = styleFor(propsRef.current.theme, propsRef.current.baseMap); // 初期スタイル（航空写真優先／夜間はdark）
+    // 圏外での新規起動は最初から専用オフラインスタイルで開始（Mapboxスタイル取得に依存しない）。
+    const startOffline = !!propsRef.current.offline;
+    styleRef.current = startOffline ? OFFLINE_STYLE_KEY : styleFor(propsRef.current.theme, propsRef.current.baseMap);
+    if (startOffline) registerPmtiles();
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: styleRef.current,
+      style: startOffline ? buildOfflineStyle() : styleRef.current,
       center: [v.lng, v.lat],
       zoom: v.zoom,
       bearing: v.bearing,
@@ -1041,6 +1046,12 @@ function RamenMapbox(props: Props) {
       }
       applyLabels(map);
       applyStandardConfig(map); // Standardスタイルなら night プリセット＋日本語ラベルを適用
+      // 圏外の専用スタイルなら、pmtilesのオフライン基図をアプリ層の下に注入（setStyleのJSONには入れられないため）。
+      if (styleRef.current === OFFLINE_STYLE_KEY) {
+        addOfflinePmtilesLayers(map).catch(() => {
+          /* header取得失敗(未キャッシュ等)は次回のsetStyle/オンライン温めで解消 */
+        });
+      }
       readyRef.current = true;
       setMapReady(true);
       const src = map.getSource("shops") as mapboxgl.GeoJSONSource | undefined;
@@ -1146,15 +1157,17 @@ function RamenMapbox(props: Props) {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     mapStyleCtrlRef.current?.sync(); // 「種類」ボタンの点灯/ハイライトを現在の基図に同期
-    const want = styleFor(props.theme, props.baseMap);
+    // 圏外(offline)は自前pmtilesの専用スタイルへ、オンラインはテーマ/基図のスタイルへ。
+    const want = props.offline ? OFFLINE_STYLE_KEY : styleFor(props.theme, props.baseMap);
     if (want === styleRef.current) return; // 変化なし
     styleRef.current = want;
     labelOrigRef.current = {}; // 新スタイルのラベル原値を取り直す（bigLabels基準）
     readyRef.current = false;
     setMapReady(false); // 全mapReady-effect(route/track/POI/follow/grade/標高プローブ等)を解除→style.loadで再構築
-    map.setStyle(want);
+    // オフラインは style spec オブジェクト、オンラインは URL 文字列で setStyle。
+    map.setStyle(want === OFFLINE_STYLE_KEY ? buildOfflineStyle() : want);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.theme, props.baseMap]);
+  }, [props.theme, props.baseMap, props.offline]);
 
   // リアルタイム渋滞表示のON/OFF（traffic レイヤの visibility 切替）。レイヤは setupLayers で常設。
   useEffect(() => {

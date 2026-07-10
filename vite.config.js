@@ -88,6 +88,19 @@ export default defineConfig(function (_a) {
                                 cacheableResponse: { statuses: [0, 200] },
                             },
                         },
+                        {
+                            // オフライン基図の自前pmtiles(同一オリジン・offline-basemap/*.pmtiles)。
+                            // CacheFirst＋rangeRequests: オンライン中に warmOfflineBasemapCache() が 200全体を保存し、
+                            // 圏外では RangeRequestsPlugin が 206 にスライスして返す（am2222 が要求する Byte Serving を満たす）。
+                            urlPattern: /\/offline-basemap\/[^/]+\.pmtiles$/,
+                            handler: "CacheFirst",
+                            options: {
+                                cacheName: "offline-basemap",
+                                rangeRequests: true,
+                                cacheableResponse: { statuses: [0, 200] },
+                                expiration: { maxEntries: 6, maxAgeSeconds: 180 * 24 * 60 * 60 },
+                            },
+                        },
                     ],
                 },
             }),
