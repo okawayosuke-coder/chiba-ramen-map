@@ -1571,6 +1571,30 @@ body {
   color: #6b7280;
 }
 
+/* オフラインバナー（画面上・中央）。電波が切れた時に「地図更新は停止／案内は継続」を明示。
+   地図タイルが更新されない不安を減らすための告知。route-box(top:224)等より上に薄く出す。 */
+.offline-banner {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  z-index: 660;
+  max-width: calc(100% - 120px);
+  padding: 7px 14px;
+  background: rgba(146, 64, 14, 0.94); /* 琥珀寄りの警告色（赤=危険と区別） */
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ===== 縮尺バー（ScaleControl・右下）。実距離が一目で分かるよう大きめ・高コントラスト ===== */
 .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-scale {
   font-size: 15px;

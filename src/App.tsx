@@ -55,7 +55,7 @@ import {
   type PlaceHit,
   type PlaceSuggestion,
 } from "./geocode";
-import { useGeolocation, useMovementDetector } from "./hooks";
+import { useGeolocation, useMovementDetector, useOnline } from "./hooks";
 import {
   fetchIsochrone,
   containsPt,
@@ -220,6 +220,7 @@ export default function App() {
   const [navApp, setNavApp] = useNavApp();
   const [safetyAck, setSafetyAck] = useSafetyAck();
   const geo = useGeolocation();
+  const online = useOnline();
   const theme = useTheme(geo.pos);
 
   // 全体OFFなら空＝何も取得・表示しない。ONなら選択中の種類を表示
@@ -1135,6 +1136,11 @@ export default function App() {
       </aside>
 
       <div className="map-wrap">
+        {!online && (
+          <div className="offline-banner" role="status">
+            📴 オフライン：地図の更新は停止中。現在地・ルート案内は継続します
+          </div>
+        )}
         <button
           className="pane-handle"
           onClick={() => setPaneHidden((v) => !v)}

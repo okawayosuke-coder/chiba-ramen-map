@@ -12,6 +12,27 @@ export function useEscape(onClose: () => void) {
   }, [onClose]);
 }
 
+/** オンライン/オフライン状態。navigator.onLine ＋ online/offline イベントで追従。
+ *  山間部などで電波が切れた時に「地図更新は止まるが案内・現在地は継続」をUIで明示するために使う。
+ *  注意: navigator.onLine は「ネットワークI/Fに繋がっているか」しか見ないため、接続はあるが到達不可
+ *  （基地局圏内だが実質不通）を取りこぼす。地図タイルのロード失敗検知は別途 RamenMapbox 側で補う。 */
+export function useOnline(): boolean {
+  const [online, setOnline] = useState<boolean>(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine
+  );
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+  return online;
+}
+
 export type GeoStatus =
   | "idle"
   | "loading"
