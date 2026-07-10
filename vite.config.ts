@@ -47,11 +47,13 @@ export default defineConfig(({ command }) => ({
         // アプリシェル＋データをプリキャッシュ。pois.json(同梱POI)も含めオフライン表示可。
         // 地図タイルは外部のためオフライン不可。
         globPatterns: ["**/*.{js,css,html,png,svg,woff2,json}"],
-        // mapbox-gl は試験機能・大容量・要ネットワークのためプリキャッシュしない（既定Leafletの負荷を増やさない）。
+        // ★mapbox-gl(約1.8MB)は必ずプリキャッシュする。アプリは現在Mapbox主体で、RamenMapboxが
+        //   静的importしているため、これがオフラインで取れないとlazy importが失敗しアプリ全体が
+        //   起動不能になる（機内モードで起動できない不具合の原因・2026-07-10確認）。オフライン基図機能の前提。
         // regions/(全国の地方ブロック高速データ)は関東外に出た時だけ使うオンデマンド設計＝プリキャッシュせず
         // 下の runtimeCaching(CacheFirst) で「一度取れた地方はオフライン再訪可」にする。
-        globIgnores: ["**/mapbox-gl-*.js", "**/regions/**"],
-        // pois.json は大きめ(~1MB)なのでプリキャッシュ上限を引き上げる
+        globIgnores: ["**/regions/**"],
+        // pois.json(~1MB)・mapbox-gl(~1.8MB)をプリキャッシュ対象にするため上限を引き上げる
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: null,
         runtimeCaching: [
