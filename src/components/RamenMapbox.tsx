@@ -117,6 +117,14 @@ function getInitialView(): View {
   return { lng: 140.18, lat: 35.55, zoom: 10, bearing: 0, pitch: 0 };
 }
 
+/** 圏外(オフライン基図)ではカメラ移動アニメを0msに（即時ジャンプ）。easeTo/flyTo/fitBoundsの飛行は
+ *  経路上の中間ビューを毎フレーム描画し、その都度タイルを読み込むため、遠距離だと iPad(WebKit) が
+ *  メモリ超過で落ちる（実例=遠くから「現在地」ボタンで戻ると落ちる）。0msなら最終ビューのタイルだけで済む。
+ *  オフライン判定は圏外専用スタイルにしか無いソース "ob-south" の有無（styleRefが届かない場所でも使える）。 */
+function obDuration(map: mapboxgl.Map, ms: number): number {
+  return map.getSource("ob-south") ? 0 : ms;
+}
+
 /** 目的地（と現在地）が見えるよう地図を寄せる。現在地が60km圏ならfitBounds、遠ければ目的地へflyTo。 */
 function fitCameraToDest(map: mapboxgl.Map, dest: Pt, userPos: Pt | null): void {
   if (userPos && haversineKm(userPos, dest) < 60) {
@@ -125,10 +133,10 @@ function fitCameraToDest(map: mapboxgl.Map, dest: Pt, userPos: Pt | null): void 
         [Math.min(userPos.lng, dest.lng), Math.min(userPos.lat, dest.lat)],
         [Math.max(userPos.lng, dest.lng), Math.max(userPos.lat, dest.lat)],
       ],
-      { padding: 80, maxZoom: 15, duration: 800 }
+      { padding: 80, maxZoom: 15, duration: obDuration(map, 800) }
     );
   } else {
-    map.flyTo({ center: [dest.lng, dest.lat], zoom: 13, duration: 800 });
+    map.flyTo({ center: [dest.lng, dest.lat], zoom: 13, duration: obDuration(map, 800) });
   }
 }
 
@@ -1574,7 +1582,7 @@ function RamenMapbox(props: Props) {
     // 走行モード中でもプレビューできるよう、カメラ追従だけ一時停止（走行モード自体は維持＝HUD/「現在地」ボタンは残る）。
     // 非走行モードでは followApiRef は null＝no-op（追従ループが無いので flyTo はそのまま効く）。復帰は「現在地」ボタン。
     followApiRef.current?.suspend();
-    map.flyTo({ center: [cand.lng, cand.lat], zoom: 15, bearing: 0, duration: 800 });
+    map.flyTo({ center: [cand.lng, cand.lat], zoom: 15, bearing: 0, duration: obDuration(map, 800) });
     const pinEl = document.createElement("div");
     pinEl.className = "cand-pin";
     pinEl.textContent = "📍";
@@ -2892,7 +2900,7 @@ function RamenMapbox(props: Props) {
           padding: { top: 80, bottom: 90, left: 80, right: 80 },
           maxZoom: 15,
           bearing: 0,
-          duration: 800,
+          duration: obDuration(map, 800),
         });
       }
       if (here) refresh(here);
@@ -3475,7 +3483,8 @@ function RamenMapbox(props: Props) {
         map.setZoom(targetZoom);
       } else {
         // 追従が外れている（手動パン／停車）＝現在地へ滑らかに寄せ直し＋200m縮尺。
-        map.easeTo({ center, zoom: targetZoom, bearing: headingUp ? lastBearing : 0, offset: [0, leadPx()], duration: 600 });
+        // ★圏外は0ms(即時)＝遠距離の飛行アニメが中間タイルを大量に読みメモリ超過で落ちるのを防ぐ。
+        map.easeTo({ center, zoom: targetZoom, bearing: headingUp ? lastBearing : 0, offset: [0, leadPx()], duration: obDuration(map, 600) });
       }
     };
     recBtn.onclick = recenterToCar;
