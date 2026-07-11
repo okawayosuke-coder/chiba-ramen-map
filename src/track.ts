@@ -10,7 +10,8 @@ export interface TrackPoint {
 }
 
 const KEY = "crm_track";
-const MAX = 20000; // 上限点数（約50m間隔で約1000km分）
+const MAX_KM = 500; // ★走行軌跡の保持距離。直近500km分だけ残し、超えた古い区間は先頭から捨てる。
+const MAX = 12000; // ハード上限点数（安全弁・localStorage容量保護）。通常は上の距離基準が先に効く（500km/50m≒1万点）。
 const MIN_M = 50; // 記録間隔(m)。走行テストの密度調整で 20→40→50
 const ROUND = 1e6; // 座標を6桁(約0.1m)に丸めて保存（容量節約・実害なし）
 
@@ -66,7 +67,17 @@ export function addTrackPoint(lat: number, lng: number, t: number) {
     lng: Math.round(lng * ROUND) / ROUND,
     t,
   });
-  if (points.length > MAX) points = points.slice(points.length - MAX);
+  // ★末尾(最新)から積算し、MAX_KM を超えた地点より前の古い区間を捨てる＝直近500kmだけ保持。
+  if (points.length > 2) {
+    let total = 0;
+    let cut = 0;
+    for (let i = points.length - 1; i > 0; i--) {
+      total += haversineKm(points[i - 1], points[i]);
+      if (total > MAX_KM) { cut = i; break; }
+    }
+    if (cut > 0) points = points.slice(cut);
+  }
+  if (points.length > MAX) points = points.slice(points.length - MAX); // ハード上限(安全弁)
   save();
   emit();
 }
@@ -106,7 +117,8 @@ export function trackStats() {
     km,
     durMin: Math.round(durMs / 60000),
     bytes,
-    maxCount: MAX, // 上限点数（容量の目安: 何%使っているか）
+    maxCount: MAX, // ハード上限点数（安全弁）
+    maxKm: MAX_KM, // 保持距離の上限（500km）。表示の「上限の何%」はこれ基準
   };
 }
 

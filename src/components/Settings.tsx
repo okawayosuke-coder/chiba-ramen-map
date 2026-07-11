@@ -390,9 +390,9 @@ export default function Settings({
                   stats.bytes >= 1024 * 1024
                     ? (stats.bytes / 1024 / 1024).toFixed(1) + "MB"
                     : Math.max(1, Math.round(stats.bytes / 1024)) + "KB"
-                }（上限の${Math.round(
-                  (stats.count / stats.maxCount) * 100
-                )}%）`
+                }（直近${stats.maxKm}km中 約${Math.min(100, Math.round(
+                  (stats.km / stats.maxKm) * 100
+                ))}%）`
               : ""}
           </p>
         </section>
