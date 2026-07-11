@@ -991,6 +991,8 @@ function RamenMapbox(props: Props) {
       localIdeographFontFamily: "'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans CJK JP', sans-serif",
     });
     mapRef.current = map;
+    // 圏外で冷間起動した場合も、ズーム範囲を実用域に制限（メモリ超過クラッシュ対策・上のstyle切替effectと同値）。
+    if (startOffline) { map.setMinZoom(9); map.setMaxZoom(18); }
     (window as unknown as Record<string, unknown>).__mbmap = map; // 検証/デバッグ用（試験エンジン時のみ）
     // ズーム+/- は左上（Leaflet版と同じ位置）。コンパスは出さない。Leaflet同様の半段(0.5)ズーム＝
     // 1タップ0.5段（標準1段だと「2段階」に感じる）＋縮尺150mを飛ばさない。CSSで大きくタップしやすく。
@@ -1170,6 +1172,11 @@ function RamenMapbox(props: Props) {
     setMapReady(false); // 全mapReady-effect(route/track/POI/follow/grade/標高プローブ等)を解除→style.loadで再構築
     // オフラインは style spec オブジェクト、オンラインは URL 文字列で setStyle。
     map.setStyle(want === OFFLINE_STYLE_KEY ? buildOfflineStyle() : want);
+    // ★圏外はズーム範囲を実用域に制限＝「大幅ズームアウト(広域を一括描画)」「大幅ズームイン(極端な
+    //   オーバーズーム)」でタイル/ラベルが一気に増え iPad(WebKit)がメモリ超過で落ちるのを防ぐ。
+    //   z9で約80km(通勤ルート全体が見える)・z18で十分な詳細。オンライン復帰で通常域(0〜19)へ戻す。
+    if (want === OFFLINE_STYLE_KEY) { map.setMinZoom(9); map.setMaxZoom(18); }
+    else { map.setMinZoom(0); map.setMaxZoom(19); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.theme, props.baseMap, props.offline]);
 
