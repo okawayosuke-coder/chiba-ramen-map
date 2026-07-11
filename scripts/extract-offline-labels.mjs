@@ -1,5 +1,5 @@
 // オフライン基図のラベル(地名/道路番号)用 GeoJSON を、生成済み region pmtiles から抽出する。
-// 出力: public/offline-basemap/labels-places.json(市区町村) / labels-roads.json(高速+国道級のref)。
+// 出力: public/offline-basemap/labels-places.json(市区町村+地区) / labels-roads.json(高速+国道級のref)。
 // これらは vite の precache 対象(json)で、圏外冷間起動でも即使える。symbol はネイティブ geojson ソースに
 // 載せる(offlineBasemap.ts)＝am2222カスタムソース上の symbol がタイル描画を壊す不具合を回避する設計。
 //
@@ -7,11 +7,6 @@
 // 入力 pmtiles(SOURCES): kc-south-z12 / tohoku-north-z12 を再生成する場合は
 //   pmtiles extract japan-z12.pmtiles <out> --maxzoom 12 --bbox=<w,s,e,n>
 // ※SOURCES のパスは生成環境に合わせて書き換えること(下記は生成時の scratchpad パス)。
-import { PMTiles } from "pmtiles";
-import { VectorTile } from "@mapbox/vector-tile";
-import Pbf from "pbf";
-import { readFileSync, writeFileSync } from "node:fs";
-import zlib from "node:zlib";
 
 class FileSource {
   constructor(path) { this.buf = readFileSync(path); this.key = path; }
@@ -28,8 +23,8 @@ const PLACE_Z = 11; // 地名抽出ズーム（localities+主要neighbourhoodが
 const ROAD_Z = 11;  // 道路ref抽出ズーム（主要道路網）
 // 道路: 高速(motorway)＋国道級(trunk)のみ。primary(主要地方道)は密すぎるので除外＝ナビで見る番号に集中。
 const ROAD_KEEP = new Set(["motorway", "trunk"]);
-// 地名: 市区町村(locality)＋都道府県(region)のみ。macrohood/neighbourhood(微小地区)は密すぎるので除外。
-const PLACE_KEEP = new Set(["locality", "region"]);
+// 地名: 都道府県(region)/市区町村(locality)/地区(macrohood)/町名(neighbourhood)。密度は min_zoom＋collision で制御。
+const PLACE_KEEP = new Set(["locality", "region", "macrohood", "neighbourhood"]);
 // 線の簡略化: 隣接点が近すぎる(度)場合は間引く（シールド配置には粗い経路で十分・サイズ削減）。
 const SIMPLIFY_DEG = 0.0015; // 約150m
 
@@ -42,8 +37,13 @@ async function decode(pm, z, x, y) {
   return new VectorTile(new Pbf(data));
 }
 
+const POI_Z = 12; // POI抽出ズーム（駅・町名・団地が揃う最大ズーム）
+// POI: 駅(station)＝ランドマーク / 町名(postal_code)・丁目(administrative)・団地(residential)＝密な地名。
+const POI_KEEP = new Set(["station", "postal_code", "administrative", "residential"]);
+
 const placeMap = new Map(); // key name|round → feature（重複排除・min_zoom最小を採用）
 const roadMap = new Map();  // key ref|round(mid) → linestring（重複排除）
+const poiMap = new Map();   // key name|round → feature（駅/町名/団地）
 
 for (const src of SOURCES) {
   const pm = new PMTiles(new FileSource(src.file));
@@ -92,17 +92,38 @@ for (const src of SOURCES) {
       }
     }
   }
-  console.log(src.file.split("/").pop(), "→ places", placeMap.size, "roads", roadMap.size);
+  // pois（駅/町名/団地）
+  { const a = ll2t(w, n, POI_Z), b = ll2t(e, s, POI_Z);
+    for (let x = a.x; x <= b.x; x++) for (let y = a.y; y <= b.y; y++) {
+      const vt = await decode(pm, POI_Z, x, y); if (!vt || !vt.layers.pois) continue;
+      const L = vt.layers.pois;
+      for (let i = 0; i < L.length; i++) {
+        const f = L.feature(i); const p = f.properties;
+        const kind = p["pmap:kind"] || p.kind || "";
+        if (!POI_KEEP.has(kind)) continue;
+        const name = p["name:ja"] || p.name; if (!name) continue;
+        // administrative は 市/区/郡 など locality と重複する広域は除外し、丁目・大字レベルのみ採用。
+        if (kind === "administrative" && /(都|道|府|県|市|区|郡|町|村)$/.test(name)) continue;
+        const mz = Number(p["pmap:min_zoom"] ?? p.min_zoom ?? 12);
+        const g = f.toGeoJSON(x, y, POI_Z); const c = g.geometry.coordinates;
+        const cat = kind === "station" ? "station" : "town"; // 表示上は駅か町名の2種
+        const key = cat + "|" + name + "|" + c[0].toFixed(2) + "|" + c[1].toFixed(2);
+        if (!poiMap.has(key)) poiMap.set(key, { type: "Feature", geometry: { type: "Point", coordinates: [+c[0].toFixed(5), +c[1].toFixed(5)] }, properties: { name, cat, mz } });
+      }
+    }
+  }
+  console.log(src.file.split("/").pop(), "→ places", placeMap.size, "roads", roadMap.size, "pois", poiMap.size);
 }
 
 const places = { type: "FeatureCollection", features: [...placeMap.values()] };
 const roads = { type: "FeatureCollection", features: [...roadMap.values()] };
-writeFileSync(OUT + "labels-places.geojson", JSON.stringify(places));
-writeFileSync(OUT + "labels-roads.geojson", JSON.stringify(roads));
+const pois = { type: "FeatureCollection", features: [...poiMap.values()] };
+writeFileSync(OUT + "labels-places.json", JSON.stringify(places));
+writeFileSync(OUT + "labels-roads.json", JSON.stringify(roads));
+writeFileSync(OUT + "labels-pois.json", JSON.stringify(pois));
 const kb = (o) => Math.round(JSON.stringify(o).length / 1024);
-console.log("WROTE places:", places.features.length, "feats", kb(places), "KB | roads:", roads.features.length, "feats", kb(roads), "KB");
-// kind別内訳
+console.log("WROTE places:", places.features.length, kb(places), "KB | roads:", roads.features.length, kb(roads), "KB | pois:", pois.features.length, kb(pois), "KB");
 const byKind = {}; for (const f of places.features) byKind[f.properties.kind] = (byKind[f.properties.kind] || 0) + 1;
 console.log("places by kind:", JSON.stringify(byKind));
-const byKd = {}; for (const f of roads.features) byKd[f.properties.kd] = (byKd[f.properties.kd] || 0) + 1;
-console.log("roads by kind_detail:", JSON.stringify(byKd));
+const byCat = {}; for (const f of pois.features) byCat[f.properties.cat] = (byCat[f.properties.cat] || 0) + 1;
+console.log("pois by cat:", JSON.stringify(byCat));

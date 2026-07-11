@@ -21,6 +21,7 @@ export const OFFLINE_SOURCES: { id: string; url: string; bounds: [number, number
 // places=市区町村(locality) / roads=高速(motorway)+国道級(trunk) の ref。scripts/extract-offline-labels.mjs 参照。
 const LABEL_PLACES_URL = `${BASE}offline-basemap/labels-places.json`;
 const LABEL_ROADS_URL = `${BASE}offline-basemap/labels-roads.json`;
+const LABEL_POIS_URL = `${BASE}offline-basemap/labels-pois.json`; // 駅・町名・丁目・団地
 
 // ラベル用フォント: 同梱の Noto Sans Regular(Protomaps basemaps-assets・オープン)。public/fonts/ に 0-255/256-511 を
 // 同梱し precache＝圏外でも確実に取得できレース無し。★以前の失敗の真因=ラベル用フォントスタックのグリフが
@@ -95,6 +96,7 @@ export async function addOfflinePmtilesLayers(map: mapboxgl.Map): Promise<void> 
 function addOfflineLabelLayers(map: mapboxgl.Map): void {
   if (!map.getSource("ob-places")) map.addSource("ob-places", { type: "geojson", data: LABEL_PLACES_URL });
   if (!map.getSource("ob-roads")) map.addSource("ob-roads", { type: "geojson", data: LABEL_ROADS_URL });
+  if (!map.getSource("ob-pois")) map.addSource("ob-pois", { type: "geojson", data: LABEL_POIS_URL });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const REF_COLOR: any = ["match", ["get", "kd"], "motorway", "#0a7d32", "#1a56c4"]; // 高速=緑 / 国道級=青
   const layers: mapboxgl.AnyLayer[] = [
@@ -109,15 +111,58 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
       },
       paint: { "text-color": REF_COLOR, "text-halo-color": "#ffffff", "text-halo-width": 2.2 },
     } as unknown as mapboxgl.AnyLayer,
-    // 地名(市区町村)。点ラベル=既定で正立。人口/種別でサイズを変え、重なりは自動で間引き(collision)。
+    // 地名(市区町村 locality)。点ラベル=既定で正立。z7〜・大きめ・優先(先に配置＝地区より勝つ)。
     {
       id: "ob-place", type: "symbol", source: "ob-places", minzoom: 7,
+      filter: ["==", ["get", "kind"], "locality"],
       layout: {
         "text-field": ["get", "name"], "text-font": OB_FONT,
-        "text-size": ["interpolate", ["linear"], ["zoom"], 7, 11, 11, 14, 15, 18],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 7, 12, 11, 15, 15, 19],
         "text-max-width": 7, "text-anchor": "center", "symbol-sort-key": ["-", 0, ["get", "pop"]],
       },
-      paint: { "text-color": "#33312b", "text-halo-color": "#ffffff", "text-halo-width": 1.8 },
+      paint: { "text-color": "#2a2824", "text-halo-color": "#ffffff", "text-halo-width": 1.9 },
+    } as unknown as mapboxgl.AnyLayer,
+    // 駅ドット(station)。z11〜・鉄道色の小円＝一目で駅と分かる。
+    {
+      id: "ob-poi-station-dot", type: "circle", source: "ob-pois", minzoom: 11,
+      filter: ["==", ["get", "cat"], "station"],
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 15, 4.5],
+        "circle-color": "#c0392b", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5,
+      },
+    } as unknown as mapboxgl.AnyLayer,
+    // 駅名(station)。z11.5〜・鉄道色・ドットの上。市区町村の次に優先。
+    {
+      id: "ob-poi-station", type: "symbol", source: "ob-pois", minzoom: 11.5,
+      filter: ["==", ["get", "cat"], "station"],
+      layout: {
+        "text-field": ["get", "name"], "text-font": OB_FONT,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 11.5, 11, 15, 14],
+        "text-anchor": "top", "text-offset": [0, 0.5], "text-max-width": 7, "text-padding": 4,
+      },
+      paint: { "text-color": "#a3281b", "text-halo-color": "#ffffff", "text-halo-width": 1.8 },
+    } as unknown as mapboxgl.AnyLayer,
+    // 地区(macrohood)。z11.5〜・中くらい・控えめ色。
+    {
+      id: "ob-place-hood", type: "symbol", source: "ob-places", minzoom: 11.5,
+      filter: ["!=", ["get", "kind"], "locality"],
+      layout: {
+        "text-field": ["get", "name"], "text-font": OB_FONT,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 11.5, 11, 15, 14],
+        "text-max-width": 6, "text-anchor": "center", "text-padding": 6,
+      },
+      paint: { "text-color": "#5a5648", "text-halo-color": "#ffffff", "text-halo-width": 1.6 },
+    } as unknown as mapboxgl.AnyLayer,
+    // 町名・丁目・団地(town)。z12.5〜・小さめ・最も控えめ＝密なので最後に配置(collisionで自動間引き)。
+    {
+      id: "ob-poi-town", type: "symbol", source: "ob-pois", minzoom: 12.5,
+      filter: ["==", ["get", "cat"], "town"],
+      layout: {
+        "text-field": ["get", "name"], "text-font": OB_FONT,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 12.5, 10.5, 15, 13],
+        "text-max-width": 6, "text-anchor": "center", "text-padding": 5,
+      },
+      paint: { "text-color": "#6b6656", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
     } as unknown as mapboxgl.AnyLayer,
   ];
   for (const l of layers) if (!map.getLayer(l.id)) map.addLayer(l);
