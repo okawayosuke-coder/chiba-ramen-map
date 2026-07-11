@@ -982,6 +982,10 @@ function RamenMapbox(props: Props) {
       pitch: v.pitch,
       maxZoom: 19,
       attributionControl: true,
+      // ★保持タイル数を制限＝「圏外で大移動＋ズーム」時にソース毎のタイルが溜まってメモリ急増→
+      //   iPad(WebKit)がページを強制終了（落ちる）のを防ぐ。基図2＋ラベル多数ソースの合計を抑える。
+      //   小さすぎると再訪で再デコードが増えるが、pmtiles/geojsonはキャッシュ済みで安価。
+      maxTileCacheSize: 24,
       // 日本語(漢字/かな)ラベルを端末ローカルフォントで生成＝CJKグリフのサーバDLが0に。
       // 読み込み高速化・通信減・描画負荷軽減（発熱対策にも寄与）。iOSのヒラギノを優先。
       localIdeographFontFamily: "'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans CJK JP', sans-serif",
