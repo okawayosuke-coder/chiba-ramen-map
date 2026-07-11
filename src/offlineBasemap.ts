@@ -140,18 +140,73 @@ export async function addOfflinePmtilesLayers(map: mapboxgl.Map): Promise<void> 
   addOfflineLabelLayers(map);
 }
 
+// ===== 重いラベル(chome/poi/landmarks 計約23万点)の「可視域だけ setData」機構 =====
+// 全件をgeojsonに常駐させるとWorkerメモリが膨らみ iPad(WebKit)がOOMで落ちる。表示中の範囲＋余白の
+// 点だけを都度 setData し、常駐フィーチャ数を「見えているぶん(数百〜数千)」に抑える。文字描画は実績ある
+// geojson symbol のまま(am2222 pmtilesはtext symbol不可)。座標はFloat32の軽量配列で主スレッドに保持。
+const EMPTY_FC = { type: "FeatureCollection", features: [] };
+interface Compact { lon: Float32Array; lat: Float32Array; name: string[]; cat: string[] }
+const HEAVY: { id: string; url: string; minzoom: number }[] = [
+  { id: "ob-chome", url: LABEL_CHOME_URL, minzoom: 13 },
+  { id: "ob-landmarks", url: LABEL_LANDMARKS_URL, minzoom: 11.5 },
+  { id: "ob-poi-all", url: LABEL_POI_URL, minzoom: 11.5 },
+];
+const heavyStore: Record<string, Compact | undefined> = {};
+async function loadHeavyStore(url: string, id: string): Promise<void> {
+  if (heavyStore[id]) return;
+  const r = await fetch(url); if (!r.ok) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fc: any = await r.json();
+  const feats = fc.features || []; const n = feats.length;
+  const lon = new Float32Array(n); const lat = new Float32Array(n);
+  const name: string[] = new Array(n); const cat: string[] = new Array(n);
+  for (let i = 0; i < n; i++) { const f = feats[i]; const c = f.geometry.coordinates; lon[i] = c[0]; lat[i] = c[1]; name[i] = f.properties.name || ""; cat[i] = f.properties.cat || ""; }
+  heavyStore[id] = { lon, lat, name, cat };
+}
+/** 現在の表示範囲(＋余白)に入る点だけを各重いソースへ setData。ズームが表示minzoom未満なら空にする。 */
+function populateHeavy(map: mapboxgl.Map): void {
+  const z = map.getZoom(); const b = map.getBounds(); if (!b) return;
+  const mx = (b.getEast() - b.getWest()) * 0.35; const my = (b.getNorth() - b.getSouth()) * 0.35;
+  const w = b.getWest() - mx; const e = b.getEast() + mx; const s = b.getSouth() - my; const no = b.getNorth() + my;
+  for (const h of HEAVY) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const src = map.getSource(h.id) as any; if (!src || !src.setData) continue;
+    const st = heavyStore[h.id];
+    if (!st || z < h.minzoom - 0.5) { src.setData(EMPTY_FC); continue; }
+    const { lon, lat, name, cat } = st;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const feats: any[] = [];
+    for (let i = 0; i < lon.length; i++) { const x = lon[i]; const y = lat[i]; if (x < w || x > e || y < s || y > no) continue; feats.push({ type: "Feature", geometry: { type: "Point", coordinates: [x, y] }, properties: { name: name[i], cat: cat[i] } }); }
+    src.setData({ type: "FeatureCollection", features: feats });
+  }
+}
+/** 重いラベルのストアを読み込み、moveendで可視域だけ再setDataする。offline style load 毎に呼ぶ(冪等)。 */
+function initHeavyLabels(map: mapboxgl.Map): void {
+  Promise.all(HEAVY.map((h) => loadHeavyStore(h.url, h.id))).then(() => populateHeavy(map)).catch(() => { /* 圏外で未キャッシュ等は無視 */ });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (!(map as any)._obHeavyBound) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (map as any)._obHeavyBound = true;
+    let t = 0;
+    const onMove = () => { if (t) return; t = window.setTimeout(() => { t = 0; populateHeavy(map); }, 120); };
+    map.on("moveend", onMove);
+  }
+}
+
 /** 地名(市区町村)・道路番号(高速/国道)のラベルを geojson ソースから追加。addOfflinePmtilesLayers から呼ぶ。 */
 function addOfflineLabelLayers(map: mapboxgl.Map): void {
   // ★geojson の内部インデックス上限を maxzoom:12 に制限＝メモリ大幅削減(既定18は点データには過剰)。
   //   点は高ズームで詳細が増えないため、表示は z13+ で z12タイルをオーバーズームすれば十分。iPad の
   //   メモリ枯渇クラッシュ対策(大移動+ズームで落ちる不具合)。buffer も小さめにしてタイル毎の重複を減らす。
   const gj = (data: string): mapboxgl.AnySourceData => ({ type: "geojson", data, maxzoom: 12, buffer: 32 } as unknown as mapboxgl.AnySourceData);
+  // 小さめ(計~3.6万点)は全件geojsonのまま。重い3ソースは空で作り、可視域だけ initHeavyLabels で setData。
+  const empty = (): mapboxgl.AnySourceData => ({ type: "geojson", data: EMPTY_FC, maxzoom: 12, buffer: 32 } as unknown as mapboxgl.AnySourceData);
   if (!map.getSource("ob-places")) map.addSource("ob-places", gj(LABEL_PLACES_URL));
   if (!map.getSource("ob-roads")) map.addSource("ob-roads", { type: "geojson", data: LABEL_ROADS_URL, maxzoom: 12 } as unknown as mapboxgl.AnySourceData);
   if (!map.getSource("ob-pois")) map.addSource("ob-pois", gj(LABEL_POIS_URL));
-  if (!map.getSource("ob-chome")) map.addSource("ob-chome", gj(LABEL_CHOME_URL));
-  if (!map.getSource("ob-landmarks")) map.addSource("ob-landmarks", gj(LABEL_LANDMARKS_URL));
-  if (!map.getSource("ob-poi-all")) map.addSource("ob-poi-all", gj(LABEL_POI_URL));
+  if (!map.getSource("ob-chome")) map.addSource("ob-chome", empty());
+  if (!map.getSource("ob-landmarks")) map.addSource("ob-landmarks", empty());
+  if (!map.getSource("ob-poi-all")) map.addSource("ob-poi-all", empty());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const REF_COLOR: any = ["match", ["get", "kd"], "motorway", "#0a7d32", "#1a56c4"]; // 高速=緑 / 国道級=青
   const layers: mapboxgl.AnyLayer[] = [
@@ -272,6 +327,8 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
     poiLabel("ob-poi-dense-label", POI_DENSE, 15),
   );
   for (const l of layers) if (!map.getLayer(l.id)) map.addLayer(l);
+  // 重い3ソース(chome/poi/landmarks)は空で作ってあるので、可視域だけを load＋setData する。
+  initHeavyLabels(map);
 }
 
 /** オフライン基図が圏外で使える準備ができているか。★pmtiles(基図)だけでなくラベル群(地名/道路番号/
