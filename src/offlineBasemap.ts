@@ -21,7 +21,10 @@ export const OFFLINE_SOURCES: { id: string; url: string; bounds: [number, number
 // places=市区町村(locality) / roads=高速(motorway)+国道級(trunk) の ref。scripts/extract-offline-labels.mjs 参照。
 const LABEL_PLACES_URL = `${BASE}offline-basemap/labels-places.json`;
 const LABEL_ROADS_URL = `${BASE}offline-basemap/labels-roads.json`;
-const LABEL_POIS_URL = `${BASE}offline-basemap/labels-pois.json`; // 駅・町名・丁目・団地
+const LABEL_POIS_URL = `${BASE}offline-basemap/labels-pois.json`; // 駅・団地など(pois由来)
+const LABEL_CHOME_URL = `${BASE}offline-basemap/labels-chome.json`; // 全町丁目(国交省 位置参照情報・約9万点)
+// 準備(warm)時にまとめてキャッシュするラベル群。pmtiles と同じく圏外準備でDLし、precache には載せない(全ユーザーへの負担回避)。
+export const OFFLINE_LABEL_URLS = [LABEL_PLACES_URL, LABEL_ROADS_URL, LABEL_POIS_URL, LABEL_CHOME_URL];
 
 // ラベル用フォント: 同梱の Noto Sans Regular(Protomaps basemaps-assets・オープン)。public/fonts/ に 0-255/256-511 を
 // 同梱し precache＝圏外でも確実に取得できレース無し。★以前の失敗の真因=ラベル用フォントスタックのグリフが
@@ -97,6 +100,7 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
   if (!map.getSource("ob-places")) map.addSource("ob-places", { type: "geojson", data: LABEL_PLACES_URL });
   if (!map.getSource("ob-roads")) map.addSource("ob-roads", { type: "geojson", data: LABEL_ROADS_URL });
   if (!map.getSource("ob-pois")) map.addSource("ob-pois", { type: "geojson", data: LABEL_POIS_URL });
+  if (!map.getSource("ob-chome")) map.addSource("ob-chome", { type: "geojson", data: LABEL_CHOME_URL });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const REF_COLOR: any = ["match", ["get", "kd"], "motorway", "#0a7d32", "#1a56c4"]; // 高速=緑 / 国道級=青
   const layers: mapboxgl.AnyLayer[] = [
@@ -153,7 +157,7 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
       },
       paint: { "text-color": "#5a5648", "text-halo-color": "#ffffff", "text-halo-width": 1.6 },
     } as unknown as mapboxgl.AnyLayer,
-    // 町名・丁目・団地(town)。z12.5〜・小さめ・最も控えめ＝密なので最後に配置(collisionで自動間引き)。
+    // 団地・施設名など(pois town)。z12.5〜・chomeに無い名称の補完。
     {
       id: "ob-poi-town", type: "symbol", source: "ob-pois", minzoom: 12.5,
       filter: ["==", ["get", "cat"], "town"],
@@ -161,6 +165,16 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
         "text-field": ["get", "name"], "text-font": OB_FONT,
         "text-size": ["interpolate", ["linear"], ["zoom"], 12.5, 10.5, 15, 13],
         "text-max-width": 6, "text-anchor": "center", "text-padding": 5,
+      },
+      paint: { "text-color": "#6b6656", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
+    } as unknown as mapboxgl.AnyLayer,
+    // 全町丁目(国交省 位置参照情報・約9万点)。z13〜・最も密＝最後(最低優先)に配置しcollisionで自動間引き。
+    {
+      id: "ob-chome", type: "symbol", source: "ob-chome", minzoom: 13,
+      layout: {
+        "text-field": ["get", "name"], "text-font": OB_FONT,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 13, 10.5, 16, 13.5],
+        "text-max-width": 6, "text-anchor": "center", "text-padding": 4,
       },
       paint: { "text-color": "#6b6656", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
     } as unknown as mapboxgl.AnyLayer,
@@ -191,6 +205,16 @@ export async function warmOfflineBasemapCache(): Promise<{ warmed: string[]; ski
       const r = await fetch(s.url); // Range無し=200全体 → SWのCacheFirstが保存
       if (r.ok) { await r.arrayBuffer(); warmed.push(s.id); }
     } catch { /* 無視（次回オンライン時に再試行） */ }
+  }
+  // ラベル群(地名/道路番号/駅/町丁目)も同時に温める。precache に載せず準備時DL＝全ユーザーへの負担を避ける。
+  for (const url of OFFLINE_LABEL_URLS) {
+    try {
+      const hit = await caches.match(url);
+      if (hit) { skipped.push(url); continue; }
+      if (!navigator.onLine) { skipped.push(url); continue; }
+      const r = await fetch(url);
+      if (r.ok) { await r.arrayBuffer(); warmed.push(url); }
+    } catch { /* 無視 */ }
   }
   return { warmed, skipped };
 }

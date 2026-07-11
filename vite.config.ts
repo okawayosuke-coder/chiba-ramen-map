@@ -53,7 +53,9 @@ export default defineConfig(({ command }) => ({
         //   起動不能になる（機内モードで起動できない不具合の原因・2026-07-10確認）。オフライン基図機能の前提。
         // regions/(全国の地方ブロック高速データ)は関東外に出た時だけ使うオンデマンド設計＝プリキャッシュせず
         // 下の runtimeCaching(CacheFirst) で「一度取れた地方はオフライン再訪可」にする。
-        globIgnores: ["**/regions/**"],
+        // offline-basemap/labels-*.json(地名/道路番号/駅/町丁目 計~16MB)も precache しない＝全ユーザーに
+        // DL負担をかけず、「オフライン地図を準備」時に warmOfflineBasemapCache() でまとめて取得(CacheFirst保存)。
+        globIgnores: ["**/regions/**", "**/offline-basemap/labels-*.json"],
         // pois.json(~1MB)・mapbox-gl(~1.8MB)をプリキャッシュ対象にするため上限を引き上げる
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: null,
@@ -89,6 +91,17 @@ export default defineConfig(({ command }) => ({
               cacheName: "mapbox-tilejson",
               expiration: { maxEntries: 50, maxAgeSeconds: 30 * 24 * 60 * 60 },
               cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // オフライン基図のラベルJSON(地名/道路番号/駅/町丁目)。precache せず、準備時に warm した物を
+            // CacheFirst で保存＝圏外冷間起動でも使える。URLは安定なのでCacheFirstで確実にヒット。
+            urlPattern: /\/offline-basemap\/labels-[^/]+\.json$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "offline-basemap-labels",
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 12, maxAgeSeconds: 180 * 24 * 60 * 60 },
             },
           },
           {
