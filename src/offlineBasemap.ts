@@ -17,12 +17,17 @@ export const OFFLINE_SOURCES: { id: string; url: string; bounds: [number, number
   { id: "ob-north", url: `${BASE}offline-basemap/north.pmtiles`, bounds: [138.4, 37.0, 142.1, 41.6] }, // 東北
 ];
 
-// ラベル用フォント: 同梱の Noto Sans(Protomaps・オープン)。public/fonts/ に 0-255/256-511/8192-8447 を同梱し
-// precache＝圏外でも即取得できレース無し。★Mapbox配信フォントは非同期取得が不安定でタイル描画をブロックしたため同梱に切替。
-// CJK(日本語)は map の localIdeographFontFamily で端末フォント描画＝CJKグリフの配信は不要。
-const OB_FONT = ["DIN Pro Medium", "Arial Unicode MS Bold"];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const NAME: any = ["coalesce", ["get", "name:ja"], ["get", "name"]];
+// ラベル用 GeoJSON(ビルド時に pmtiles から抽出・precache対象=圏外冷間起動でも即使える)。
+// places=市区町村(locality) / roads=高速(motorway)+国道級(trunk) の ref。scripts/extract-offline-labels.mjs 参照。
+const LABEL_PLACES_URL = `${BASE}offline-basemap/labels-places.json`;
+const LABEL_ROADS_URL = `${BASE}offline-basemap/labels-roads.json`;
+
+// ラベル用フォント: 同梱の Noto Sans Regular(Protomaps basemaps-assets・オープン)。public/fonts/ に 0-255/256-511 を
+// 同梱し precache＝圏外でも確実に取得できレース無し。★以前の失敗の真因=ラベル用フォントスタックのグリフが
+// オンライン時にキャッシュされず、圏外で mapbox:// グリフ取得が失敗して symbol 描画が壊れていた。同梱で解消。
+// CJK(日本語の地名)は map の localIdeographFontFamily で端末フォント描画＝CJKグリフの配信は不要。道路番号はラテンで 0-255 に収まる。
+const OB_FONT = ["Noto Sans Regular"];
+// 幾何の主要道路(高速/幹線)強調フィルタ（pmtiles roads レイヤーの pmap:kind）。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MAJOR: any = ["match", ["get", "pmap:kind"], ["highway", "major_road", "medium_road"], true, false];
 
@@ -42,8 +47,8 @@ export function registerPmtiles(): void {
 export function buildOfflineStyle(): any {
   return {
     version: 8,
-    // glyphs は Mapbox 配信(SWRキャッシュ)。CJKは localIdeographFontFamily で端末描画。
-    glyphs: "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+    // ★glyphs は同梱(public/fonts/・precache)。圏外冷間起動でも確実。CJKは localIdeographFontFamily で端末描画。
+    glyphs: `${BASE}fonts/{fontstack}/{range}.pbf`,
     sources: {},
     layers: [{ id: "ob-earth", type: "background", paint: { "background-color": "#e9e5dc" } }],
   };
@@ -78,20 +83,44 @@ export async function addOfflinePmtilesLayers(map: mapboxgl.Map): Promise<void> 
       { id: `${s.id}-roads-major-case`, type: "line", source: s.id, "source-layer": "roads", filter: MAJOR, paint: { "line-color": "#d99a1f", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.8, 14, 6] } },
       { id: `${s.id}-roads-major`, type: "line", source: s.id, "source-layer": "roads", filter: MAJOR, paint: { "line-color": "#ffd873", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1, 14, 4] } },
     ];
-    // ラベル層（地名/道路番号/道路名）。glyphは同梱(precache)なので確実に配置される。
-    const LABELS: mapboxgl.AnyLayer[] = [
-      // 道路番号(ref)。ヘディングアップでも読めるよう常に正立(viewport)。線に沿って配置。z10〜
-      { id: `${s.id}-road-ref`, type: "symbol", source: s.id, "source-layer": "roads", minzoom: 10, filter: ["all", ["has", "ref"], ["!=", ["get", "ref"], ""]], layout: { "symbol-placement": "line", "text-rotation-alignment": "viewport", "text-field": ["get", "ref"], "text-font": OB_FONT, "text-size": ["interpolate", ["linear"], ["zoom"], 10, 10, 14, 13], "symbol-spacing": 240 }, paint: { "text-color": "#1a56c4", "text-halo-color": "#ffffff", "text-halo-width": 1.6 } } as unknown as mapboxgl.AnyLayer,
-      // 道路名(通り名)。道なり(map揃え=既定)。z13〜
-      { id: `${s.id}-road-name`, type: "symbol", source: s.id, "source-layer": "roads", minzoom: 13, filter: ["all", ["has", "name"], ["!", ["has", "ref"]]], layout: { "symbol-placement": "line", "text-field": NAME, "text-font": OB_FONT, "text-size": 11, "symbol-spacing": 280 }, paint: { "text-color": "#4a4a4a", "text-halo-color": "#ffffff", "text-halo-width": 1.4 } } as unknown as mapboxgl.AnyLayer,
-      // 地名(places)。点ラベル=既定で正立(viewport)＝ヘディングアップでも水平で読める。
-      { id: `${s.id}-place`, type: "symbol", source: s.id, "source-layer": "places", layout: { "text-field": NAME, "text-font": OB_FONT, "text-size": ["interpolate", ["linear"], ["zoom"], 8, 12, 12, 14, 15, 17], "text-anchor": "center", "text-max-width": 7 }, paint: { "text-color": "#2a2a2a", "text-halo-color": "#ffffff", "text-halo-width": 1.8 } } as unknown as mapboxgl.AnyLayer,
-    ];
-    // ★ラベル(symbol)層はam2222カスタムソースと相性が悪く、タイル描画をブロックするため現状は外す(幾何のみ)。
-    //   安定してラベルまで出すには MapLibre 移行が必要（symbol/pmtiles描画が本流）。LABELSは将来用に保持。
-    void LABELS;
     for (const l of L) add(l);
   }
+  // ★ラベルは pmtiles(am2222カスタムソース)ではなく、ネイティブ geojson ソース＋symbol で描く。
+  //   カスタムソース上の symbol はタイル描画をブロックする不具合があるが、geojson の symbol は素の
+  //   mapbox-gl 機能で確実に動く。データはビルド時に pmtiles から抽出した同梱 geojson(precache)。
+  addOfflineLabelLayers(map);
+}
+
+/** 地名(市区町村)・道路番号(高速/国道)のラベルを geojson ソースから追加。addOfflinePmtilesLayers から呼ぶ。 */
+function addOfflineLabelLayers(map: mapboxgl.Map): void {
+  if (!map.getSource("ob-places")) map.addSource("ob-places", { type: "geojson", data: LABEL_PLACES_URL });
+  if (!map.getSource("ob-roads")) map.addSource("ob-roads", { type: "geojson", data: LABEL_ROADS_URL });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const REF_COLOR: any = ["match", ["get", "kd"], "motorway", "#0a7d32", "#1a56c4"]; // 高速=緑 / 国道級=青
+  const layers: mapboxgl.AnyLayer[] = [
+    // 道路番号(ref)。線に沿って配置＋常に正立(viewport)＝ヘディングアップでも読める。高速/国道で色分け。
+    {
+      id: "ob-road-ref", type: "symbol", source: "ob-roads", minzoom: 8,
+      layout: {
+        "symbol-placement": "line", "text-rotation-alignment": "viewport", "text-pitch-alignment": "viewport",
+        "text-field": ["get", "ref"], "text-font": OB_FONT,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 8, 11, 14, 14],
+        "symbol-spacing": 260, "text-padding": 4, "text-max-angle": 40,
+      },
+      paint: { "text-color": REF_COLOR, "text-halo-color": "#ffffff", "text-halo-width": 2.2 },
+    } as unknown as mapboxgl.AnyLayer,
+    // 地名(市区町村)。点ラベル=既定で正立。人口/種別でサイズを変え、重なりは自動で間引き(collision)。
+    {
+      id: "ob-place", type: "symbol", source: "ob-places", minzoom: 7,
+      layout: {
+        "text-field": ["get", "name"], "text-font": OB_FONT,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 7, 11, 11, 14, 15, 18],
+        "text-max-width": 7, "text-anchor": "center", "symbol-sort-key": ["-", 0, ["get", "pop"]],
+      },
+      paint: { "text-color": "#33312b", "text-halo-color": "#ffffff", "text-halo-width": 1.8 },
+    } as unknown as mapboxgl.AnyLayer,
+  ];
+  for (const l of layers) if (!map.getLayer(l.id)) map.addLayer(l);
 }
 
 /** オフライン基図の pmtiles が両方キャッシュ済み（＝圏外で使える準備ができている）か。 */

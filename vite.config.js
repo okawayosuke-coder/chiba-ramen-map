@@ -46,7 +46,8 @@ export default defineConfig(function (_a) {
                 workbox: {
                     // アプリシェル＋データをプリキャッシュ。pois.json(同梱POI)も含めオフライン表示可。
                     // 地図タイルは外部のためオフライン不可。
-                    globPatterns: ["**/*.{js,css,html,png,svg,woff2,json}"],
+                    // pbf=同梱グリフ(offline-basemap用フォント)。json=同梱POI＋オフラインラベル(places/roads)。
+                    globPatterns: ["**/*.{js,css,html,png,svg,woff2,json,pbf}"],
                     // ★mapbox-gl(約1.8MB)は必ずプリキャッシュする。アプリは現在Mapbox主体で、RamenMapboxが
                     //   静的importしているため、これがオフラインで取れないとlazy importが失敗しアプリ全体が
                     //   起動不能になる（機内モードで起動できない不具合の原因・2026-07-10確認）。オフライン基図機能の前提。
