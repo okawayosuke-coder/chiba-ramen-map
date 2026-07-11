@@ -23,8 +23,12 @@ const LABEL_PLACES_URL = `${BASE}offline-basemap/labels-places.json`;
 const LABEL_ROADS_URL = `${BASE}offline-basemap/labels-roads.json`;
 const LABEL_POIS_URL = `${BASE}offline-basemap/labels-pois.json`; // 駅・団地など(pois由来)
 const LABEL_CHOME_URL = `${BASE}offline-basemap/labels-chome.json`; // 全町丁目(国交省 位置参照情報・約9万点)
+const LABEL_LANDMARKS_URL = `${BASE}offline-basemap/labels-landmarks.json`; // 神社/寺/城(OSM)
 // 準備(warm)時にまとめてキャッシュするラベル群。pmtiles と同じく圏外準備でDLし、precache には載せない(全ユーザーへの負担回避)。
-export const OFFLINE_LABEL_URLS = [LABEL_PLACES_URL, LABEL_ROADS_URL, LABEL_POIS_URL, LABEL_CHOME_URL];
+export const OFFLINE_LABEL_URLS = [LABEL_PLACES_URL, LABEL_ROADS_URL, LABEL_POIS_URL, LABEL_CHOME_URL, LABEL_LANDMARKS_URL];
+// ランドマーク種別色（神社=朱/寺=紫/城=茶）。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const LM_COLOR: any = ["match", ["get", "cat"], "shrine", "#c65b3c", "temple", "#7a5aa0", "castle", "#6b5b3a", "#777777"];
 
 // ラベル用フォント: 同梱の Noto Sans Regular(Protomaps basemaps-assets・オープン)。public/fonts/ に 0-255/256-511 を
 // 同梱し precache＝圏外でも確実に取得できレース無し。★以前の失敗の真因=ラベル用フォントスタックのグリフが
@@ -128,6 +132,7 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
   if (!map.getSource("ob-roads")) map.addSource("ob-roads", { type: "geojson", data: LABEL_ROADS_URL });
   if (!map.getSource("ob-pois")) map.addSource("ob-pois", { type: "geojson", data: LABEL_POIS_URL });
   if (!map.getSource("ob-chome")) map.addSource("ob-chome", { type: "geojson", data: LABEL_CHOME_URL });
+  if (!map.getSource("ob-landmarks")) map.addSource("ob-landmarks", { type: "geojson", data: LABEL_LANDMARKS_URL });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const REF_COLOR: any = ["match", ["get", "kd"], "motorway", "#0a7d32", "#1a56c4"]; // 高速=緑 / 国道級=青
   const layers: mapboxgl.AnyLayer[] = [
@@ -172,6 +177,25 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
         "text-anchor": "top", "text-offset": [0, 0.5], "text-max-width": 7, "text-padding": 4,
       },
       paint: { "text-color": "#a3281b", "text-halo-color": "#ffffff", "text-halo-width": 1.8 },
+    } as unknown as mapboxgl.AnyLayer,
+    // ランドマーク(神社/寺/城)のマーカー。種別色の丸＝地図記号代わり。z11.5〜。
+    {
+      id: "ob-landmark-dot", type: "circle", source: "ob-landmarks", minzoom: 11.5,
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 11.5, 3, 15, 5.5],
+        "circle-color": LM_COLOR, "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.4,
+      },
+    } as unknown as mapboxgl.AnyLayer,
+    // ランドマーク名。z13〜・種別色。町丁目より優先(先に配置)。
+    {
+      id: "ob-landmark-label", type: "symbol", source: "ob-landmarks", minzoom: 13,
+      filter: ["!=", ["get", "name"], ""],
+      layout: {
+        "text-field": ["get", "name"], "text-font": OB_FONT,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 13, 10.5, 16, 13],
+        "text-anchor": "top", "text-offset": [0, 0.5], "text-max-width": 8, "text-padding": 4,
+      },
+      paint: { "text-color": LM_COLOR, "text-halo-color": "#ffffff", "text-halo-width": 1.8 },
     } as unknown as mapboxgl.AnyLayer,
     // 地区(macrohood)。z11.5〜・中くらい・控えめ色。
     {
