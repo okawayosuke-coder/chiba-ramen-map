@@ -31,9 +31,14 @@ export const OFFLINE_LABEL_URLS = [LABEL_PLACES_URL, LABEL_ROADS_URL, LABEL_POIS
 // オンライン時にキャッシュされず、圏外で mapbox:// グリフ取得が失敗して symbol 描画が壊れていた。同梱で解消。
 // CJK(日本語の地名)は map の localIdeographFontFamily で端末フォント描画＝CJKグリフの配信は不要。道路番号はラテンで 0-255 に収まる。
 const OB_FONT = ["Noto Sans Regular"];
-// 幾何の主要道路(高速/幹線)強調フィルタ（pmtiles roads レイヤーの pmap:kind）。
+// 幾何の主要道路(高速/幹線)強調フィルタ。現状は道路を白系のみで描画(強調オフ)＝ユーザーが慣れた見た目を維持。
+// ※Protomapsのフィールドは `kind`。強調を有効化するなら ["get","kind"] に変える（medium_road込みだと黄色過多になる点に注意）。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MAJOR: any = ["match", ["get", "pmap:kind"], ["highway", "major_road", "medium_road"], true, false];
+// 水域のうち「線」で来る種別(河川/運河/水路)。fillで塗ると線が閉じて破片状の誤塗りになるため、fillから除外し
+// 別途 line で描く。★kind は Protomaps の water レイヤーのフィールド。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const WATER_LINEAR: any = ["river", "canal", "stream", "ditch", "drain"];
 
 let registered = false;
 /** カスタムソース型 "pmtile-source" を mapbox-gl に登録（setStyle 前に必須・一度だけ）。 */
@@ -80,7 +85,10 @@ export async function addOfflinePmtilesLayers(map: mapboxgl.Map): Promise<void> 
     } as any);
     const L: mapboxgl.AnyLayer[] = [
       { id: `${s.id}-landuse`, type: "fill", source: s.id, "source-layer": "landuse", paint: { "fill-color": "#dfe7d3", "fill-opacity": 0.55 } },
-      { id: `${s.id}-water`, type: "fill", source: s.id, "source-layer": "water", paint: { "fill-color": "#a9cbe8" } },
+      // 面の水域(海/湖/池)のみ塗る。河川/運河は線なので除外(fillが線を閉じて破片状に誤塗りするのを防ぐ)。
+      { id: `${s.id}-water`, type: "fill", source: s.id, "source-layer": "water", filter: ["match", ["get", "kind"], WATER_LINEAR, false, true], paint: { "fill-color": "#a9cbe8" } },
+      // 河川/運河は細い青線で描く(実河川)。
+      { id: `${s.id}-water-line`, type: "line", source: s.id, "source-layer": "water", filter: ["match", ["get", "kind"], WATER_LINEAR, true, false], layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#a9cbe8", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 12, 2, 15, 4.5] } },
       // 道路: ケーシング(濃いめ・太)→本体(白・細) でベージュ地に視認性を出す
       { id: `${s.id}-roads-case`, type: "line", source: s.id, "source-layer": "roads", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#8a8578", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.4, 14, 5] } },
       { id: `${s.id}-roads`, type: "line", source: s.id, "source-layer": "roads", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 14, 3] } },
