@@ -3749,9 +3749,11 @@ function RamenMapbox(props: Props) {
           if (aid !== addrReqId || aborted) return;
           // ★住所(逆ジオコーディング)の取得可否であって、現在地(GPS)は取れている。失敗時に
           //   「現在地 取得できません」と出すと誤解を招く（実際ピンは正しい）。圏外や一時的なGSI失敗が該当。
-          //   → 取得できたら住所を表示・保持。失敗時は直近の住所を保持し、無ければ中立に「📍 現在地」。
-          if (a) { lastAddrText = a; addrBox.textContent = `📍 ${a}`; }
-          else addrBox.textContent = lastAddrText ? `📍 ${lastAddrText}` : "📍 現在地";
+          //   → 取得できたら住所を表示・保持。失敗時は直近の住所を保持し、無ければボックス自体を隠す
+          //   （「📍 現在地」等の中身の無い表示は出さない）。
+          if (a) { lastAddrText = a; addrBox.textContent = `📍 ${a}`; addrBox.style.display = ""; }
+          else if (lastAddrText) { addrBox.textContent = `📍 ${lastAddrText}`; addrBox.style.display = ""; }
+          else addrBox.style.display = "none";
         });
         // 自車横の標高(m)も同じ約40m毎に更新（Leaflet版「標高 ◯m」常設表示の移植・GSI標高API無料）
         const eid = ++elevReqId;
