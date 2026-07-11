@@ -34,14 +34,15 @@ const LM_COLOR: any = ["match", ["get", "cat"], "shrine", "#c65b3c", "temple", "
 // 施設POIの種別色。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const POI_COLOR: any = ["match", ["get", "cat"],
-  "fuel", "#e8802b", "convenience", "#2aa198", "parking", "#8894a3", "michinoeki", "#2f9e44",
+  "fuel", "#e8802b", "convenience", "#2aa198", "michinoeki", "#2f9e44",
   "supermarket", "#d9770b", "hospital", "#e03131", "townhall", "#3b5ba5", "post", "#d6336c",
   "police", "#4263eb", "onsen", "#e8590c", "museum", "#7048e8", "viewpoint", "#66a80f",
   "peak", "#846358", "dam", "#1c7ed6", "camp", "#37b24d", "#888888"];
-// 表示ティア(minzoomで密度制御)。KEY=大きな目印を早め / MID=拡大で / DENSE=最拡大でのみ(コンビニ/駐車場)。
+// 表示ティア(minzoomで密度制御)。KEY=大きな目印を早め / MID=拡大で / DENSE=最拡大でのみ(コンビニ)。
+// ★駐車場(parking)は件数25万超でiPadのメモリ枯渇クラッシュの主因だったため除外。
 const POI_KEY = ["michinoeki", "townhall", "hospital", "peak", "dam", "onsen"];
 const POI_MID = ["fuel", "supermarket", "post", "police", "museum", "viewpoint", "camp"];
-const POI_DENSE = ["convenience", "parking"];
+const POI_DENSE = ["convenience"];
 
 // ラベル用フォント: 同梱の Noto Sans Regular(Protomaps basemaps-assets・オープン)。public/fonts/ に 0-255/256-511 を
 // 同梱し precache＝圏外でも確実に取得できレース無し。★以前の失敗の真因=ラベル用フォントスタックのグリフが
@@ -141,12 +142,16 @@ export async function addOfflinePmtilesLayers(map: mapboxgl.Map): Promise<void> 
 
 /** 地名(市区町村)・道路番号(高速/国道)のラベルを geojson ソースから追加。addOfflinePmtilesLayers から呼ぶ。 */
 function addOfflineLabelLayers(map: mapboxgl.Map): void {
-  if (!map.getSource("ob-places")) map.addSource("ob-places", { type: "geojson", data: LABEL_PLACES_URL });
-  if (!map.getSource("ob-roads")) map.addSource("ob-roads", { type: "geojson", data: LABEL_ROADS_URL });
-  if (!map.getSource("ob-pois")) map.addSource("ob-pois", { type: "geojson", data: LABEL_POIS_URL });
-  if (!map.getSource("ob-chome")) map.addSource("ob-chome", { type: "geojson", data: LABEL_CHOME_URL });
-  if (!map.getSource("ob-landmarks")) map.addSource("ob-landmarks", { type: "geojson", data: LABEL_LANDMARKS_URL });
-  if (!map.getSource("ob-poi-all")) map.addSource("ob-poi-all", { type: "geojson", data: LABEL_POI_URL });
+  // ★geojson の内部インデックス上限を maxzoom:12 に制限＝メモリ大幅削減(既定18は点データには過剰)。
+  //   点は高ズームで詳細が増えないため、表示は z13+ で z12タイルをオーバーズームすれば十分。iPad の
+  //   メモリ枯渇クラッシュ対策(大移動+ズームで落ちる不具合)。buffer も小さめにしてタイル毎の重複を減らす。
+  const gj = (data: string): mapboxgl.AnySourceData => ({ type: "geojson", data, maxzoom: 12, buffer: 32 } as unknown as mapboxgl.AnySourceData);
+  if (!map.getSource("ob-places")) map.addSource("ob-places", gj(LABEL_PLACES_URL));
+  if (!map.getSource("ob-roads")) map.addSource("ob-roads", { type: "geojson", data: LABEL_ROADS_URL, maxzoom: 12 } as unknown as mapboxgl.AnySourceData);
+  if (!map.getSource("ob-pois")) map.addSource("ob-pois", gj(LABEL_POIS_URL));
+  if (!map.getSource("ob-chome")) map.addSource("ob-chome", gj(LABEL_CHOME_URL));
+  if (!map.getSource("ob-landmarks")) map.addSource("ob-landmarks", gj(LABEL_LANDMARKS_URL));
+  if (!map.getSource("ob-poi-all")) map.addSource("ob-poi-all", gj(LABEL_POI_URL));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const REF_COLOR: any = ["match", ["get", "kd"], "motorway", "#0a7d32", "#1a56c4"]; // 高速=緑 / 国道級=青
   const layers: mapboxgl.AnyLayer[] = [
