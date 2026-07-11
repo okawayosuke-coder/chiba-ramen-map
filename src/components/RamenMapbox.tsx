@@ -3522,6 +3522,7 @@ function RamenMapbox(props: Props) {
     map.getContainer().appendChild(addrBox);
     let lastAddrPt: Pt | null = null;
     let addrReqId = 0;
+    let lastAddrText = ""; // 直近に取得できた住所（逆ジオコーディング一時失敗時に保持＝誤エラー表示を防ぐ）
     let elevReqId = 0; // 自車横の標高表示の競合排除（住所と同じ約40m毎に更新）
 
     // 左上: 目的地名ウィンドウ。1行目=方位矢印＋目的地名、2行目=残り距離・到着時間(route effectがrouteEtaRefへ算出)。
@@ -3745,7 +3746,12 @@ function RamenMapbox(props: Props) {
         lastAddrPt = rawPt;
         const aid = ++addrReqId;
         reverseAddressNoBanchi(rawPt.lat, rawPt.lng).then((a) => {
-          if (aid === addrReqId && !aborted) addrBox.textContent = a ? `📍 ${a}` : "📍 現在地 取得できません";
+          if (aid !== addrReqId || aborted) return;
+          // ★住所(逆ジオコーディング)の取得可否であって、現在地(GPS)は取れている。失敗時に
+          //   「現在地 取得できません」と出すと誤解を招く（実際ピンは正しい）。圏外や一時的なGSI失敗が該当。
+          //   → 取得できたら住所を表示・保持。失敗時は直近の住所を保持し、無ければ中立に「📍 現在地」。
+          if (a) { lastAddrText = a; addrBox.textContent = `📍 ${a}`; }
+          else addrBox.textContent = lastAddrText ? `📍 ${lastAddrText}` : "📍 現在地";
         });
         // 自車横の標高(m)も同じ約40m毎に更新（Leaflet版「標高 ◯m」常設表示の移植・GSI標高API無料）
         const eid = ++elevReqId;
