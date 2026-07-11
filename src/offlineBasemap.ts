@@ -233,11 +233,17 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
   for (const l of layers) if (!map.getLayer(l.id)) map.addLayer(l);
 }
 
-/** オフライン基図の pmtiles が両方キャッシュ済み（＝圏外で使える準備ができている）か。 */
+/** オフライン基図が圏外で使える準備ができているか。★pmtiles(基図)だけでなくラベル群(地名/道路番号/
+ *  駅/町丁目/ランドマーク)も全てキャッシュ済みであることを要求する。こうすることで、ラベルデータを
+ *  更新した後は「準備済み」判定が自動で false に戻り、ユーザーに再準備を促せる(準備済み表示のまま
+ *  ラベルだけ古い/欠ける、という分かりにくい状態を防ぐ)。 */
 export async function isOfflineBasemapReady(): Promise<boolean> {
   if (typeof caches === "undefined") return false;
   for (const s of OFFLINE_SOURCES) {
     if (!(await caches.match(s.url))) return false;
+  }
+  for (const url of OFFLINE_LABEL_URLS) {
+    if (!(await caches.match(url))) return false;
   }
   return true;
 }
