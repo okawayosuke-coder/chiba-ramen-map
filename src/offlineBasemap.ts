@@ -24,11 +24,24 @@ const LABEL_ROADS_URL = `${BASE}offline-basemap/labels-roads.json`;
 const LABEL_POIS_URL = `${BASE}offline-basemap/labels-pois.json`; // 駅・団地など(pois由来)
 const LABEL_CHOME_URL = `${BASE}offline-basemap/labels-chome.json`; // 全町丁目(国交省 位置参照情報・約9万点)
 const LABEL_LANDMARKS_URL = `${BASE}offline-basemap/labels-landmarks.json`; // 神社/寺/城(OSM)
+const LABEL_POI_URL = `${BASE}offline-basemap/labels-poi.json`; // 施設POI(給油/コンビニ/駐車場/道の駅/役所/山/ダム/温泉ほか・OSM)
 // 準備(warm)時にまとめてキャッシュするラベル群。pmtiles と同じく圏外準備でDLし、precache には載せない(全ユーザーへの負担回避)。
-export const OFFLINE_LABEL_URLS = [LABEL_PLACES_URL, LABEL_ROADS_URL, LABEL_POIS_URL, LABEL_CHOME_URL, LABEL_LANDMARKS_URL];
+export const OFFLINE_LABEL_URLS = [LABEL_PLACES_URL, LABEL_ROADS_URL, LABEL_POIS_URL, LABEL_CHOME_URL, LABEL_LANDMARKS_URL, LABEL_POI_URL];
 // ランドマーク種別色（神社=朱/寺=紫/城=茶）。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const LM_COLOR: any = ["match", ["get", "cat"], "shrine", "#c65b3c", "temple", "#7a5aa0", "castle", "#6b5b3a", "#777777"];
+
+// 施設POIの種別色。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const POI_COLOR: any = ["match", ["get", "cat"],
+  "fuel", "#e8802b", "convenience", "#2aa198", "parking", "#8894a3", "michinoeki", "#2f9e44",
+  "supermarket", "#d9770b", "hospital", "#e03131", "townhall", "#3b5ba5", "post", "#d6336c",
+  "police", "#4263eb", "onsen", "#e8590c", "museum", "#7048e8", "viewpoint", "#66a80f",
+  "peak", "#846358", "dam", "#1c7ed6", "camp", "#37b24d", "#888888"];
+// 表示ティア(minzoomで密度制御)。KEY=大きな目印を早め / MID=拡大で / DENSE=最拡大でのみ(コンビニ/駐車場)。
+const POI_KEY = ["michinoeki", "townhall", "hospital", "peak", "dam", "onsen"];
+const POI_MID = ["fuel", "supermarket", "post", "police", "museum", "viewpoint", "camp"];
+const POI_DENSE = ["convenience", "parking"];
 
 // ラベル用フォント: 同梱の Noto Sans Regular(Protomaps basemaps-assets・オープン)。public/fonts/ に 0-255/256-511 を
 // 同梱し precache＝圏外でも確実に取得できレース無し。★以前の失敗の真因=ラベル用フォントスタックのグリフが
@@ -133,6 +146,7 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
   if (!map.getSource("ob-pois")) map.addSource("ob-pois", { type: "geojson", data: LABEL_POIS_URL });
   if (!map.getSource("ob-chome")) map.addSource("ob-chome", { type: "geojson", data: LABEL_CHOME_URL });
   if (!map.getSource("ob-landmarks")) map.addSource("ob-landmarks", { type: "geojson", data: LABEL_LANDMARKS_URL });
+  if (!map.getSource("ob-poi-all")) map.addSource("ob-poi-all", { type: "geojson", data: LABEL_POI_URL });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const REF_COLOR: any = ["match", ["get", "kd"], "motorway", "#0a7d32", "#1a56c4"]; // 高速=緑 / 国道級=青
   const layers: mapboxgl.AnyLayer[] = [
@@ -230,6 +244,28 @@ function addOfflineLabelLayers(map: mapboxgl.Map): void {
       paint: { "text-color": "#6b6656", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
     } as unknown as mapboxgl.AnyLayer,
   ];
+  // 施設POI(給油/コンビニ/駐車場/道の駅/役所/山/ダム/温泉ほか)。ドット=種別色マーカー(必ず表示)＋名前。
+  // 密度制御: KEY(大きな目印)=早め / MID=拡大で / DENSE(コンビニ/駐車場)=最拡大でドットのみ(名前は最拡大)。
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const inCats = (cats: string[]): any => ["match", ["get", "cat"], cats, true, false];
+  const poiDot = (id: string, cats: string[], mz: number): mapboxgl.AnyLayer => ({
+    id, type: "circle", source: "ob-poi-all", minzoom: mz, filter: inCats(cats),
+    paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], mz, 2.2, 16, 4.5], "circle-color": POI_COLOR, "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.2 },
+  } as unknown as mapboxgl.AnyLayer);
+  const poiLabel = (id: string, cats: string[], mz: number): mapboxgl.AnyLayer => ({
+    id, type: "symbol", source: "ob-poi-all", minzoom: mz, filter: ["all", inCats(cats), ["has", "name"]],
+    layout: { "text-field": ["get", "name"], "text-font": OB_FONT, "text-size": ["interpolate", ["linear"], ["zoom"], mz, 10, 16, 13], "text-anchor": "top", "text-offset": [0, 0.5], "text-max-width": 8, "text-padding": 4 },
+    paint: { "text-color": POI_COLOR, "text-halo-color": "#ffffff", "text-halo-width": 1.6 },
+  } as unknown as mapboxgl.AnyLayer);
+  // KEY/MID の「名前」は chome(町丁目) より前＝高優先で配置。ドットと DENSE は末尾(最低優先/最前面描画)。
+  const chomeIdx = layers.findIndex((l) => l.id === "ob-chome");
+  layers.splice(chomeIdx, 0, poiLabel("ob-poi-key-label", POI_KEY, 12), poiLabel("ob-poi-mid-label", POI_MID, 13));
+  layers.push(
+    poiDot("ob-poi-key-dot", POI_KEY, 11.5),
+    poiDot("ob-poi-mid-dot", POI_MID, 12.5),
+    poiDot("ob-poi-dense-dot", POI_DENSE, 14),
+    poiLabel("ob-poi-dense-label", POI_DENSE, 15),
+  );
   for (const l of layers) if (!map.getLayer(l.id)) map.addLayer(l);
 }
 
