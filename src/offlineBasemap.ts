@@ -40,6 +40,25 @@ const MAJOR: any = ["match", ["get", "pmap:kind"], ["highway", "major_road", "me
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WATER_LINEAR: any = ["river", "canal", "stream", "ditch", "drain"];
 
+// 土地利用(landuse)の種別別カラー。★林/森を主役に、公園・農地・市街をメリハリのある色で塗り分ける。
+// 淡い単色だと視認性が低いため種別で色を分け fill-opacity も上げる。earth 背景(#e9e5dc)の上に載る。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const LANDUSE_COLOR: any = [
+  "match", ["get", "kind"],
+  ["wood", "forest", "scrub", "heath"], "#a3c986",              // 林・森(はっきりした緑=主役)
+  ["park", "recreation_ground", "grass", "grassland", "meadow", "greenfield", "garden", "village_green", "playground"], "#c7e6a6", // 公園・草地
+  ["pitch", "golf_course", "sports_centre", "stadium", "track"], "#b6df97", // 運動場・ゴルフ場
+  ["farmland", "farmyard", "allotments", "orchard", "vineyard", "farm"], "#eae2be", // 農地(黄土)
+  ["cemetery", "grave_yard"], "#c0d4b2",                        // 墓地
+  ["residential"], "#ece7de",                                  // 住宅地(やや暖色グレー)
+  ["commercial", "retail"], "#f0e2df",                         // 商業(暖色)
+  ["industrial", "railway", "port", "quarry"], "#dedde6",       // 工業・鉄道(寒色グレー)
+  ["hospital"], "#f2e0de",                                     // 病院
+  ["school", "university", "college", "kindergarten", "library"], "#ece4d3", // 学校
+  ["military"], "#e0d8c6",                                     // 軍用地
+  "#e9e5dc",                                                   // 既定=earthと同色(=無着色扱い)
+];
+
 let registered = false;
 /** カスタムソース型 "pmtile-source" を mapbox-gl に登録（setStyle 前に必須・一度だけ）。 */
 export function registerPmtiles(): void {
@@ -84,7 +103,7 @@ export async function addOfflinePmtilesLayers(map: mapboxgl.Map): Promise<void> 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     const L: mapboxgl.AnyLayer[] = [
-      { id: `${s.id}-landuse`, type: "fill", source: s.id, "source-layer": "landuse", paint: { "fill-color": "#dfe7d3", "fill-opacity": 0.55 } },
+      { id: `${s.id}-landuse`, type: "fill", source: s.id, "source-layer": "landuse", paint: { "fill-color": LANDUSE_COLOR, "fill-opacity": 0.9 } },
       // 面の水域(海/湖/池)のみ塗る。河川/運河は線なので除外(fillが線を閉じて破片状に誤塗りするのを防ぐ)。
       { id: `${s.id}-water`, type: "fill", source: s.id, "source-layer": "water", filter: ["match", ["get", "kind"], WATER_LINEAR, false, true], paint: { "fill-color": "#a9cbe8" } },
       // 河川/運河は細い青線で描く(実河川)。
