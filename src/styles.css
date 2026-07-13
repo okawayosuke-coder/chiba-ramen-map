@@ -30,9 +30,14 @@ body,
 }
 
 .app {
+  /* ★実ビューポートの四辺にピン留め＝iOS標準PWA(black-translucent)で vh/dvh/% の誤差に依存せず
+     必ず全画面を埋める。height:100dvh は iOS で再読み込み時に下部へ隙間が出ることがあったため fixed に変更。 */
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
-  height: 100%; /* フォールバック */
-  height: 100dvh; /* 実画面高に一致させ、下部に隙間を作らない */
   overflow: hidden;
 }
 
