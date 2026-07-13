@@ -2519,7 +2519,9 @@ body {
 }
 /* 上部アンカーのオーバーレイ(元top値 + 安全域) */
 .offline-banner { top: calc(10px + var(--sat)); }
-.addr-box { top: calc(3px + var(--sat)); } /* 現在地住所ボックス: 安全域直下まで上げる(要望:少し上へ) */
+/* 現在地住所ボックス: さらに上へ(要望)。中央top配置＝iPad横向きは時計(左端)/電池(右端)と当たらないため、
+   安全域(--sat)は半分だけ見込んで上端寄りに。もっと上げたい/戻したい時はこの係数を調整。 */
+.addr-box { top: calc(2px + var(--sat) * 0.5); }
 .lp-hint { top: calc(12px + var(--sat)); }
 .nav-sign { top: calc(52px + var(--sat)); }
 .map-wrap.is-offline .addr-box { top: calc(47px + var(--sat)); } /* 圏外時もオフラインバナー直下まで上げる */
