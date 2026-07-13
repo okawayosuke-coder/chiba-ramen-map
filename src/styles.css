@@ -23,14 +23,16 @@ body,
 #root {
   margin: 0;
   padding: 0;
-  height: 100%;
+  height: 100%; /* フォールバック(dvh非対応の古い環境) */
+  height: 100dvh; /* ★全画面PWA(black-translucent)で底の安全域まで含む実画面高に追従。下部の余白を解消 */
   overflow: hidden; /* iOS: ページ全体のラバーバンドを防ぎ、内側だけスクロールさせる */
   color: var(--text);
 }
 
 .app {
   display: flex;
-  height: 100%; /* vh ではなく html/body(100%) を継承（iOS standaloneのvhズレ回避） */
+  height: 100%; /* フォールバック */
+  height: 100dvh; /* 実画面高に一致させ、下部に隙間を作らない */
   overflow: hidden;
 }
 
