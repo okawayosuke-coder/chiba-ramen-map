@@ -2498,3 +2498,33 @@ body {
   font-size: 13px;
   cursor: pointer;
 }
+
+/* ===== iPad 全画面(PWA・status-bar-style=black-translucent)対応 =====
+   コンテンツが画面最上部(ステータスバー=時計/電池の裏)まで広がるため、UIがそれらに隠れないよう
+   safe-area ぶんの余白/オフセットを確保する。--sat/--sab に集約(検証や微調整が容易)。
+   非iOSやブラウザ内では env=0 なので無影響。 */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+}
+.sidebar__header {
+  padding-top: calc(9px + var(--sat));
+}
+/* 地図の上部コントロール(ズーム/3D/コンパス=左上、種類=右上)を安全域ぶん下げる */
+.mapboxgl-ctrl-top-left,
+.mapboxgl-ctrl-top-right {
+  margin-top: var(--sat);
+}
+/* 上部アンカーのオーバーレイ(元top値 + 安全域) */
+.offline-banner { top: calc(10px + var(--sat)); }
+.addr-box { top: calc(10px + var(--sat)); }
+.lp-hint { top: calc(12px + var(--sat)); }
+.nav-sign { top: calc(52px + var(--sat)); }
+.map-wrap.is-offline .addr-box,
+.map-wrap.is-offline .lp-hint { top: calc(54px + var(--sat)); }
+.map-wrap.is-offline .nav-sign { top: calc(96px + var(--sat)); }
+/* 右下の縮尺バー等がホームインジケータに被らないよう下端も少し確保 */
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right {
+  margin-bottom: var(--sab);
+}
