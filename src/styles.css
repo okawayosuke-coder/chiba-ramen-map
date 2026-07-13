@@ -2519,10 +2519,10 @@ body {
 }
 /* 上部アンカーのオーバーレイ(元top値 + 安全域) */
 .offline-banner { top: calc(10px + var(--sat)); }
-.addr-box { top: calc(10px + var(--sat)); }
+.addr-box { top: calc(3px + var(--sat)); } /* 現在地住所ボックス: 安全域直下まで上げる(要望:少し上へ) */
 .lp-hint { top: calc(12px + var(--sat)); }
 .nav-sign { top: calc(52px + var(--sat)); }
-.map-wrap.is-offline .addr-box,
+.map-wrap.is-offline .addr-box { top: calc(47px + var(--sat)); } /* 圏外時もオフラインバナー直下まで上げる */
 .map-wrap.is-offline .lp-hint { top: calc(54px + var(--sat)); }
 .map-wrap.is-offline .nav-sign { top: calc(96px + var(--sat)); }
 /* 右下の縮尺バー等がホームインジケータに被らないよう下端も少し確保 */
